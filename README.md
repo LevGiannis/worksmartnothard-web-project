@@ -37,6 +37,26 @@ npm run dev
 - `npm run build` — Δημιουργία παραγωγικού bundle (Vite).
 - `npm run preview` — Τοπική προεπισκόπηση του production build.
 
+## Deploy (Remote) χωρίς κοινή αποθήκευση
+
+Μπορείς να το ανεβάσεις ως static site (GitHub Pages). Η εφαρμογή θα τρέχει απομακρυσμένα από URL, αλλά τα δεδομένα θα παραμένουν **τοπικά** στο `localStorage` του browser (άρα κάθε υπολογιστής/προφίλ browser έχει δικά του στοιχεία).
+
+### GitHub Pages (με GitHub Actions)
+
+- Υπάρχει workflow στο `/.github/workflows/deploy-pages.yml` που κάνει build και deploy.
+- Το site θα σερβίρεται στο `https://<username>.github.io/WORKSMARTNOTHARD-WEB-PROJECT/`.
+
+Βήματα:
+
+1. Στο GitHub repo: **Settings → Pages**
+2. Στο **Build and deployment** επίλεξε **Source: GitHub Actions**
+3. Κάνε push στο `main` και περίμενε να ολοκληρωθεί το workflow.
+
+### Πού αποθηκεύονται τα στοιχεία;
+
+- Στον browser, στο `localStorage` (δες `src/services/storage.ts`).
+- Δεν υπάρχει κοινή αποθήκευση/συγχρονισμός μεταξύ συσκευών.
+
 ## Δομή Έργου
 
 - `src/main.tsx` — Εκκίνηση εφαρμογής, `router` και providers.
