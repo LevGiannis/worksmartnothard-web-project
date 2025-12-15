@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="420" viewBox="0 0 2400 420" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1">
+      <stop offset="0" stop-color="#2b12e6" />
+      <stop offset="1" stop-color="#17092b" />
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="20" flood-color="#000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Background gradient -->
+  <rect width="100%" height="100%" fill="url(#bg)" />
+
+  <!-- Subtle dark strip lower third -->
+  <rect y="260" width="100%" height="160" fill="#0b0212" opacity="0.85" />
+
+  <!-- Left mini-brand block (WorkSmart / Tracker) -->
+  <g transform="translate(140,60)" fill="#ffffff" opacity="0.95">
+    <text x="0" y="22" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">WorkSmart</text>
+    <text x="0" y="52" font-family="Inter, Arial, sans-serif" font-size="16" font-weight="500" opacity="0.85">Tracker</text>
+  </g>
+
+  <!-- Center headline removed to avoid watermark text in the hero -->
+
+  <!-- Right round mark removed (user requested no red mark in hero) -->
+
+  <!-- faint vignette -->
+  <rect width="100%" height="100%" fill="black" opacity="0.06" />
+</svg>

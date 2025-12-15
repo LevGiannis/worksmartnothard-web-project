@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Improved ring-inspired brand mark (stylized, not an exact trademark reproduction) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="Brand mark">
+  <defs>
+    <radialGradient id="rg" cx="30%" cy="25%">
+      <stop offset="0%" stop-color="#ff9a9a" />
+      <stop offset="50%" stop-color="#ff3b3b" />
+      <stop offset="100%" stop-color="#d10000" />
+    </radialGradient>
+    <filter id="ds" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="10" stdDeviation="16" flood-color="#000" flood-opacity="0.45" />
+    </filter>
+    <!-- subtle inner shadow for depth -->
+    <filter id="inset" x="-50%" y="-50%" width="200%" height="200%">
+      <feOffset dx="0" dy="2" result="off"/>
+      <feGaussianBlur in="off" stdDeviation="4" result="blur"/>
+      <feComposite in="blur" in2="SourceAlpha" operator="in" result="inner"/>
+      <feColorMatrix in="inner" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.25 0" />
+    </filter>
+  </defs>
+
+  <!-- outer glossy ring -->
+  <g filter="url(#ds)">
+    <circle cx="120" cy="120" r="100" fill="url(#rg)" />
+  </g>
+
+  <!-- inner white cutout circle -->
+  <circle cx="120" cy="120" r="58" fill="#ffffff" />
+
+  <!-- teardrop/swirl accent (white) — slightly rotated to emulate the 'comma' shape -->
+  <g transform="translate(0,0) rotate(-18 120 120)">
+    <path d="M160,80 C148,86 130,110 134,140 C138,170 168,176 176,150 C184,124 178,96 160,80 Z"
+          fill="#ffffff" />
+  </g>
+
+  <!-- soft inner shadow for realism -->
+  <circle cx="120" cy="120" r="100" fill="none" filter="url(#inset)" />
+</svg>
