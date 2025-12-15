@@ -21,24 +21,24 @@ export default function AddGoalPage(){
 
   // Static categories copied from the Android AddGoalActivity
   const STATIC_CATEGORIES = [
-    'PortIN mobile',
-    'Exprepay',
-    'Vodafone Home W/F',
-    'Migration FTTH',
-    'Post2post',
-    'Ec2post',
-    'First',
-    'New Connection',
-    'Ραντεβού',
-    'Συσκευές',
+    'PORTIN MOBILE',
+    'EXPREPAY',
+    'VODAFONE HOME W/F',
+    'MIGRATION FTTH',
+    'POST2POST',
+    'EC2POST',
+    'FIRST',
+    'NEW CONNECTION',
+    'ΡΑΝΤΕΒΟΥ',
+    'ΣΥΣΚΕΥΕΣ',
     'TV',
-    'Migration VDSL'
+    'MIGRATION VDSL'
   ]
 
   useEffect(()=>{
     // load past goal categories to suggest, merged with static categories
     loadAllGoals().then((goals: Goal[]) => {
-      const past = Array.from(new Set(goals.map((g: Goal) => String(g.category || g.title || '')).filter(Boolean))) as string[]
+      const past = Array.from(new Set(goals.map((g: Goal) => String(g.category || g.title || '').toUpperCase()).filter(Boolean))) as string[]
       const merged = Array.from(new Set([...STATIC_CATEGORIES, ...past]))
       setSuggestions(merged)
       if(!category && merged.length) setCategory(merged[0])
@@ -52,9 +52,9 @@ export default function AddGoalPage(){
       const key = 'ws_suggestions_goal_category'
       const raw = JSON.parse(localStorage.getItem(key) || '[]')
       const arr = Array.isArray(raw) ? raw : []
-      const lc = value.toLowerCase()
-      const filtered = arr.filter((x: string) => x.toLowerCase() !== lc)
-      const next = [value, ...filtered].slice(0, 30)
+      const upper = value.toUpperCase()
+      const filtered = arr.filter((x: string) => x.toUpperCase() !== upper)
+      const next = [upper, ...filtered].slice(0, 30)
       localStorage.setItem(key, JSON.stringify(next))
     } catch (e) {
       console.warn('persist category suggestion', e)
@@ -76,8 +76,8 @@ export default function AddGoalPage(){
     let mounted = true
     loadEntriesForMonth(year, month).then((entries: DailyEntry[]) => {
       if(!mounted) return
-      const key = String(category || '')
-      const filtered = entries.filter((e: DailyEntry) => String(e.category || '') === key)
+  const key = String(category || '').toUpperCase()
+  const filtered = entries.filter((e: DailyEntry) => String(e.category || '').toUpperCase() === key)
       const sum = filtered.reduce((s: number, e: DailyEntry)=> s + (e.points||0), 0)
       setAchieved(sum)
       setEntries(filtered.slice().sort((a,b)=> (b.date||'').localeCompare(a.date)))
@@ -100,12 +100,13 @@ export default function AddGoalPage(){
     setSaving(true)
     try{
       const parsedTarget = typeof target === 'number' ? target : parseFloat(String(target))
+      const normalizedCategory = String(category || '').toUpperCase()
       // persist category suggestion for future use
-      persistCategorySuggestion(category)
+      persistCategorySuggestion(normalizedCategory)
       // Save goal using category as primary label and include notes/color
-      await saveGoal({ category: category, title: '', target: parsedTarget, year, month, notes, color })
+      await saveGoal({ category: normalizedCategory, title: '', target: parsedTarget, year, month, notes, color })
       setToastMsg('Ο στόχος αποθηκεύτηκε')
-      showNotification('Στόχος αποθηκεύτηκε', { body: `${category} — στόχος ${parsedTarget}` })
+      showNotification('Στόχος αποθηκεύτηκε', { body: `${normalizedCategory} — στόχος ${parsedTarget}` })
       setTimeout(()=> navigate('/'), 600)
     }catch(e){
       console.error(e)
@@ -140,10 +141,10 @@ export default function AddGoalPage(){
               <label className="text-sm font-medium">Κατηγορία / Περιγραφή</label>
               <div style={{flex:1}}>
                 <div style={{display:'flex',gap:8}}>
-                  <select className="panel-input" value={category} onChange={e=> setCategory(e.target.value)} aria-label="Επιλογή κατηγορίας στόχου" style={{fontSize: '1rem', padding:'8px'}}>
+                  <select className="panel-input" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} aria-label="Επιλογή κατηγορίας στόχου" style={{fontSize: '1rem', padding:'8px'}}>
                     {suggestions.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
-                  <input aria-label="Ή νέα κατηγορία" className="panel-input" placeholder="ή νέα κατηγορία" value={category} onChange={e=> setCategory(e.target.value)} style={{fontSize: '1rem', padding:'8px'}} />
+                  <input aria-label="Ή νέα κατηγορία" className="panel-input" placeholder="ή νέα κατηγορία" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} style={{fontSize: '1rem', padding:'8px'}} />
                 </div>
                 {errors.some(er=> er.includes('κατηγορ')) && <div role="alert" className="text-sm text-red-300 mt-1">Η κατηγορία είναι απαραίτητη.</div>}
               </div>

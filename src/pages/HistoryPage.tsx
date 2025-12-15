@@ -32,7 +32,7 @@ export default function HistoryPage(){
                   <div className="text-sm text-gray-500">{new Date(e.date).toLocaleDateString()}</div>
                 </div>
               </div>
-              <div className="text-sm">{e.points} {e.category === 'Ραντεβού' ? '€' : 'pts'}</div>
+              <div className="text-sm">{e.points} {String(e.category).toUpperCase() === 'ΡΑΝΤΕΒΟΥ' ? '€' : 'pts'}</div>
             </div>
           ))}
           {entries.length === 0 && <div className="panel-card muted">Δεν υπάρχουν καταχωρήσεις.</div>}

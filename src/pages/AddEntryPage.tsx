@@ -20,10 +20,11 @@ export default function AddEntryPage(){
   const [toast, setToast] = useState('')
   const [recent, setRecent] = useState<DailyEntry[]>([])
   const [appointmentCounts, setAppointmentCounts] = useState<Record<number, number>>({})
+  const categoryUpper = String(category || '').toUpperCase()
 
   // Static categories borrowed from Android AddGoalActivity
   const STATIC_CATEGORIES = [
-    'PortIN mobile','Exprepay','Vodafone Home W/F','Migration FTTH','Post2post','Ec2post','First','New Connection','Ραντεβού','Συσκευές','TV','Migration VDSL'
+    'PORTIN MOBILE','EXPREPAY','VODAFONE HOME W/F','MIGRATION FTTH','POST2POST','EC2POST','FIRST','NEW CONNECTION','ΡΑΝΤΕΒΟΥ','ΣΥΣΚΕΥΕΣ','TV','MIGRATION VDSL'
   ]
   const HOME_TYPE_OPTIONS = [
     'ADSL DOUBLE',
@@ -39,7 +40,7 @@ export default function AddEntryPage(){
 
   useEffect(()=>{
     loadAllGoals().then((goals: Goal[]) => {
-      const past = Array.from(new Set(goals.map((g: Goal) => String(g.category || g.title || '')).filter(Boolean))) as string[]
+      const past = Array.from(new Set(goals.map((g: Goal) => String(g.category || g.title || '').toUpperCase()).filter(Boolean))) as string[]
       setSuggestions(Array.from(new Set([...STATIC_CATEGORIES, ...past])) as string[])
       if(!category && STATIC_CATEGORIES.length) setCategory(STATIC_CATEGORIES[0])
     }).catch(()=>{
@@ -54,35 +55,35 @@ export default function AddEntryPage(){
   }, [])
 
   useEffect(()=>{
-    if(category === 'Vodafone Home W/F'){
+    if(categoryUpper === 'VODAFONE HOME W/F'){
       if(!HOME_TYPE_OPTIONS.includes(homeType)){
         setHomeType(HOME_TYPE_OPTIONS[0])
       }
     }else{
       if(homeType) setHomeType('')
     }
-  }, [category, homeType])
+  }, [categoryUpper, homeType])
 
   useEffect(()=>{
-    if(category === 'Ραντεβού'){
+    if(categoryUpper === 'ΡΑΝΤΕΒΟΥ'){
       if(!orderNumber.trim()) setOrderNumber('Team Ready')
     }else if(orderNumber === 'Team Ready'){
       setOrderNumber('')
     }
-  }, [category, orderNumber])
+  }, [categoryUpper, orderNumber])
 
   useEffect(()=>{
-    if(category !== 'Ραντεβού' && Object.keys(appointmentCounts).length){
+    if(categoryUpper !== 'ΡΑΝΤΕΒΟΥ' && Object.keys(appointmentCounts).length){
       setAppointmentCounts({})
     }
-  }, [category, appointmentCounts])
+  }, [categoryUpper, appointmentCounts])
 
   useEffect(()=>{
-    if(category === 'Ραντεβού'){
+    if(categoryUpper === 'ΡΑΝΤΕΒΟΥ'){
       const total = APPOINTMENT_AMOUNTS.reduce((sum, amt)=> sum + (appointmentCounts[amt] || 0) * amt, 0)
       setPoints(total ? Number(total.toFixed(2)) : 0)
     }
-  }, [appointmentCounts, category])
+  }, [appointmentCounts, categoryUpper])
 
   const adjustAppointmentCount = (amount:number, delta:number) => {
     setAppointmentCounts(prev => {
@@ -115,13 +116,13 @@ export default function AddEntryPage(){
   const validate = () =>{
     const errs:string[] = []
     const appointmentTotal = APPOINTMENT_AMOUNTS.reduce((sum, amt) => sum + (appointmentCounts[amt] || 0) * amt, 0)
-    const val = category === 'Ραντεβού'
+    const val = categoryUpper === 'ΡΑΝΤΕΒΟΥ'
       ? appointmentTotal
       : (typeof points === 'number' ? points : parseFloat(String(points || '0')))
     if(!category || !category.trim()) errs.push('Επίλεξε ή γράψε κατηγορία')
     if(!orderNumber || !orderNumber.trim()) errs.push('Πρόσθεσε αριθμό παραγγελίας')
     if(!customerName || !customerName.trim()) errs.push('Πρόσθεσε ονοματεπώνυμο πελάτη')
-    if(category === 'Ραντεβού'){
+    if(categoryUpper === 'ΡΑΝΤΕΒΟΥ'){
       if(appointmentTotal <= 0) errs.push('Πρόσθεσε τουλάχιστον ένα ποσό για ραντεβού')
     }else if(!val || val <= 0){
       errs.push('Πρόσθεσε έγκυρα σημεία (>0)')
@@ -134,12 +135,13 @@ export default function AddEntryPage(){
     if(!validate()) return
     setSaving(true)
     try{
-      const parsed = category === 'Ραντεβού'
+      const normalizedCategory = categoryUpper
+      const parsed = normalizedCategory === 'ΡΑΝΤΕΒΟΥ'
         ? APPOINTMENT_AMOUNTS.reduce((sum, amt) => sum + (appointmentCounts[amt] || 0) * amt, 0)
         : (typeof points === 'number' ? points : parseFloat(String(points)))
-  await saveEntry({ points: parsed, date: new Date().toISOString(), category, homeType, orderNumber, customerName, afm, mobilePhone, landlinePhone })
+      await saveEntry({ points: parsed, date: new Date().toISOString(), category: normalizedCategory, homeType, orderNumber, customerName, afm, mobilePhone, landlinePhone })
       setToast('Η καταχώρηση αποθηκεύτηκε')
-      showNotification('Καταχώρηση', { body: `${category} — ${parsed} μον. — ${orderNumber}` })
+      showNotification('Καταχώρηση', { body: `${normalizedCategory} — ${parsed} μον. — ${orderNumber}` })
       setTimeout(()=> navigate('/'), 600)
     }catch(e){
       console.error(e)
@@ -162,10 +164,10 @@ export default function AddEntryPage(){
             <label className="text-sm font-medium">Κατηγορία</label>
             <div style={{flex:1}}>
               <div style={{display:'flex',gap:12}}>
-                <select className="panel-input" value={category} onChange={e=> setCategory(e.target.value)} aria-label="Επιλογή κατηγορίας">
+                <select className="panel-input" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} aria-label="Επιλογή κατηγορίας">
                   {suggestions.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <input className="panel-input" placeholder="ή νέα κατηγορία" value={category} onChange={e=> setCategory(e.target.value)} />
+                <input className="panel-input" placeholder="ή νέα κατηγορία" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} />
               </div>
             </div>
           </div>
@@ -205,7 +207,7 @@ export default function AddEntryPage(){
             </div>
           </div>
 
-          {category === 'Vodafone Home W/F' && (
+          {categoryUpper === 'VODAFONE HOME W/F' && (
             <div className="form-row">
               <label className="text-sm font-medium">Υποτύπος</label>
               <div style={{flex:1}}>
@@ -228,16 +230,16 @@ export default function AddEntryPage(){
                 value={points}
                 onChange={e=> setPoints(e.target.value === '' ? '' : parseFloat(e.target.value))}
                 aria-label="Μονάδες"
-                readOnly={category === 'Ραντεβού'}
-                style={category === 'Ραντεβού' ? {background:'rgba(148,163,184,0.08)'} : undefined}
+                readOnly={categoryUpper === 'ΡΑΝΤΕΒΟΥ'}
+                style={categoryUpper === 'ΡΑΝΤΕΒΟΥ' ? {background:'rgba(148,163,184,0.08)'} : undefined}
               />
               <div className="muted text-xs mt-1">
-                {category === 'Ραντεβού' ? 'Το ποσό υπολογίζεται αυτόματα από τις επιλογές ραντεβού.' : 'Χρησιμοποίησε δεκαδικά αν χρειάζεται (π.χ. 12.5).'}
+                {categoryUpper === 'ΡΑΝΤΕΒΟΥ' ? 'Το ποσό υπολογίζεται αυτόματα από τις επιλογές ραντεβού.' : 'Χρησιμοποίησε δεκαδικά αν χρειάζεται (π.χ. 12.5).'}
               </div>
             </div>
           </div>
 
-          {category === 'Ραντεβού' && (
+  {categoryUpper === 'ΡΑΝΤΕΒΟΥ' && (
             <div className="form-row" style={{alignItems:'flex-start'}}>
               <label className="text-sm font-medium" style={{marginTop:8}}>Ποσά ραντεβού</label>
               <div style={{flex:1}}>
