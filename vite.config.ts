@@ -1,6 +1,14 @@
 import { defineConfig } from 'vite'
 
-export default defineConfig({
-  // For GitHub Pages we set BASE_PATH in the workflow to "/<repo-name>/"
-  base: process.env.BASE_PATH ?? '/',
+const PAGES_BASE = '/WORKSMARTNOTHARD-WEB-PROJECT/'
+
+export default defineConfig(({ command, mode }) => {
+  // Use repo sub-path only for production build (GitHub Pages).
+  // Keep dev/preview on '/'.
+  const isBuild = command === 'build'
+  const isPages = mode === 'production' || process.env.GITHUB_ACTIONS === 'true'
+
+  return {
+    base: isBuild && isPages ? PAGES_BASE : '/',
+  }
 })

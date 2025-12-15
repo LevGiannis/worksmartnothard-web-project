@@ -31,8 +31,6 @@ jobs:
         run: npm ci
 
       - name: Build
-        env:
-          BASE_PATH: /WORKSMARTNOTHARD-WEB-PROJECT/
         run: npm run build
 
       - name: Setup Pages
