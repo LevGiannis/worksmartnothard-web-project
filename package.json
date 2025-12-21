@@ -1,6 +1,8 @@
 {
   "name": "worksmart-web",
   "version": "0.1.0",
+  "description": "WorkSmartNotHard: web + offline desktop tracker (React/Vite + Electron)",
+  "author": "LevGiannis",
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {

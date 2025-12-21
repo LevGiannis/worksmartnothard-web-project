@@ -1,116 +1,123 @@
-# WorkSmart Web
+# WorkSmartNotHard — Web + Offline Desktop
 
-## Επισκόπηση
+React/Vite SPA που τρέχει:
 
-- Single Page Application σε React + TypeScript (Vite) που αναπαράγει τις βασικές ροές της WorkSmartNotHard εφαρμογής.
-- Ενιαίος οπτικός σχεδιασμός με κοινά headers, διαφάνεια (glass UI) και υποστήριξη dark theme.
-- Τοπική αποθήκευση δεδομένων (χωρίς backend), ιδανικό για γρήγορη καταγραφή στόχων, καταχωρήσεων και εκκρεμοτήτων.
+- ως **Web app** (π.χ. GitHub Pages) με αποθήκευση στο `localStorage`
+- ως **Desktop app** (Electron) με **offline αποθήκευση σε αρχείο στη συσκευή**
 
-## Βασικά Χαρακτηριστικά
+## Γρήγορη Εικόνα
 
-- Κοινό `PageHeader` για ομοιογενείς τίτλους/breadcrumb σε όλες τις σελίδες.
-- Hero section στην αρχική σελίδα με στατιστικά μήνα και γρήγορες ενέργειες.
-- Εξειδικευμένη λογική φόρμας στην `AddEntryPage` (υποτύποι Vodafone Home, πολλαπλές επιλογές ποσών ραντεβού με αυτόματη άθροιση, προεπιλογή "Team Ready").
-- Πλήρεις σελίδες για στόχους, στατιστικά, ιστορικό, εκκρεμότητες, προφίλ.
-- Service worker scaffold (`public/sw.js`) για μελλοντικές ειδοποιήσεις.
+- Web mode: δεδομένα ανά browser/profile (χωρίς κοινό sync)
+- Desktop mode: δεδομένα σε JSON αρχείο στο `userData`
+- Routing: Web `BrowserRouter` / Desktop `HashRouter`
 
-## Τεχνολογίες & Προαπαιτούμενα
+## Προαπαιτούμενα (για development)
 
-- Node.js 18 ή νεότερο, npm 9 ή νεότερο.
-- Σύγχρονος browser με ενεργοποιημένο `localStorage`.
-- Προαιρετικά: Tailwind/PostCSS toolchain εάν θέλεις να επεκτείνεις τα utilities.
+- Node.js 18+ (προτείνεται 20)
+- npm 9+
 
-## Γρήγορη Εκκίνηση
+## Local Development (Web)
 
 ```bash
-git clone <repository>
-cd worksmart-web
-npm install
+npm ci
 npm run dev
 ```
 
-Άνοιξε τον dev server (προεπιλογή: http://localhost:5173) για να χρησιμοποιήσεις την εφαρμογή.
+## Build (Web)
 
-## Διαθέσιμες Εντολές npm
+```bash
+npm run build
+npm run preview
+```
 
-- `npm run dev` — Εκκίνηση σε development mode με hot reload.
-- `npm run build` — Δημιουργία παραγωγικού bundle (Vite).
-- `npm run preview` — Τοπική προεπισκόπηση του production build.
+## Desktop App (Electron) — Offline στη συσκευή
 
-## Desktop App (Offline στη συσκευή)
+### Dev
 
-Η εφαρμογή μπορεί να τρέξει και ως **desktop app** (Electron) και να αποθηκεύει τα δεδομένα σε **αρχείο στη συσκευή** (όχι στον browser).
+```bash
+npm ci
+npm run electron:dev
+```
 
-- `npm run electron:dev` — Dev mode (Vite + Electron).
-- `npm run electron:dist` — Παράγει έτοιμο πακέτο (π.χ. `dist/*.zip`).
+### Build / Packaging
 
-### Windows (zip)
+```bash
+npm run electron:dist
+```
 
-- Το CI workflow `/.github/workflows/build-desktop.yml` χτίζει και **Windows zip** σε `windows-latest`.
-- Για τελικό “χωρίς terminal”:
-	- Δημιούργησε GitHub Release (ή κάνε manual run το workflow) και κατέβασε το **WorkSmartNotHard-windows** artifact / Release asset (`dist/*.zip`).
+Τα artifacts βγαίνουν στο `dist/`.
 
-## Deploy (Remote) χωρίς κοινή αποθήκευση
+## Πού αποθηκεύονται τα δεδομένα;
 
-Μπορείς να το ανεβάσεις ως static site (GitHub Pages). Η εφαρμογή θα τρέχει απομακρυσμένα από URL, αλλά τα δεδομένα θα παραμένουν **τοπικά** στο `localStorage` του browser (άρα κάθε υπολογιστής/προφίλ browser έχει δικά του στοιχεία).
+- **Web**: `localStorage` (δες `src/services/storage.ts`)
+- **Desktop (Electron)**: JSON αρχείο (δες `electron/main.ts`)
+	- filename: `worksmart-device-storage.json`
+	- location: `app.getPath('userData')`
 
-### GitHub Pages (με GitHub Actions)
+Δεν υπάρχει κοινός συγχρονισμός μεταξύ συσκευών.
 
-- Υπάρχει workflow στο `/.github/workflows/deploy-pages.yml` που κάνει build και deploy.
-- Το site θα σερβίρεται στο `https://<username>.github.io/worksmartnothard-web-project/`.
+## “Χωρίς terminal” downloads (Windows / macOS)
 
-Βήματα:
+Το repo έχει workflow `/.github/workflows/build-desktop.yml`.
 
-1. Στο GitHub repo: **Settings → Pages**
-2. Στο **Build and deployment** επίλεξε **Source: GitHub Actions**
-3. Κάνε push στο `main` και περίμενε να ολοκληρωθεί το workflow.
+### Από GitHub Actions
 
-### Πού αποθηκεύονται τα στοιχεία;
+1) GitHub → **Actions** → **Build Desktop App**
+2) Άνοιξε το τελευταίο run
+3) Στο κάτω μέρος → **Artifacts**
+4) Κατέβασε:
+	 - `WorkSmartNotHard-windows` (Windows)
+	 - `WorkSmartNotHard-macos` (macOS)
 
-- Web (GitHub Pages): στον browser, στο `localStorage` (δες `src/services/storage.ts`).
-- Desktop (Electron): σε αρχείο JSON στο `userData` της εφαρμογής (δες `electron/main.ts`).
-- Δεν υπάρχει κοινή αποθήκευση/συγχρονισμός μεταξύ συσκευών.
+### Από GitHub Release
 
-## Δομή Έργου
+Αν υπάρχει Release, τα ίδια `.zip` θα εμφανίζονται στα Release assets.
 
-- `src/main.tsx` — Εκκίνηση εφαρμογής, `router` και providers.
-- `src/App.tsx` — Ορισμός route layout.
-- `src/pages/` — Σελίδες (Αρχική, Στατιστικά, Καταχώρηση, Στόχοι, Εκκρεμότητες, Προφίλ κ.λπ.).
-- `src/components/` — Επαναχρησιμοποιήσιμα στοιχεία UI (PageHeader, πίνακες, modals).
-- `src/hooks/useProgress.ts` — Υπολογισμός προόδου/στόχων για τον τρέχοντα μήνα.
-- `src/services/storage.ts` — Διαχείριση δεδομένων μέσω `localStorage` (entries, goals, tasks, pendings).
-- `public/sw.js` — Σκελετός service worker για notifications.
+## Troubleshooting
 
-## Δεδομένα & Αποθήκευση
+### macOS: “is damaged and can’t be opened”
 
-- Όλα τα στοιχεία φυλάσσονται τοπικά στον browser (`localStorage`).
-- Οι λίστες (entries, goals, tasks, pendings) είναι προσβάσιμες άμεσα χωρίς backend.
-- Τα στατιστικά υπολογίζονται runtime βάσει των εγγραφών κάθε μήνα.
+Αυτό είναι Gatekeeper/quarantine θέμα (unsigned / not notarized builds).
 
-## Styling
+1) Μετέφερε το app στο **Applications**
+2) Finder → Right‑click στο app → **Open** (όχι διπλό κλικ)
+3) Αν χρειαστεί: **System Settings → Privacy & Security** → scroll κάτω → **Open Anyway**
 
-- Κύριο stylesheet: `src/index.css` με custom κλάσεις εμπνευσμένες από Tailwind.
-- Ενσωματωμένα fallbacks για να αποδίδεται σωστά το UI ακόμη και χωρίς build της Tailwind.
-- Κοινό card/tile σύστημα (glassmorphism) και προσαρμοζόμενη διάταξη πλακιδίων στην αρχική.
+Fallback (1 εντολή):
 
-## Σημειώσεις Ανάπτυξης
+```zsh
+xattr -dr com.apple.quarantine "/path/to/WorkSmartNotHard.app"
+```
 
-- Η αρχική σελίδα κάνει lazy επιλογή hero εικόνας ανάμεσα σε διαθέσιμα assets (public/hero\*.{jpg,svg}).
-- Οι φόρμες έχουν βελτιωμένα validations και εμφανίζουν inline μηνύματα σφαλμάτων.
-- Τα ραντεβού υποστηρίζουν πολλαπλές επιλογές ποσών με καταμέτρηση ανά ποσό και αυτόματο άθροισμα μονάδων.
-- Το πεδίο αριθμού παραγγελίας για ραντεβού προεπιλέγει "Team Ready" αλλά μπορεί να τροποποιηθεί.
+Σημείωση: Για “χωρίς prompts” διανομή σε άλλα Mac, χρειάζεται Apple Developer ID signing + notarization.
 
-## Επόμενα Βήματα
+### Windows: missing `ffmpeg.dll` / missing DLL
 
-- Ενσωμάτωση της πραγματικής φόρμουλας bonus από τον Android κώδικα.
-- Προσθήκη αυτοματοποιημένων tests (unit και end-to-end) και pipeline CI/CD.
-- Προαιρετικός συγχρονισμός σε backend για multi-device εμπειρία.
-- Βελτίωση service worker ώστε να αποστέλλει προγραμματισμένες ειδοποιήσεις.
+Συνήθως συμβαίνει όταν:
 
-## Συνεισφορά
+- τρέχεις το `.exe` μέσα από το zip, ή
+- μετέφερες μόνο το `.exe` χωρίς τα υπόλοιπα αρχεία.
 
-- Τα Pull Requests και τα issues είναι ευπρόσδεκτα.
-- Χρησιμοποίησε την κύρια branch `main` ή δημιούργησε feature branches για τις αλλαγές.
-- Προτείνεται `npm run build` πριν το commit για έλεγχο ότι όλα λειτουργούν.
+Λύση:
+- Κάνε **Extract All** σε φάκελο και τρέξε το `.exe` από εκεί.
 
-Καλή χρήση του WorkSmart Web! 🎯
+### Dev: “vite: command not found”
+
+Σημαίνει ότι δεν υπάρχουν εγκατεστημένα dependencies.
+
+```bash
+npm ci
+```
+
+## Workflows
+
+- `/.github/workflows/deploy-pages.yml`: deploy στο GitHub Pages (branch `main`)
+- `/.github/workflows/build-desktop.yml`: builds για macOS/Windows (manual run ή σε Release)
+
+## Τεκμηρίωση ελέγχου (Audit)
+
+Δες `AUDIT_REPORT.md` για πλήρη αναφορά (builds, αρχιτεκτονική, γνωστά θέματα διανομής, προτάσεις).
+
+## Dependency audit (σημείωση)
+
+`npm audit --audit-level=moderate` αναφέρει αυτή τη στιγμή moderate θέματα που κλείνουν με major upgrades (Electron/Vite). Αν θες να τα λύσουμε, κάν’ το σε ξεχωριστό branch και επιβεβαίωσε builds (`npm run build`, `npm run electron:dist`).
