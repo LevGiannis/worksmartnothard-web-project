@@ -9,7 +9,11 @@ import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 
 export default function MainPage(){
   // default to the shipped standout hero so the change is visible immediately
-  const [heroUrl, setHeroUrl] = useState<string | null>('/hero4.svg')
+  const baseUrl = (import.meta as any).env?.BASE_URL || '/'
+  const basePrefix = String(baseUrl).endsWith('/') ? String(baseUrl) : String(baseUrl) + '/'
+  const withBase = (p: string) => (p.startsWith('/') ? basePrefix + p.slice(1) : basePrefix + p)
+
+  const [heroUrl, setHeroUrl] = useState<string | null>(() => withBase('hero4.svg'))
   const { progress: stats, loading, month: currentMonth, year: currentYear } = useProgress()
 
   const MONTH_NAMES_GR = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
@@ -28,7 +32,16 @@ export default function MainPage(){
   })()
   useEffect(() => {
     let mounted = true
-  const candidates = ['/hero.jpg', '/hero1.jpg', '/hero2.jpg', '/hero3.jpg', '/hero4.svg', '/hero1.svg', '/hero2.svg', '/hero3.svg']
+  const candidates = [
+    withBase('hero.jpg'),
+    withBase('hero1.jpg'),
+    withBase('hero2.jpg'),
+    withBase('hero3.jpg'),
+    withBase('hero4.svg'),
+    withBase('hero1.svg'),
+    withBase('hero2.svg'),
+    withBase('hero3.svg'),
+  ]
 
     ;(async function pickFirstAvailable(){
       for (const url of candidates){
