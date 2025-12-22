@@ -48,6 +48,8 @@ npm run build:portable
 - Αν δεις κενή σελίδα, θα εμφανιστεί ένα **Portable Debug** panel.
 - Πάτα **Download log** και στείλε το `worksmart-portable-log.txt`.
 
+Σημείωση: Αν θες DevTools, συνήθως είναι `Ctrl+Shift+I` (Windows) ή `Cmd+Option+I` (Mac). Σε laptops το `F12` μπορεί να είναι πλήκτρο ήχου (χρειάζεται `Fn+F12`).
+
 ### Portable “χωρίς terminal” download (zip)
 
 GitHub → **Actions** → **Build Portable (Double-Click Index)** → κατέβασε artifact `WorkSmartNotHard-portable`.

@@ -179,6 +179,28 @@
           true
         )
 
+        // Capture resource load failures (script/link/img).
+        // Useful when file:// blocks loading, path is wrong, or a policy/AV interferes.
+        window.addEventListener(
+          'error',
+          function (ev) {
+            try {
+              var t = ev && ev.target
+              if (!t) return
+              var tag = (t.tagName || '').toLowerCase()
+              if (tag === 'script') {
+                push('resource.error: script failed to load: ' + (t.src || ''))
+              } else if (tag === 'link') {
+                push('resource.error: link failed to load: ' + (t.href || ''))
+              } else if (tag === 'img') {
+                push('resource.error: img failed to load: ' + (t.src || ''))
+              }
+            } catch (e) {}
+            showOverlay()
+          },
+          true
+        )
+
         window.addEventListener('unhandledrejection', function (ev) {
           try {
             push('unhandledrejection: ' + (ev && ev.reason ? ev.reason : 'unknown'))
@@ -186,7 +208,27 @@
           showOverlay()
         })
 
-        push('portable debug enabled')
+        try {
+          push('portable debug enabled')
+          push('env: protocol=' + (window.location && window.location.protocol))
+          push('env: href=' + (window.location && window.location.href))
+          push('env: userAgent=' + (navigator && navigator.userAgent))
+        } catch (e) {}
+
+        // If app never renders, show overlay automatically.
+        setTimeout(function () {
+          try {
+            var root = document.getElementById('root')
+            var hasContent = !!(root && root.innerText && root.innerText.trim().length)
+            if (!hasContent) {
+              push('watchdog: root empty after 2500ms')
+              showOverlay()
+            }
+          } catch (e) {
+            push('watchdog: exception while checking root')
+            showOverlay()
+          }
+        }, 2500)
       })()
     </script>
 
