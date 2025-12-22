@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { clearAllData } from '../services/storage'
+import { clearAllData, exportBackup, importBackup } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
 
@@ -25,8 +25,11 @@ export default function ProfilePage(){
   const [newPass, setNewPass] = useState('')
   const [toast, setToast] = useState('')
   const [pendingWipe, setPendingWipe] = useState(false)
+  const [storagePersisted, setStoragePersisted] = useState<boolean | null>(null)
+  const [storagePersistSupported, setStoragePersistSupported] = useState(false)
   const pendingTimer = useRef<number|undefined>(undefined)
   const backupRef = useRef<{entries?:string, goals?:string, tasks?:string}>({})
+  const importFileRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(()=>{
     const f = safeLocalStorageGet('ws_user_first') || ''
@@ -65,6 +68,18 @@ export default function ProfilePage(){
     }catch(e){
       console.warn('failed reading suggestion lists', e)
     }
+  }, [])
+
+  useEffect(() => {
+    const nav: any = typeof navigator !== 'undefined' ? navigator : undefined
+    const storage: any = nav?.storage
+    const supported = !!storage && typeof storage.persisted === 'function' && typeof storage.persist === 'function'
+    setStoragePersistSupported(supported)
+    if (!supported) {
+      setStoragePersisted(null)
+      return
+    }
+    storage.persisted().then((v: boolean) => setStoragePersisted(!!v)).catch(() => setStoragePersisted(null))
   }, [])
 
   const saveProfile = ()=>{
@@ -179,6 +194,69 @@ export default function ProfilePage(){
     }
   }
 
+  const downloadBackup = async () => {
+    try {
+      const backup = await exportBackup()
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      a.href = url
+      a.download = `worksmart-backup-${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setToast('Έγινε export σε αρχείο')
+      setTimeout(()=> setToast(''), 1400)
+    } catch (e) {
+      console.error(e)
+      setToast('Αποτυχία export')
+      setTimeout(()=> setToast(''), 1600)
+    }
+  }
+
+  const triggerImport = () => {
+    try { importFileRef.current?.click() } catch {}
+  }
+
+  const onImportFile = async (ev: React.ChangeEvent<HTMLInputElement>) => {
+    const file = ev.target.files && ev.target.files[0]
+    ev.target.value = ''
+    if (!file) return
+
+    const ok = window.confirm('Θες να γίνει εισαγωγή (import) από το αρχείο; Θα αντικαταστήσει τα τρέχοντα τοπικά δεδομένα.')
+    if (!ok) return
+
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      const res = await importBackup(parsed)
+      setToast(`Έγινε import (${res.importedKeys} κλειδιά). Κάνω ανανέωση…`)
+      setTimeout(() => window.location.reload(), 600)
+    } catch (e) {
+      console.error(e)
+      setToast('Αποτυχία import (μη έγκυρο αρχείο)')
+      setTimeout(()=> setToast(''), 2000)
+    }
+  }
+
+  const requestPersistentStorage = async () => {
+    const nav: any = typeof navigator !== 'undefined' ? navigator : undefined
+    const storage: any = nav?.storage
+    if (!storage || typeof storage.persist !== 'function') return
+    try {
+      const granted = await storage.persist()
+      setStoragePersisted(!!granted)
+      setToast(granted ? 'Μόνιμη αποθήκευση: ενεργή' : 'Μόνιμη αποθήκευση: δεν δόθηκε')
+      setTimeout(()=> setToast(''), 1800)
+    } catch (e) {
+      console.error(e)
+      setToast('Αποτυχία αιτήματος μόνιμης αποθήκευσης')
+      setTimeout(()=> setToast(''), 1800)
+    }
+  }
+
   const undoWipe = ()=>{
     // cancel timer and restore backup
     if(pendingTimer.current) { clearTimeout(pendingTimer.current); pendingTimer.current = undefined }
@@ -208,6 +286,14 @@ export default function ProfilePage(){
       />
 
   <main className="panel-card" style={{padding:38, maxWidth:1400, margin:'0 auto', width:'100%'}}>
+
+      <input
+        ref={importFileRef}
+        type="file"
+        accept="application/json"
+        style={{ display: 'none' }}
+        onChange={onImportFile}
+      />
 
       <section className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="Profile settings">
         <form onSubmit={e=>{e.preventDefault(); saveProfile()}}>
@@ -278,6 +364,25 @@ export default function ProfilePage(){
           <div className="card profile-aside">
             <h3 className="font-semibold">Τοπικά δεδομένα</h3>
             <p className="muted text-sm mt-2">Πατώντας «Διαγραφή μνήμης» θα διαγραφούν τοπικά οι στόχοι, οι καταχωρήσεις και οι εργασίες.</p>
+
+            <div className="mt-4" style={{display:'flex', gap:10, flexWrap:'wrap'}}>
+              <button type="button" className="btn" onClick={downloadBackup}>Export (Backup)</button>
+              <button type="button" className="btn-ghost" onClick={triggerImport}>Import (Restore)</button>
+              {storagePersistSupported && (
+                <button type="button" className="btn-ghost" onClick={requestPersistentStorage}>
+                  Ζήτα μόνιμη αποθήκευση
+                </button>
+              )}
+            </div>
+
+            <p className="muted text-sm mt-3">
+              Αν στο περιβάλλον σου τα δεδομένα χάνονται όταν κλείνει ο browser, κάνε <strong>Export</strong> πριν κλείσεις και <strong>Import</strong> όταν ανοίξεις.
+            </p>
+            {storagePersistSupported && (
+              <p className="muted text-sm mt-2">
+                Κατάσταση μόνιμης αποθήκευσης: <strong>{storagePersisted === null ? '—' : (storagePersisted ? 'Ενεργή' : 'Όχι')}</strong>
+              </p>
+            )}
             <ul className="muted text-sm mt-4" aria-hidden>
               <li><strong>Στόχοι:</strong> αποθηκεύονται τοπικά</li>
               <li><strong>Καταχωρήσεις:</strong> αποθηκεύονται τοπικά</li>

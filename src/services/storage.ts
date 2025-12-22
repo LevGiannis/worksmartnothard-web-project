@@ -6,6 +6,29 @@ const GOALS_KEY = 'ws_goals'
 const TASKS_KEY = 'ws_tasks'
 const PENDINGS_KEY = 'ws_pendings'
 
+// profile + suggestions (stored directly by Profile/AddGoal pages)
+const PROFILE_KEYS = [
+  'ws_user_first',
+  'ws_user_last',
+  'ws_user_email',
+  'ws_user_phone',
+  'ws_user_store',
+  'ws_user_role',
+  'ws_user_store_email',
+  'ws_user_employer_email',
+  'ws_user_passwords',
+  'ws_suggestions_store',
+  'ws_suggestions_role',
+  'ws_suggestions_email',
+  'ws_suggestions_store_email',
+  'ws_suggestions_employer_email',
+  'ws_suggestions_app',
+  'ws_suggestions_goal_category',
+]
+
+const CORE_KEYS = [ENTRIES_KEY, GOALS_KEY, TASKS_KEY, PENDINGS_KEY] as const
+const BACKUP_KEYS = [...CORE_KEYS, ...PROFILE_KEYS] as const
+
 type StorageBackend = {
   getItem: (key: string) => string | null | Promise<string | null>
   setItem: (key: string, value: string) => void | Promise<void>
@@ -109,6 +132,76 @@ async function read<T>(key:string): Promise<T[]> {
 async function write<T>(key:string, arr:T[]){
   const storage = getStorageBackend()
   await storage.setItem(key, JSON.stringify(arr))
+}
+
+export type WorksmartBackup = {
+  format: 'worksmart-backup'
+  version: 1
+  createdAt: string
+  keys: string[]
+  data: Record<string, string | null>
+}
+
+export async function exportBackup(): Promise<WorksmartBackup> {
+  const storage = getStorageBackend()
+  const data: Record<string, string | null> = {}
+  for (const k of BACKUP_KEYS) {
+    try {
+      data[k] = await storage.getItem(k)
+    } catch {
+      data[k] = null
+    }
+  }
+  return {
+    format: 'worksmart-backup',
+    version: 1,
+    createdAt: new Date().toISOString(),
+    keys: [...BACKUP_KEYS],
+    data,
+  }
+}
+
+export async function importBackup(backup: unknown): Promise<{ importedKeys: number }>{
+  const b = backup as Partial<WorksmartBackup>
+  if (!b || b.format !== 'worksmart-backup' || b.version !== 1 || !b.data) {
+    throw new Error('Invalid backup file')
+  }
+
+  const storage = getStorageBackend()
+  const keys = Array.isArray(b.keys) ? b.keys : Object.keys(b.data)
+  let importedKeys = 0
+  for (const k of keys) {
+    if (typeof k !== 'string') continue
+    const v = (b.data as any)[k]
+    try {
+      if (v === null || typeof v === 'undefined') {
+        await storage.removeItem?.(k)
+      } else if (typeof v === 'string') {
+        await storage.setItem(k, v)
+      } else {
+        // ignore non-string values
+        continue
+      }
+      importedKeys++
+    } catch {
+      // ignore individual key failures
+    }
+  }
+
+  return { importedKeys }
+}
+
+export async function clearAllData(){
+  const storage = getStorageBackend()
+  try {
+    // remove only app-owned keys; avoid nuking unrelated site data.
+    for (const k of BACKUP_KEYS) {
+      try { await storage.removeItem?.(k) } catch {}
+    }
+  } catch {
+    // best-effort
+    try { await storage.clear?.() } catch {}
+  }
 }
 
 export async function loadAllEntries(): Promise<DailyEntry[]>{
@@ -312,18 +405,4 @@ export async function getProgressForMonth(year:number, month:number): Promise<Ca
   })
 
   return result
-}
-
-// Utility: clear stored data (entries, goals, tasks)
-export async function clearAllData(){
-  try{
-    await Promise.all([
-      write(ENTRIES_KEY, []),
-      write(GOALS_KEY, []),
-      write(TASKS_KEY, []),
-    ])
-  }catch(e){
-    console.error('clearAllData failed', e)
-    throw e
-  }
 }
