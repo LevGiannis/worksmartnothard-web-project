@@ -101,6 +101,16 @@ xattr -dr com.apple.quarantine "/path/to/WorkSmartNotHard.app"
 Λύση:
 - Κάνε **Extract All** σε φάκελο και τρέξε το `.exe` από εκεί.
 
+### Windows (Work PC / Citrix / VDI): “has stopped working” / crash
+
+Σε περιβάλλοντα Citrix/VDI ή εκτέλεση από κοινόχρηστο/network φάκελο, συχνά κρασάρει ο Chromium GPU process ή μπλοκάρει η εκτέλεση.
+
+- Βεβαιώσου ότι έκανες **Extract All** και τρέχεις από **τοπικό δίσκο** (π.χ. `Desktop`), όχι μέσα από zip / shared folder.
+- Η εφαρμογή γράφει log αρχείο: `worksmartnothard.log` στο `userData`.
+	- Windows: `C:\Users\<you>\AppData\Roaming\WorkSmartNotHard\worksmartnothard.log`
+	- macOS: `~/Library/Application Support/WorkSmartNotHard/worksmartnothard.log`
+- GPU acceleration: από προεπιλογή είναι **κλειστό** (πιο σταθερό σε Citrix). Για δοκιμή με GPU, βάλε env `WS_ENABLE_GPU=true` πριν το άνοιγμα.
+
 ### Dev: “vite: command not found”
 
 Σημαίνει ότι δεν υπάρχουν εγκατεστημένα dependencies.
