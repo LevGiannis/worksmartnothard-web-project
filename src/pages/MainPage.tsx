@@ -5,6 +5,7 @@ import { loadEntriesForMonth } from '../services/storage'
 // bonus calculation removed — no imports
 import { DailyEntry } from '../services/storage'
 import PageHeader from '../components/PageHeader'
+import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 
 export default function MainPage(){
   // default to the shipped standout hero so the change is visible immediately
@@ -96,6 +97,9 @@ export default function MainPage(){
     }
   ]
 
+  const storeLabel = safeLocalStorageGet('ws_user_store') || '—'
+  const userFullName = `${safeLocalStorageGet('ws_user_first') || ''} ${safeLocalStorageGet('ws_user_last') || ''}`.trim()
+
   return (
     <div className="py-12 page-shell" style={{paddingTop: '220px'}}>
       <PageHeader
@@ -112,8 +116,8 @@ export default function MainPage(){
             <div style={{flex:'1 1 260px',minWidth:160}}>
               <div style={{fontSize:12,color:'rgba(255,255,255,0.55)',fontWeight:600,letterSpacing:1.6,textTransform:'uppercase'}}>Κατάστημα</div>
               <div style={{display:'flex',alignItems:'baseline',gap:12,marginTop:8}}>
-                <div style={{fontSize:22,fontWeight:900,color:'#ffffff',lineHeight:1}}>{localStorage.getItem('ws_user_store') || '—'}</div>
-                <div style={{fontSize:13,color:'rgba(255,255,255,0.70)',fontWeight:600,letterSpacing:0.6,textTransform:'uppercase'}}>{((localStorage.getItem('ws_user_first')||'') + ' ' + (localStorage.getItem('ws_user_last')||'')).trim()}</div>
+                <div style={{fontSize:22,fontWeight:900,color:'#ffffff',lineHeight:1}}>{storeLabel}</div>
+                <div style={{fontSize:13,color:'rgba(255,255,255,0.70)',fontWeight:600,letterSpacing:0.6,textTransform:'uppercase'}}>{userFullName}</div>
               </div>
             </div>
 

@@ -3,6 +3,7 @@ import { saveGoal, loadAllGoals, loadEntriesForMonth, Goal, DailyEntry } from '.
 import { useNavigate } from 'react-router-dom'
 import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
+import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
 
 export default function AddGoalPage(){
   const navigate = useNavigate()
@@ -50,12 +51,12 @@ export default function AddGoalPage(){
     if (!value) return
     try {
       const key = 'ws_suggestions_goal_category'
-      const raw = JSON.parse(localStorage.getItem(key) || '[]')
+      const raw = safeJsonParse<any[]>(safeLocalStorageGet(key), [])
       const arr = Array.isArray(raw) ? raw : []
       const upper = value.toUpperCase()
       const filtered = arr.filter((x: string) => x.toUpperCase() !== upper)
       const next = [upper, ...filtered].slice(0, 30)
-      localStorage.setItem(key, JSON.stringify(next))
+      safeLocalStorageSet(key, JSON.stringify(next))
     } catch (e) {
       console.warn('persist category suggestion', e)
     }

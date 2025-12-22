@@ -13,6 +13,23 @@ type StorageBackend = {
   clear?: () => void | Promise<void>
 }
 
+const memoryStore = new Map<string, string>()
+
+function getMemoryBackend(): StorageBackend {
+  return {
+    getItem: (k) => (memoryStore.has(k) ? (memoryStore.get(k) as string) : null),
+    setItem: (k, v) => {
+      memoryStore.set(k, v)
+    },
+    removeItem: (k) => {
+      memoryStore.delete(k)
+    },
+    clear: () => {
+      memoryStore.clear()
+    },
+  }
+}
+
 function getStorageBackend(): StorageBackend {
   if (typeof window !== 'undefined' && window.wsDeviceStorage) {
     return {
@@ -23,11 +40,45 @@ function getStorageBackend(): StorageBackend {
     }
   }
 
-  return {
-    getItem: (k) => localStorage.getItem(k),
-    setItem: (k, v) => localStorage.setItem(k, v),
-    removeItem: (k) => localStorage.removeItem(k),
-    clear: () => localStorage.clear(),
+  // Some locked-down environments (often with file://) can throw on localStorage access.
+  try {
+    if (typeof localStorage === 'undefined') return getMemoryBackend()
+    const probeKey = '__ws_probe__'
+    localStorage.setItem(probeKey, '1')
+    localStorage.removeItem(probeKey)
+
+    return {
+      getItem: (k) => {
+        try {
+          return localStorage.getItem(k)
+        } catch {
+          return null
+        }
+      },
+      setItem: (k, v) => {
+        try {
+          localStorage.setItem(k, v)
+        } catch {
+          // ignore
+        }
+      },
+      removeItem: (k) => {
+        try {
+          localStorage.removeItem(k)
+        } catch {
+          // ignore
+        }
+      },
+      clear: () => {
+        try {
+          localStorage.clear()
+        } catch {
+          // ignore
+        }
+      },
+    }
+  } catch {
+    return getMemoryBackend()
   }
 }
 
@@ -210,7 +261,14 @@ export async function deletePendingItem(id:string){
 export function getProgressSummary(){
   // Sync helper for callers; relies on localStorage only.
   // In Electron, prefer using async loaders instead.
-  const raw = typeof window !== 'undefined' && !window.wsDeviceStorage ? localStorage.getItem(ENTRIES_KEY) : null
+  let raw: string | null = null
+  if (typeof window !== 'undefined' && !window.wsDeviceStorage) {
+    try {
+      raw = localStorage.getItem(ENTRIES_KEY)
+    } catch {
+      raw = null
+    }
+  }
   const entries = raw ? (JSON.parse(raw) as DailyEntry[]) : []
   const total = entries.reduce((s,e)=> s + (e.points||0), 0)
   const achieved = entries.filter(e=> (e.points||0) > 0).length

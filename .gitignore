@@ -1,6 +1,7 @@
 # Build output
 /dist/
 /dist-electron/
+/portable/
 
 # Dependencies
 /node_modules/

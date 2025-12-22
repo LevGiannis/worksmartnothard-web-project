@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { clearAllData } from '../services/storage'
 import PageHeader from '../components/PageHeader'
+import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
 
 export default function ProfilePage(){
   const [firstName, setFirstName] = useState('')
@@ -28,17 +29,15 @@ export default function ProfilePage(){
   const backupRef = useRef<{entries?:string, goals?:string, tasks?:string}>({})
 
   useEffect(()=>{
-    const f = localStorage.getItem('ws_user_first') || ''
-    const l = localStorage.getItem('ws_user_last') || ''
-  const e = localStorage.getItem('ws_user_email') || ''
-    const p = localStorage.getItem('ws_user_phone') || ''
-    const s = localStorage.getItem('ws_user_store') || ''
-  const se = localStorage.getItem('ws_user_store_email') || ''
-  const empE = localStorage.getItem('ws_user_employer_email') || ''
-    const r = localStorage.getItem('ws_user_role') || ''
-    const rawCred = localStorage.getItem('ws_user_passwords') || '[]'
-    let parsedCreds: any[] = []
-    try{ parsedCreds = JSON.parse(rawCred) }catch(e){ parsedCreds = [] }
+    const f = safeLocalStorageGet('ws_user_first') || ''
+    const l = safeLocalStorageGet('ws_user_last') || ''
+    const e = safeLocalStorageGet('ws_user_email') || ''
+    const p = safeLocalStorageGet('ws_user_phone') || ''
+    const s = safeLocalStorageGet('ws_user_store') || ''
+    const se = safeLocalStorageGet('ws_user_store_email') || ''
+    const empE = safeLocalStorageGet('ws_user_employer_email') || ''
+    const r = safeLocalStorageGet('ws_user_role') || ''
+    const parsedCreds = safeJsonParse<any[]>(safeLocalStorageGet('ws_user_passwords'), [])
     setFirstName(f)
     setLastName(l)
     setEmail(e)
@@ -51,12 +50,12 @@ export default function ProfilePage(){
 
     // load suggestion lists (fallback to empty arrays)
     try{
-  const sSt = JSON.parse(localStorage.getItem('ws_suggestions_store') || '[]')
-  const rSt = JSON.parse(localStorage.getItem('ws_suggestions_role') || '[]')
-  const eSt = JSON.parse(localStorage.getItem('ws_suggestions_email') || '[]')
-  const empESt = JSON.parse(localStorage.getItem('ws_suggestions_employer_email') || '[]')
-  const seSt = JSON.parse(localStorage.getItem('ws_suggestions_store_email') || '[]')
-  const aSt = JSON.parse(localStorage.getItem('ws_suggestions_app') || '[]')
+  const sSt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_store'), [])
+  const rSt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_role'), [])
+  const eSt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_email'), [])
+  const empESt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_employer_email'), [])
+  const seSt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_store_email'), [])
+  const aSt = safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_app'), [])
   setStoreSuggestions(Array.isArray(sSt) ? sSt : [])
   setRoleSuggestions(Array.isArray(rSt) ? rSt : [])
   setEmailSuggestions(Array.isArray(eSt) ? eSt : [])
@@ -69,25 +68,25 @@ export default function ProfilePage(){
   }, [])
 
   const saveProfile = ()=>{
-    localStorage.setItem('ws_user_first', firstName)
-    localStorage.setItem('ws_user_last', lastName)
-    localStorage.setItem('ws_user_email', email)
-    localStorage.setItem('ws_user_phone', phone)
-    localStorage.setItem('ws_user_store', storeCode)
-    localStorage.setItem('ws_user_role', role)
-  localStorage.setItem('ws_user_store_email', storeEmail)
-  localStorage.setItem('ws_user_employer_email', employerEmail)
+    safeLocalStorageSet('ws_user_first', firstName)
+    safeLocalStorageSet('ws_user_last', lastName)
+    safeLocalStorageSet('ws_user_email', email)
+    safeLocalStorageSet('ws_user_phone', phone)
+    safeLocalStorageSet('ws_user_store', storeCode)
+    safeLocalStorageSet('ws_user_role', role)
+  safeLocalStorageSet('ws_user_store_email', storeEmail)
+  safeLocalStorageSet('ws_user_employer_email', employerEmail)
     // persist suggestion lists (keep unique, recent-first)
     const persistSuggestion = (key:string, value:string)=>{
       if(!value) return
       try{
-        const raw = JSON.parse(localStorage.getItem(key) || '[]')
+        const raw = safeJsonParse<any[]>(safeLocalStorageGet(key), [])
         const arr = Array.isArray(raw) ? raw : []
         // remove duplicates (case-insensitive) and add to front
         const lc = value.toLowerCase()
         const filtered = arr.filter((x:string)=> x.toLowerCase() !== lc)
         const next = [value, ...filtered].slice(0,12)
-        localStorage.setItem(key, JSON.stringify(next))
+        safeLocalStorageSet(key, JSON.stringify(next))
       }catch(e){ console.warn('persist suggestion', e) }
     }
   persistSuggestion('ws_suggestions_store', storeCode)
@@ -97,18 +96,18 @@ export default function ProfilePage(){
   persistSuggestion('ws_suggestions_employer_email', employerEmail)
 
     // update in-memory lists for immediate UI feedback
-  try{ setStoreSuggestions(JSON.parse(localStorage.getItem('ws_suggestions_store')||'[]')) }catch(e){}
-  try{ setRoleSuggestions(JSON.parse(localStorage.getItem('ws_suggestions_role')||'[]')) }catch(e){}
-  try{ setEmailSuggestions(JSON.parse(localStorage.getItem('ws_suggestions_email')||'[]')) }catch(e){}
-  try{ setStoreEmailSuggestions(JSON.parse(localStorage.getItem('ws_suggestions_store_email')||'[]')) }catch(e){}
-  try{ setEmployerEmailSuggestions(JSON.parse(localStorage.getItem('ws_suggestions_employer_email')||'[]')) }catch(e){}
+  try{ setStoreSuggestions(safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_store'), [])) }catch(e){}
+  try{ setRoleSuggestions(safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_role'), [])) }catch(e){}
+  try{ setEmailSuggestions(safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_email'), [])) }catch(e){}
+  try{ setStoreEmailSuggestions(safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_store_email'), [])) }catch(e){}
+  try{ setEmployerEmailSuggestions(safeJsonParse<any[]>(safeLocalStorageGet('ws_suggestions_employer_email'), [])) }catch(e){}
 
     setToast('Προφίλ αποθηκεύτηκε')
     setTimeout(()=> setToast(''), 1400)
   }
 
   function persistCredentials(list:{id:string, app:string, user?:string, pass:string}[]){
-    try{ localStorage.setItem('ws_user_passwords', JSON.stringify(list)) }catch(e){ console.error(e) }
+    try{ safeLocalStorageSet('ws_user_passwords', JSON.stringify(list)) }catch(e){ console.error(e) }
   }
 
   const addCredential = (app:string, user:string, pass:string)=>{
@@ -120,12 +119,12 @@ export default function ProfilePage(){
     // persist app suggestion
     try{
       const key = 'ws_suggestions_app'
-      const raw = JSON.parse(localStorage.getItem(key) || '[]')
+      const raw = safeJsonParse<any[]>(safeLocalStorageGet(key), [])
       const arr = Array.isArray(raw) ? raw : []
       const lc = app.toLowerCase()
       const filtered = arr.filter((x:string)=> x.toLowerCase() !== lc)
       const nextApps = [app, ...filtered].slice(0,20)
-      localStorage.setItem(key, JSON.stringify(nextApps))
+      safeLocalStorageSet(key, JSON.stringify(nextApps))
       setAppSuggestions(nextApps)
     }catch(e){ console.warn('save app suggestion', e) }
     setToast('Κωδικός αποθηκεύτηκε')
@@ -150,9 +149,9 @@ export default function ProfilePage(){
 
     try{
       // Backup current raw values so undo can restore
-      backupRef.current.entries = localStorage.getItem('ws_entries') || ''
-      backupRef.current.goals = localStorage.getItem('ws_goals') || ''
-      backupRef.current.tasks = localStorage.getItem('ws_tasks') || ''
+      backupRef.current.entries = safeLocalStorageGet('ws_entries') || ''
+      backupRef.current.goals = safeLocalStorageGet('ws_goals') || ''
+      backupRef.current.tasks = safeLocalStorageGet('ws_tasks') || ''
 
       setPendingWipe(true)
       setToast('Διαγραφή σε εξέλιξη — Αναίρεση μέσα σε 6s')
@@ -184,9 +183,9 @@ export default function ProfilePage(){
     // cancel timer and restore backup
     if(pendingTimer.current) { clearTimeout(pendingTimer.current); pendingTimer.current = undefined }
     try{
-      if(backupRef.current.entries !== undefined) localStorage.setItem('ws_entries', backupRef.current.entries || '[]')
-      if(backupRef.current.goals !== undefined) localStorage.setItem('ws_goals', backupRef.current.goals || '[]')
-      if(backupRef.current.tasks !== undefined) localStorage.setItem('ws_tasks', backupRef.current.tasks || '[]')
+      if(backupRef.current.entries !== undefined) safeLocalStorageSet('ws_entries', backupRef.current.entries || '[]')
+      if(backupRef.current.goals !== undefined) safeLocalStorageSet('ws_goals', backupRef.current.goals || '[]')
+      if(backupRef.current.tasks !== undefined) safeLocalStorageSet('ws_tasks', backupRef.current.tasks || '[]')
       setToast('Διαγραφή ακυρώθηκε')
     }catch(e){
       console.error('undo failed', e)
