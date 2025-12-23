@@ -1,7 +1,8 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { loadAllEntries, DailyEntry } from '../services/storage'
+import { loadAllEntries, DailyEntry, updateEntry } from '../services/storage'
 import PageHeader from '../components/PageHeader'
+import Modal from '../components/Modal'
 
 // Minimal AnimatedNumber for KPI count-up
 function AnimatedNumber({ value }: { value: number }){
@@ -42,6 +43,36 @@ export default function StatsPage(){
   const hoverTimeout = useRef<number|undefined>(undefined)
   const [tooltipInfo, setTooltipInfo] = useState<{cat:string,x:number,y:number}|null>(null)
 
+  const [editing, setEditing] = useState<DailyEntry | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [editErrors, setEditErrors] = useState<string[]>([])
+
+  const [editCategory, setEditCategory] = useState('')
+  const [editPoints, setEditPoints] = useState<number | ''>('')
+  const [editDateOnly, setEditDateOnly] = useState('')
+  const [editHomeType, setEditHomeType] = useState('')
+  const [editOrderNumber, setEditOrderNumber] = useState('')
+  const [editCustomerName, setEditCustomerName] = useState('')
+  const [editAfm, setEditAfm] = useState('')
+  const [editMobilePhone, setEditMobilePhone] = useState('')
+  const [editLandlinePhone, setEditLandlinePhone] = useState('')
+
+  const HOME_TYPE_OPTIONS = [
+    'ADSL DOUBLE',
+    'ADSL TRIPLE',
+    'VDSL DOUBLE',
+    'VDSL TRIPLE',
+    '300/500/1000 FTTH DOUBLE',
+    '300/500/1000 FTTH TRIPLE',
+    'FWA',
+    'FWA VOICE'
+  ]
+
+  const reload = async () => {
+    const all = await loadAllEntries()
+    setEntries(all || [])
+  }
+
   useEffect(()=>{
     let mounted = true
     ;(async ()=>{
@@ -49,8 +80,91 @@ export default function StatsPage(){
       if(!mounted) return
       setEntries(all || [])
     })()
-    return ()=> { mounted = false }
+
+    const onChange = () => { reload().catch(()=>{}) }
+    window.addEventListener('ws:entries-updated' as any, onChange)
+
+    return ()=> {
+      mounted = false
+      window.removeEventListener('ws:entries-updated' as any, onChange)
+    }
   }, [])
+
+  const openEdit = (e: DailyEntry) => {
+    setEditing(e)
+    setEditErrors([])
+    setEditCategory(String(e.category || '').toUpperCase())
+    setEditPoints(typeof e.points === 'number' ? e.points : '')
+    try{
+      const d = e.date ? new Date(e.date) : new Date()
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth()+1).padStart(2,'0')
+      const dd = String(d.getDate()).padStart(2,'0')
+      setEditDateOnly(`${yyyy}-${mm}-${dd}`)
+    }catch{
+      setEditDateOnly('')
+    }
+    setEditHomeType(String(e.homeType || ''))
+    setEditOrderNumber(String(e.orderNumber || ''))
+    setEditCustomerName(String(e.customerName || ''))
+    setEditAfm(String(e.afm || ''))
+    setEditMobilePhone(String(e.mobilePhone || ''))
+    setEditLandlinePhone(String(e.landlinePhone || ''))
+  }
+
+  const closeEdit = () => {
+    if (saving) return
+    setEditing(null)
+    setEditErrors([])
+  }
+
+  const validateEdit = () => {
+    const errs: string[] = []
+    const categoryUpper = String(editCategory || '').toUpperCase().trim()
+    const pts = typeof editPoints === 'number' ? editPoints : parseFloat(String(editPoints || '0'))
+    if (!categoryUpper) errs.push('Επίλεξε ή γράψε κατηγορία')
+    if (!editOrderNumber.trim()) errs.push('Πρόσθεσε αριθμό παραγγελίας')
+    if (!editCustomerName.trim()) errs.push('Πρόσθεσε ονοματεπώνυμο πελάτη')
+    if (!pts || pts <= 0) errs.push('Πρόσθεσε έγκυρα σημεία (>0)')
+    setEditErrors(errs)
+    return errs.length === 0
+  }
+
+  const submitEdit = async () => {
+    if (!editing) return
+    if (!validateEdit()) return
+
+    setSaving(true)
+    try{
+      const categoryUpper = String(editCategory || '').toUpperCase().trim()
+      const pts = typeof editPoints === 'number' ? editPoints : parseFloat(String(editPoints || '0'))
+
+      const isoDate = editDateOnly
+        ? new Date(`${editDateOnly}T12:00:00`).toISOString()
+        : (editing.date || new Date().toISOString())
+
+      const nextPatch: Partial<DailyEntry> = {
+        category: categoryUpper,
+        points: Number(pts),
+        date: isoDate,
+        homeType: categoryUpper === 'VODAFONE HOME W/F' ? editHomeType : '',
+        orderNumber: editOrderNumber.trim(),
+        customerName: editCustomerName.trim(),
+        afm: editAfm.trim(),
+        mobilePhone: editMobilePhone.trim(),
+        landlinePhone: editLandlinePhone.trim()
+      }
+
+      await updateEntry(editing.id, nextPatch)
+      await reload()
+      setEditing(null)
+    }catch(e){
+      console.error(e)
+      setEditErrors(['Σφάλμα ενημέρωσης καταχώρησης'])
+    }finally{
+      setSaving(false)
+    }
+  }
 
   useEffect(()=>{
     const set = Array.from(new Set(entries.map(e => (e.category||'').trim()).filter(Boolean)))
@@ -397,6 +511,7 @@ export default function StatsPage(){
                     <th style={{padding:'6px 8px'}}>Πελάτης</th>
                     <th style={{padding:'6px 8px'}}>ΑΦΜ</th>
                     <th style={{padding:'6px 8px'}}>Μονάδες</th>
+                    <th style={{padding:'6px 8px'}} />
                   </tr>
                 </thead>
                 <tbody>
@@ -409,6 +524,9 @@ export default function StatsPage(){
                       <td style={{padding:'6px 8px'}}>{e.customerName || '-'}</td>
                       <td style={{padding:'6px 8px'}}>{e.afm || '-'}</td>
                       <td style={{padding:'6px 8px'}}>{e.points}</td>
+                      <td style={{padding:'6px 8px', textAlign:'right', whiteSpace:'nowrap'}}>
+                        <button className="btn-ghost" onClick={()=> openEdit(e)}>Επεξεργασία</button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -417,6 +535,101 @@ export default function StatsPage(){
           </div>
         )}
       </section>
+
+      <Modal
+        isOpen={!!editing}
+        title={editing ? `Επεξεργασία: ${editing.category || 'Entry'}` : 'Επεξεργασία'}
+        onClose={closeEdit}
+      >
+        <div className="grid gap-3">
+          {editErrors.length > 0 && (
+            <div className="panel-card" style={{padding:'12px 14px'}}>
+              <div style={{fontWeight:700, marginBottom:6}}>Διόρθωσε τα παρακάτω:</div>
+              <ul style={{margin:0, paddingLeft:18}}>
+                {editErrors.map((e, i) => <li key={i}>{e}</li>)}
+              </ul>
+            </div>
+          )}
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Κατηγορία</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editCategory} onChange={e=> setEditCategory(e.target.value ? e.target.value.toUpperCase() : '')} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Ημερομηνία</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" type="date" value={editDateOnly} onChange={e=> setEditDateOnly(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Αρ. παραγγελίας</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editOrderNumber} onChange={e=> setEditOrderNumber(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Ονοματεπώνυμο πελάτη</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editCustomerName} onChange={e=> setEditCustomerName(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Κινητό (προαιρετικό)</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editMobilePhone} onChange={e=> setEditMobilePhone(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Σταθερό (προαιρετικό)</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editLandlinePhone} onChange={e=> setEditLandlinePhone(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-row">
+            <label className="text-sm font-medium">ΑΦΜ (προαιρετικό)</label>
+            <div style={{flex:1}}>
+              <input className="panel-input" value={editAfm} onChange={e=> setEditAfm(e.target.value)} />
+            </div>
+          </div>
+
+          {String(editCategory || '').toUpperCase() === 'VODAFONE HOME W/F' && (
+            <div className="form-row">
+              <label className="text-sm font-medium">Υποτύπος</label>
+              <div style={{flex:1}}>
+                <select className="panel-input" value={editHomeType} onChange={e=> setEditHomeType(e.target.value)}>
+                  {HOME_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <div className="form-row">
+            <label className="text-sm font-medium">Μονάδες / Σημεία</label>
+            <div style={{flex:1}}>
+              <input
+                className="panel-input"
+                type="number"
+                step="0.1"
+                value={editPoints}
+                onChange={e=> setEditPoints(e.target.value === '' ? '' : parseFloat(e.target.value))}
+              />
+            </div>
+          </div>
+
+          <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:8}}>
+            <button className="btn-ghost" onClick={closeEdit} disabled={saving}>Ακύρωση</button>
+            <button className="btn" onClick={submitEdit} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση'}</button>
+          </div>
+        </div>
+      </Modal>
 
       {tooltipInfo && (
         <div
