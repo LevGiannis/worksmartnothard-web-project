@@ -77,7 +77,7 @@ export default function Modal({ isOpen, title, onClose, children, size = 'lg', h
           </button>
         </div>
 
-        <div className={height === 'short' ? 'flex-1 overflow-y-auto pr-1' : undefined}>
+        <div className={height === 'short' ? 'ws-scrollbar flex-1 overflow-y-auto pr-1' : undefined}>
           {children}
         </div>
       </div>

@@ -299,6 +299,13 @@ h3{font-size:1.05rem}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#7c3aed,#5b21b6);border-radius:999px}
 
+/* Scoped scrollbar (used in Modal short content) */
+.ws-scrollbar{scrollbar-color:#7c3aed rgba(255,255,255,0.08);scrollbar-width:thin}
+.ws-scrollbar::-webkit-scrollbar{width:10px;height:10px}
+.ws-scrollbar::-webkit-scrollbar-track{background:rgba(255,255,255,0.08);border-radius:999px}
+.ws-scrollbar::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#7c3aed,#5b21b6);border-radius:999px}
+.ws-scrollbar::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#8b5cf6,#6d28d9)}
+
 /* subtle vignette overlay */
 .page-shell:after{ content:''; position:fixed; inset:0; pointer-events:none; background: radial-gradient(ellipse at center, rgba(255,255,255,0.01) 0%, rgba(0,0,0,0.48) 75%); mix-blend-mode:overlay }
 
