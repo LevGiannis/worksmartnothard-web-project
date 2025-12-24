@@ -1,6 +1,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { loadAllEntries, DailyEntry, updateEntry } from '../services/storage'
+import { exportEcoFriendlyExcel } from '../utils/exportExcel'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
@@ -273,18 +274,22 @@ export default function StatsPage(){
   const totalEntriesAll = aggregated.reduce((s,a) => s + (a.count || 0), 0)
   const avgPerPeriod = aggregated.length ? Math.round(totalPointsAll / aggregated.length) : 0
 
-  function downloadCsv(){
-    const rows = ['period,total_points,entries_count,category_filter,customer_filter']
-    for(const r of aggregated){
-      rows.push(`${r.period},${r.total},${r.count},"${selectedCategories.join('|')}","${customerFilter}"`)
-    }
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `report-${mode}-${new Date().toISOString().slice(0,10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+  async function downloadExcel(){
+    const headers = ['Περίοδος', 'Σύνολο Πόντων', 'Αριθμός Εγγραφών', 'Φίλτρο Κατηγορίας', 'Φίλτρο Πελάτη']
+    const data = aggregated.map(r => ({
+      'Περίοδος': r.period,
+      'Σύνολο Πόντων': r.total,
+      'Αριθμός Εγγραφών': r.count,
+      'Φίλτρο Κατηγορίας': selectedCategories.join('|'),
+      'Φίλτρο Πελάτη': customerFilter
+    }))
+    await exportEcoFriendlyExcel({
+      data,
+      filename: `report-${mode}-${new Date().toISOString().slice(0,10)}.xlsx`,
+      headers,
+      sheetName: 'Αναφορά',
+      greenHeader: true
+    })
   }
 
   return (
@@ -383,7 +388,7 @@ export default function StatsPage(){
 
           <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'stretch'}}>
             <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-              <button className="btn" onClick={downloadCsv}>Λήψη CSV</button>
+              <button className="btn" onClick={downloadExcel}>Λήψη Excel (eco)</button>
               <button className="btn-ghost" onClick={()=> setShowEntries(s => !s)}>{showEntries ? 'Απόκρυψη εγγραφών' : 'Εμφάνιση εγγραφών'}</button>
             </div>
           </div>
