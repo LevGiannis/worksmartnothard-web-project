@@ -275,19 +275,19 @@ export default function StatsPage(){
   const avgPerPeriod = aggregated.length ? Math.round(totalPointsAll / aggregated.length) : 0
 
   async function downloadExcel(){
-    const headers = ['Περίοδος', 'Σύνολο Πόντων', 'Αριθμός Εγγραφών', 'Φίλτρο Κατηγορίας', 'Φίλτρο Πελάτη']
-    const data = aggregated.map(r => ({
-      'Περίοδος': r.period,
-      'Σύνολο Πόντων': r.total,
-      'Αριθμός Εγγραφών': r.count,
-      'Φίλτρο Κατηγορίας': selectedCategories.join('|'),
-      'Φίλτρο Πελάτη': customerFilter
+    // Εξαγωγή μόνο με κατηγορία, όνομα πελάτη, παραγγελία, ποσότητα
+    const headers = ['Κατηγορία', 'Πελάτης', 'Αρ. Παραγγελίας', 'Ποσότητα']
+    const data = visible.map(e => ({
+      'Κατηγορία': e.category || '',
+      'Πελάτης': e.customerName || '',
+      'Αρ. Παραγγελίας': e.orderNumber || '',
+      'Ποσότητα': e.points || 0
     }))
     await exportEcoFriendlyExcel({
       data,
-      filename: `report-${mode}-${new Date().toISOString().slice(0,10)}.xlsx`,
+      filename: `entries-${new Date().toISOString().slice(0,10)}.xlsx`,
       headers,
-      sheetName: 'Αναφορά',
+      sheetName: 'Εγγραφές',
       greenHeader: true
     })
   }
