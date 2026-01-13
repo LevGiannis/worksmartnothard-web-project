@@ -305,8 +305,12 @@ export async function loadPendingItems(): Promise<PendingItem[]>{
         id: it.id || uuidv4(),
         customerName: it.customerName || '',
         mobile: it.mobile || '',
+        landline: it.landline || '',
         afm: it.afm || '',
         description: it.description || '',
+        dueDate: it.dueDate || '',
+        notes: it.notes || '',
+        pendingType: it.pendingType || '',
         createdAt: it.createdAt || new Date().toISOString()
       }
     }
