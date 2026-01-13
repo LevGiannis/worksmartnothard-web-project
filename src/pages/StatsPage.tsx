@@ -475,69 +475,7 @@ export default function StatsPage(){
           <h2 className="text-lg font-semibold mb-3">Αποτελέσματα ({aggregated.length})</h2>
         </div>
 
-        <div className="stats-grid" style={{display:'grid',gap:16,alignItems:'stretch',gridTemplateColumns: '1fr 420px'}}>
-          <div style={{height: '100%'}}>
-            {aggregated.length > 0 ? (
-              <div className="chart-wrapper" aria-hidden>
-                <svg viewBox={`0 0 ${Math.max(aggregated.length * 36, 300)} 200`} style={{width:'100%',height:200}} preserveAspectRatio="xMidYMid meet">
-                  <defs>
-                    <linearGradient id="gbar" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#7c3aed" />
-                      <stop offset="100%" stopColor="#ff6b8a" />
-                    </linearGradient>
-                  </defs>
-                  {(() => {
-                    const barW = 26
-                    const gap = 18
-                    const svgH = 200
-                    const top = 20
-                    const bottom = 40
-                    const left = 44
-                    const w = Math.max(aggregated.length * (barW + gap), 300)
-                    const chartH = svgH - top - bottom
-                    const max = Math.max(...aggregated.map(a => a.total || 0), 1)
-                    const baselineY = top + chartH
-                    const axisX2 = left + w - 8
-                    return (
-                      <>
-                        <line x1={left} y1={baselineY} x2={axisX2} y2={baselineY} stroke="rgba(0,0,0,0.08)" strokeWidth={1} />
-                        {Array.from({length:5}).map((_, ti) => {
-                          const t = ti
-                          const frac = t / 4
-                          const y = top + (chartH * frac)
-                          const val = Math.round(max * (1 - frac))
-                          return (
-                            <g key={`tick-${t}`}>
-                              <line x1={left} y1={y} x2={axisX2} y2={y} stroke="rgba(0,0,0,0.02)" strokeWidth={1} />
-                              <text className="y-axis-label" x={Math.max(6, left - 8)} y={y + 4} textAnchor="end">{val}</text>
-                            </g>
-                          )
-                        })}
-
-                        {aggregated.map((row,i) => {
-                          const x = left + i * (barW + gap)
-                          const h = Math.round(((row.total || 0) / max) * chartH)
-                          const y = top + (chartH - h)
-                          return (
-                            <g key={row.period}>
-                              <rect className="bar-rect" x={x} y={y} width={barW} height={h} fill="url(#gbar)" style={{ transformOrigin: 'center bottom', transform: animateBars ? 'scaleY(1)' : 'scaleY(0)' }}>
-                                <title>{`${row.period}: ${row.total} σημεία (${row.count} καταχωρήσεις)`}</title>
-                              </rect>
-                              <text className="chart-label" x={x + barW/2} y={y - 8} textAnchor="middle">{row.total}</text>
-                              <text className="chart-label" x={x + barW/2} y={baselineY + 16} textAnchor="middle">{row.period.slice(5)}</text>
-                            </g>
-                          )
-                        })}
-                      </>
-                    )
-                  })()}
-                </svg>
-              </div>
-            ) : (
-              <div className="muted" style={{padding:14}}>Δεν βρέθηκαν δεδομένα για την περίοδο/τα φίλτρα που επιλέξατε.</div>
-            )}
-          </div>
-
+        <div className="stats-grid" style={{display:'grid',gap:16,alignItems:'stretch',gridTemplateColumns: '1fr'}}>
           <div style={{overflow:'auto',height: '100%'}}>
             <table className="stats-table">
               <thead>

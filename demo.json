@@ -1,0 +1,112 @@
+{
+  "entries": [
+  {
+    "id": "1",
+    "date": "2026-01-10T12:00:00.000Z",
+    "category": "VODAFONE HOME W/F",
+    "homeType": "VDSL DOUBLE",
+    "orderNumber": "10001",
+    "customerName": "Γιάννης Παπαδόπουλος",
+    "afm": "123456789",
+    "mobilePhone": "6901234567",
+    "landlinePhone": "2101234567",
+    "points": 120
+  },
+  {
+    "id": "2",
+    "date": "2026-01-11T13:30:00.000Z",
+    "category": "VODAFONE TV",
+    "orderNumber": "10002",
+    "customerName": "Μαρία Κωνσταντίνου",
+    "afm": "987654321",
+    "mobilePhone": "6987654321",
+    "points": 80
+  },
+  {
+    "id": "3",
+    "date": "2026-01-12T09:45:00.000Z",
+    "category": "FWA",
+    "orderNumber": "10003",
+    "customerName": "Αλέξανδρος Νικολάου",
+    "afm": "111222333",
+    "mobilePhone": "6944123456",
+    "landlinePhone": "2109876543",
+    "points": 60
+  },
+  {
+    "id": "4",
+    "date": "2026-01-13T15:00:00.000Z",
+    "category": "VODAFONE HOME W/F",
+    "homeType": "FTTH TRIPLE",
+    "orderNumber": "10004",
+    "customerName": "Ελένη Μητροπούλου",
+    "afm": "444555666",
+    "mobilePhone": "6977123456",
+    "points": 150
+  },
+  {
+    "id": "5",
+    "date": "2026-01-14T10:20:00.000Z",
+    "category": "VODAFONE TV",
+    "orderNumber": "10005",
+    "customerName": "Πέτρος Δημητρίου",
+    "afm": "555666777",
+    "mobilePhone": "6933123456",
+    "points": 90
+  },
+  {
+    "id": "6",
+    "date": "2026-01-15T11:10:00.000Z",
+    "category": "FWA VOICE",
+    "orderNumber": "10006",
+    "customerName": "Σοφία Παναγιώτου",
+    "afm": "888999000",
+    "mobilePhone": "6955123456",
+    "landlinePhone": "2106543210",
+    "points": 70
+  },
+  {
+    "id": "7",
+    "date": "2026-01-16T17:40:00.000Z",
+    "category": "VODAFONE HOME W/F",
+    "homeType": "ADSL DOUBLE",
+    "orderNumber": "10007",
+    "customerName": "Κώστας Λεμονής",
+    "afm": "222333444",
+    "mobilePhone": "6999123456",
+    "points": 110
+  },
+  {
+    "id": "8",
+    "date": "2026-01-17T14:25:00.000Z",
+    "category": "VODAFONE TV",
+    "orderNumber": "10008",
+    "customerName": "Αναστασία Βασιλείου",
+    "afm": "333444555",
+    "mobilePhone": "6978123456",
+    "points": 95
+  },
+  {
+    "id": "9",
+    "date": "2026-01-18T08:55:00.000Z",
+    "category": "FWA",
+    "orderNumber": "10009",
+    "customerName": "Δημήτρης Σταθόπουλος",
+    "afm": "666777888",
+    "mobilePhone": "6945123456",
+    "landlinePhone": "2103216549",
+    "points": 65
+  },
+  {
+    "id": "10",
+    "date": "2026-01-19T12:15:00.000Z",
+    "category": "VODAFONE HOME W/F",
+    "homeType": "VDSL TRIPLE",
+    "orderNumber": "10010",
+    "customerName": "Ιωάννα Καραγιάννη",
+    "afm": "777888999",
+    "mobilePhone": "6934123456",
+    "points": 130
+  }
+  ]
+}

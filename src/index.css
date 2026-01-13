@@ -533,6 +533,12 @@ h1,h2,h3{ color: #ffffff; margin:0 0 8px 0 }
 /* Bar animation helpers for SVG rects */
 .bar-rect{transform-box:fill-box;transform-origin:center bottom;transition:transform 600ms cubic-bezier(.2,.9,.2,1), opacity 300ms ease}
 .bar-rect:hover{opacity:0.92}
+
+/* Line/area chart (Stats) */
+.line-path{filter: drop-shadow(0 8px 18px rgba(2,6,23,0.35));transition:opacity 420ms ease}
+.area-path{transition:opacity 420ms ease}
+.point-dot{transition:opacity 160ms ease}
+.point-dot:hover{opacity:1}
 .stat-sub{font-size:0.98rem;color:rgba(255,255,255,0.78);margin-top:8px}
 .stat-bar{height:12px;margin-top:10px}
 
