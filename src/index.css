@@ -58,6 +58,16 @@ body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Helvetica
 .dark .chip {@apply bg-slate-800 text-primary-200}
 
 /* ensure body text color adjusts in dark mode */
+/* Fix for select/option visibility on Windows and dark mode */
+select, option, .panel-input {
+	background-color: #22223b !important;
+	color: #f8f8f2 !important;
+}
+
+.dark select, .dark option, .dark .panel-input {
+	background-color: #22223b !important;
+	color: #f8f8f2 !important;
+}
 body { color: #0f172a }
 .root-bg{background: linear-gradient(180deg, #f7fbff 0%, #f3f7fb 100%)}
 body { font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Helvetica Neue', Arial; background: #f7f9fb }
