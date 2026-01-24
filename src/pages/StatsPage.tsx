@@ -28,10 +28,11 @@ function AnimatedNumber({ value }: { value: number }){
 
 export default function StatsPage(){
   const [entries, setEntries] = useState<DailyEntry[]>([])
-  const [mode, setMode] = useState<'by-day'|'by-month'>('by-day')
+  const [mode, setMode] = useState<'day'|'month'|'range'>('day')
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
+  const [dayDate, setDayDate] = useState<string>(new Date().toISOString().slice(0,10))
   const [startDate, setStartDate] = useState<string>(new Date(Date.now() - 1000*60*60*24*30).toISOString().slice(0,10))
   const [endDate, setEndDate] = useState<string>(new Date().toISOString().slice(0,10))
 
@@ -40,19 +41,57 @@ export default function StatsPage(){
 
   // Φόρτωση στόχων/επίτευξης για τον μήνα
   useEffect(()=>{
-    if(mode !== 'by-month') return
+    if(mode !== 'month') return
     getProgressForMonth(year, month).then(setProgress)
   }, [mode, year, month])
 
   // Εγγραφές του μήνα για την επιλεγμένη κατηγορία (drill-down)
   const drillEntries: DailyEntry[] = useMemo(() => {
-    if (!drillCategory || mode !== 'by-month') return []
+    if (!drillCategory || mode !== 'month') return []
     return entries.filter((e: DailyEntry) => {
       if (!e.category || String(e.category).trim() !== drillCategory) return false
       const d = new Date(e.date)
       return d.getFullYear() === year && (d.getMonth() + 1) === month
     })
   }, [drillCategory, entries, year, month, mode])
+
+  const dateOnly = (iso: string) => {
+    const s = String(iso || '')
+    return s.length >= 10 ? s.slice(0, 10) : s
+  }
+
+  const goPrevMonth = () => {
+    setMonth(prev => {
+      if (prev <= 1) {
+        setYear(y => y - 1)
+        return 12
+      }
+      return prev - 1
+    })
+  }
+
+  const goNextMonth = () => {
+    setMonth(prev => {
+      if (prev >= 12) {
+        setYear(y => y + 1)
+        return 1
+      }
+      return prev + 1
+    })
+  }
+
+  const jumpToToday = () => {
+    const today = new Date().toISOString().slice(0, 10)
+    setMode('day')
+    setDayDate(today)
+  }
+
+  const jumpToCurrentMonth = () => {
+    const d = new Date()
+    setMode('month')
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+  }
 
   const [categoryQuery, setCategoryQuery] = useState('')
   const [categories, setCategories] = useState<string[]>([])
@@ -207,17 +246,21 @@ export default function StatsPage(){
     return entries.filter(e => {
       if(selectedCategories.length && !selectedCategories.includes((e.category||'').trim())) return false
       if(customerFilter && !(e.customerName||'').toLowerCase().includes(customerFilter.toLowerCase())) return false
-      if(mode === 'by-month'){
+
+      const dOnly = dateOnly(e.date)
+      if(mode === 'month'){
         const d = new Date(e.date)
         if(d.getFullYear() !== year) return false
         if(d.getMonth() + 1 !== month) return false
+      } else if (mode === 'day') {
+        if (dayDate && dOnly !== dayDate) return false
       } else {
-        if(startDate && new Date(e.date) < new Date(startDate)) return false
-        if(endDate && new Date(e.date) > new Date(endDate + 'T23:59:59')) return false
+        if(startDate && dOnly < startDate) return false
+        if(endDate && dOnly > endDate) return false
       }
       return true
     })
-  }, [entries, selectedCategories, customerFilter, mode, year, month, startDate, endDate])
+  }, [entries, selectedCategories, customerFilter, mode, year, month, dayDate, startDate, endDate])
 
   // counts per category
   const categoryCounts = useMemo(()=>{
@@ -269,9 +312,7 @@ export default function StatsPage(){
   const aggregated = useMemo(()=>{
     const map: Record<string,{period:string,total:number,count:number}> = {}
     const keyFn = (d:string) => {
-      const dt = new Date(d)
-      if(mode === 'by-month') return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`
-      return dt.toISOString().slice(0,10)
+      return dateOnly(d)
     }
     for(const e of visible){
       const k = keyFn(e.date)
@@ -280,7 +321,7 @@ export default function StatsPage(){
       map[k].count += 1
     }
     return Object.values(map).sort((a,b)=> a.period.localeCompare(b.period))
-  }, [visible, mode])
+  }, [visible])
 
   const [animateBars, setAnimateBars] = useState(false)
   useEffect(()=>{
@@ -319,7 +360,7 @@ export default function StatsPage(){
         breadcrumb="Στατιστικά"
       />
       <div style={{maxWidth:1400, margin:'0 auto', width:'100%'}}>
-        {mode === 'by-month' && progress.length > 0 && (
+        {mode === 'month' && progress.length > 0 && (
           <div className="panel-card mb-4">
             <h3 className="font-semibold mb-2">Στόχοι ανά κατηγορία ({month}/{year})</h3>
             <table className="stats-table">
@@ -381,21 +422,38 @@ export default function StatsPage(){
               <label className="text-sm muted">Τρόπος αναφοράς</label>
               <div style={{marginTop:6}}>
                 <select className="panel-input" value={mode} onChange={e=> setMode(e.target.value as any)}>
-                  <option value="by-day">Ανά ημέρα (ημερολογιακό εύρος)</option>
-                  <option value="by-month">Ανά μήνα</option>
+                  <option value="day">Εγγραφές ημέρας</option>
+                  <option value="month">Εγγραφές μήνα</option>
+                  <option value="range">Χρονική περίοδος</option>
                 </select>
+              </div>
+
+              <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+                <button type="button" className="btn-ghost" onClick={jumpToToday}>Σήμερα</button>
+                <button type="button" className="btn-ghost" onClick={jumpToCurrentMonth}>Τρέχων μήνας</button>
               </div>
             </div>
 
-            {mode === 'by-month' ? (
+            {mode === 'month' ? (
               <div>
                 <label className="text-sm muted">Μήνας</label>
                 <div style={{marginTop:6,display:'flex',gap:8}}>
+                  <button type="button" className="btn-ghost btn-icon" aria-label="Προηγούμενος μήνας" title="Προηγούμενος μήνας" onClick={goPrevMonth}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
                   <input className="panel-input" type="number" min={2000} max={2100} value={year} onChange={e=> setYear(parseInt(e.target.value||String(now.getFullYear())))} style={{width:110}} />
                   <select className="panel-input" value={month} onChange={e=> setMonth(parseInt(e.target.value))}>
                     {Array.from({length:12},(_,i)=>(i+1)).map(m => <option key={m} value={m}>{m}</option>)}
                   </select>
+                  <button type="button" className="btn-ghost btn-icon" aria-label="Επόμενος μήνας" title="Επόμενος μήνας" onClick={goNextMonth}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
                 </div>
+              </div>
+            ) : mode === 'day' ? (
+              <div>
+                <label className="text-sm muted">Ημερομηνία</label>
+                <input className="panel-input" type="date" value={dayDate} onChange={e=> setDayDate(e.target.value)} />
               </div>
             ) : (
               <>
