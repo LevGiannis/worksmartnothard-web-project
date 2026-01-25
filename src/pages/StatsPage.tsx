@@ -99,9 +99,6 @@ export default function StatsPage(){
   const [customerFilter, setCustomerFilter] = useState('')
   const [showEntries, setShowEntries] = useState(false)
 
-  const hoverTimeout = useRef<number|undefined>(undefined)
-  const [tooltipInfo, setTooltipInfo] = useState<{cat:string,x:number,y:number}|null>(null)
-
   const [editing, setEditing] = useState<DailyEntry | null>(null)
   const [saving, setSaving] = useState(false)
   const [editErrors, setEditErrors] = useState<string[]>([])
@@ -233,13 +230,6 @@ export default function StatsPage(){
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries])
 
-  function hideCategoryTooltip(){ setTooltipInfo(null) }
-
-  useEffect(()=>{
-    const onKey = (ev:KeyboardEvent) => { if(ev.key === 'Escape') hideCategoryTooltip() }
-    window.addEventListener('keydown', onKey)
-    return ()=> window.removeEventListener('keydown', onKey)
-  }, [])
 
   // filtered visible entries
   const visible = useMemo(()=>{
@@ -278,35 +268,6 @@ export default function StatsPage(){
   const categoryPoints = categoryCounts.points
   const categoryCountsMap = categoryCounts.counts
 
-  // top customers per category
-  const categoryTopCustomers = useMemo(()=>{
-    const map: Record<string, Array<{name:string,count:number}>> = {}
-    const temp: Record<string, Record<string,number>> = {}
-    for(const e of entries){
-      const k = (e.category||'').trim(); if(!k) continue
-      const name = (e.customerName||'Άγνωστος').toString()
-      temp[k] = temp[k] || {}
-      temp[k][name] = (temp[k][name] || 0) + 1
-    }
-    for(const k of Object.keys(temp)){
-      const arr = Object.entries(temp[k]).map(([name,count])=>({name,count}))
-      arr.sort((a,b)=> b.count - a.count)
-      map[k] = arr.slice(0,3)
-    }
-    return map
-  }, [entries])
-
-  function showCategoryTooltip(cat:string, rect:DOMRect){
-    // simple positioning: right of element if space, else left
-    const pad = 8
-    const width = 240
-    let x = rect.right + pad
-    let y = rect.top
-    if(x + width > window.innerWidth) x = rect.left - width - pad
-    if(x < 8) x = 8
-    if(y + 120 > window.innerHeight) y = Math.max(8, window.innerHeight - 140)
-    setTooltipInfo({cat,x,y})
-  }
 
   // aggregation by period
   const aggregated = useMemo(()=>{
@@ -489,23 +450,8 @@ export default function StatsPage(){
                     type="button"
                     className={`category-item ${selectedCategories.includes(c) ? 'selected' : ''}`}
                     onClick={() => setSelectedCategories(prev => prev.includes(c) ? prev.filter(x=>x!==c) : [...prev, c])}
-                    title={`${categoryCountsMap[c] || 0} εγγραφές — ${(categoryPoints[c] || 0)} σημεία`}
-                    aria-label={`${c}: ${categoryCountsMap[c] || 0} εγγραφές, ${categoryPoints[c] || 0} σημεία`}
-                    onMouseEnter={(e) => {
-                      if(hoverTimeout.current) window.clearTimeout(hoverTimeout.current)
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                      showCategoryTooltip(c, rect)
-                    }}
-                    onMouseLeave={() => { hoverTimeout.current = window.setTimeout(()=> hideCategoryTooltip(), 220) as unknown as number }}
-                    onFocus={(e) => {
-                      if(hoverTimeout.current) window.clearTimeout(hoverTimeout.current)
-                      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                      showCategoryTooltip(c, rect)
-                    }}
-                    onBlur={() => { hoverTimeout.current = window.setTimeout(()=> hideCategoryTooltip(), 220) as unknown as number }}
                   >
                     <span className="cat-label">{c}</span>
-                    <span className="cat-count">{categoryCountsMap[c] || 0}</span>
                   </button>
                 ))}
               </div>
@@ -707,33 +653,6 @@ export default function StatsPage(){
           </div>
         </div>
       </Modal>
-
-      {tooltipInfo && (
-        <div
-          className={`cat-tooltip visible`}
-          style={{left: tooltipInfo.x, top: tooltipInfo.y, position: 'fixed', zIndex: 60}}
-          role="dialog"
-          aria-label={`Πληροφορίες κατηγορίας ${tooltipInfo.cat}`}
-          tabIndex={0}
-          onMouseEnter={() => { if(hoverTimeout.current) window.clearTimeout(hoverTimeout.current) }}
-          onMouseLeave={() => { hoverTimeout.current = window.setTimeout(()=> hideCategoryTooltip(), 200) as unknown as number }}
-        >
-          <div className="cat-tooltip-content">
-            <div className="cat-tooltip-title">{tooltipInfo.cat}</div>
-            <div className="cat-tooltip-meta">{(categoryCountsMap[tooltipInfo.cat]||0)} εγγραφές • {(categoryPoints[tooltipInfo.cat]||0)} σημεία</div>
-            {categoryTopCustomers[tooltipInfo.cat] && categoryTopCustomers[tooltipInfo.cat].length > 0 && (
-              <div className="cat-tooltip-list">
-                <div style={{fontWeight:700,marginBottom:6}}>Top πελάτες</div>
-                <ul style={{margin:0,paddingLeft:12}}>
-                  {categoryTopCustomers[tooltipInfo.cat].map(tc => (
-                    <li key={tc.name} style={{fontSize:12}}>{tc.name} — {tc.count}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       </div>
     </div>
   )
