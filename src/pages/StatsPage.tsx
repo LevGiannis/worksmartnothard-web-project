@@ -485,7 +485,7 @@ export default function StatsPage(){
         {/* KPIs below results */}
         <div className="kpi-row" style={{display:'flex',gap:12,marginTop:12}}>
           <div className="kpi-card">
-            <div className="kpi-title">Σύνολο σημείων (χωρίς ραντεβού)</div>
+            <div className="kpi-title">Σύνολο Γραμμών</div>
             <AnimatedNumber value={totalPointsAll} />
           </div>
           <div className="kpi-card">
