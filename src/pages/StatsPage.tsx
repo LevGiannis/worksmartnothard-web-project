@@ -268,32 +268,21 @@ export default function StatsPage(){
   const categoryPoints = categoryCounts.points
   const categoryCountsMap = categoryCounts.counts
 
-
-  // aggregation by period
-  const aggregated = useMemo(()=>{
-    const map: Record<string,{period:string,total:number,count:number}> = {}
-    const keyFn = (d:string) => {
-      return dateOnly(d)
-    }
-    for(const e of visible){
-      const k = keyFn(e.date)
-      if(!map[k]) map[k] = { period:k, total:0, count:0 }
-      map[k].total += (e.points||0)
-      map[k].count += 1
-    }
-    return Object.values(map).sort((a,b)=> a.period.localeCompare(b.period))
+  const totalPointsAll = useMemo(() => {
+    return visible.reduce((s, e) => s + (e.points || 0), 0)
   }, [visible])
 
-  const [animateBars, setAnimateBars] = useState(false)
-  useEffect(()=>{
-    setAnimateBars(false)
-    const id = requestAnimationFrame(()=> setAnimateBars(true))
-    return ()=> cancelAnimationFrame(id)
-  }, [aggregated.length, aggregated.map(a=>a.total).join(',')])
+  const totalEntriesAll = visible.length
 
-  const totalPointsAll = aggregated.reduce((s,a) => s + (a.total || 0), 0)
-  const totalEntriesAll = aggregated.reduce((s,a) => s + (a.count || 0), 0)
-  const avgPerPeriod = aggregated.length ? Math.round(totalPointsAll / aggregated.length) : 0
+  const avgPerPeriod = useMemo(() => {
+    const periods = new Set<string>()
+    for (const e of visible) {
+      const d = dateOnly(e.date)
+      if (d) periods.add(d)
+    }
+    const n = periods.size
+    return n > 0 ? Math.round(totalPointsAll / n) : 0
+  }, [visible, totalPointsAll])
 
   async function downloadExcel(){
     // Εξαγωγή μόνο με κατηγορία, όνομα πελάτη, παραγγελία, ποσότητα
@@ -473,33 +462,10 @@ export default function StatsPage(){
         </div>
           </div>
 
-      {/* Results section: chart + table */}
+      {/* Results section: KPIs + optional entries list */}
   <section className="panel-card results-panel" style={{width:'100%'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,justifyContent:'space-between'}}>
-          <h2 className="text-lg font-semibold mb-3">Αποτελέσματα ({aggregated.length})</h2>
-        </div>
-
-        <div className="stats-grid" style={{display:'grid',gap:16,alignItems:'stretch',gridTemplateColumns: '1fr'}}>
-          <div style={{overflow:'auto',height: '100%'}}>
-            <table className="stats-table">
-              <thead>
-                <tr className="muted text-xs" style={{textAlign:'left'}}>
-                  <th style={{padding:'8px 12px'}}>Περίοδος</th>
-                  <th style={{padding:'8px 12px'}}>Σύνολο σημεία</th>
-                  <th style={{padding:'8px 12px'}}>Καταχωρήσεις</th>
-                </tr>
-              </thead>
-              <tbody>
-                {aggregated.map((r:any) => (
-                  <tr key={r.period} className="border-b" style={{borderColor:'rgba(0,0,0,0.06)'}}>
-                    <td style={{padding:'8px 12px'}}>{r.period}</td>
-                    <td style={{padding:'8px 12px'}}>{r.total}</td>
-                    <td style={{padding:'8px 12px'}}>{r.count}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <h2 className="text-lg font-semibold mb-3">Σύνοψη</h2>
         </div>
 
         {/* KPIs below results */}
