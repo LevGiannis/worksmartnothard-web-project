@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
 import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
+import { formatNumber } from '../utils/formatNumber'
 
 export default function AddGoalPage(){
   const navigate = useNavigate()
@@ -233,14 +234,14 @@ export default function AddGoalPage(){
               <div className="stat-bar" style={{marginTop:8}}>
                 <div className="fill" style={{width: `${percentClamped}%`, background: 'linear-gradient(90deg,#7c3aed,#ff6b8a)'}} />
               </div>
-              <div className="muted text-sm mt-2">{achieved} / {target || '—'}</div>
+              <div className="muted text-sm mt-2">{formatNumber(achieved || 0, 2)} / {(typeof target === 'number' ? formatNumber(target, 2) : (target || '—'))}</div>
 
               {entries && entries.length > 0 && (
                 <div style={{marginTop:12}}>
                   <div className="muted text-sm">Πρόσφατες καταχωρήσεις</div>
                   <ul style={{marginTop:8, paddingLeft:16}}>
                     {entries.slice(0,3).map(en => (
-                      <li key={en.id} className="text-sm" style={{marginBottom:6}}>{new Date(en.date).toLocaleDateString()} — {en.points} μον.</li>
+                      <li key={en.id} className="text-sm" style={{marginBottom:6}}>{new Date(en.date).toLocaleDateString()} — {formatNumber(en.points || 0, 2)} μον.</li>
                     ))}
                   </ul>
                 </div>

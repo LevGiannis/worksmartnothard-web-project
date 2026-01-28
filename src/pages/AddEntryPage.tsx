@@ -3,6 +3,7 @@ import { saveEntry, loadAllGoals, loadAllEntries, Goal, DailyEntry } from '../se
 import { useNavigate } from 'react-router-dom'
 import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
+import { formatNumber, roundNumber } from '../utils/formatNumber'
 
 export default function AddEntryPage(){
   const navigate = useNavigate()
@@ -81,7 +82,7 @@ export default function AddEntryPage(){
   useEffect(()=>{
     if(categoryUpper === 'ΡΑΝΤΕΒΟΥ'){
       const total = APPOINTMENT_AMOUNTS.reduce((sum, amt)=> sum + (appointmentCounts[amt] || 0) * amt, 0)
-      setPoints(total ? Number(total.toFixed(2)) : 0)
+      setPoints(total ? roundNumber(total, 2) : 0)
     }
   }, [appointmentCounts, categoryUpper])
 
@@ -249,8 +250,8 @@ export default function AddEntryPage(){
                     return (
                       <div key={amount} className="panel-card" style={{padding:'12px 14px',display:'flex',flexDirection:'column',gap:10}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                          <span style={{fontWeight:600}}>{amount.toFixed(2)} €</span>
-                          <span className="muted text-xs">Σύνολο: {(count * amount).toFixed(2)} €</span>
+                          <span style={{fontWeight:600}}>{formatNumber(amount, 2)} €</span>
+                          <span className="muted text-xs">Σύνολο: {formatNumber(count * amount, 2)} €</span>
                         </div>
                         <div style={{display:'flex',alignItems:'center',gap:8}}>
                           <button
@@ -259,7 +260,7 @@ export default function AddEntryPage(){
                             onClick={()=> adjustAppointmentCount(amount, -1)}
                             disabled={count === 0}
                             style={{minWidth:36,justifyContent:'center',padding:'6px 0'}}
-                            aria-label={`Μείωσε το ποσό ${amount.toFixed(2)} ευρώ`}
+                            aria-label={`Μείωσε το ποσό ${formatNumber(amount, 2)} ευρώ`}
                           >
                             -
                           </button>
@@ -274,14 +275,14 @@ export default function AddEntryPage(){
                             }}
                             className="panel-input"
                             style={{width:72,textAlign:'center'}}
-                            aria-label={`Φορές επιλογής ποσού ${amount.toFixed(2)} ευρώ`}
+                            aria-label={`Φορές επιλογής ποσού ${formatNumber(amount, 2)} ευρώ`}
                           />
                           <button
                             type="button"
                             className="btn"
                             onClick={()=> adjustAppointmentCount(amount, 1)}
                             style={{minWidth:36,justifyContent:'center',padding:'6px 0'}}
-                            aria-label={`Αύξησε το ποσό ${amount.toFixed(2)} ευρώ`}
+                            aria-label={`Αύξησε το ποσό ${formatNumber(amount, 2)} ευρώ`}
                           >
                             +
                           </button>
@@ -325,7 +326,7 @@ export default function AddEntryPage(){
                     <div className="muted text-xs">{new Date(r.date).toLocaleString()}</div>
                     <div className="text-xs muted">{r.orderNumber ? `Αρ. παραγγελίας: ${r.orderNumber}` : ''}{r.customerName ? ` — ${r.customerName}` : ''}</div>
                   </div>
-                  <div className="font-semibold">{r.points}</div>
+                  <div className="font-semibold">{formatNumber(r.points || 0, 2)}</div>
                 </div>
               ))}
             </div>
