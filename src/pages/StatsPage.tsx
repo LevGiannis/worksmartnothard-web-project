@@ -2,11 +2,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { loadAllEntries, DailyEntry, updateEntry, getProgressForMonth } from '../services/storage'
 import { exportEcoFriendlyExcel } from '../utils/exportExcel'
+import { formatNumber, roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 
 // Minimal AnimatedNumber for KPI count-up
-function AnimatedNumber({ value }: { value: number }){
+function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }){
   const [v, setV] = useState(0)
   useEffect(()=>{
     let raf = 0
@@ -15,15 +16,16 @@ function AnimatedNumber({ value }: { value: number }){
     const dur = 600
     const step = (t:number) => {
       const p = Math.min(1, (t - start) / dur)
-      const next = Math.round(from + (value - from) * p)
+      const nextRaw = from + (value - from) * p
+      const next = decimals > 0 ? roundNumber(nextRaw, decimals) : Math.round(nextRaw)
       setV(next)
       if(p < 1) raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
     return ()=> cancelAnimationFrame(raf)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value])
-  return <span className="kpi-value">{v}</span>
+  }, [value, decimals])
+  return <span className="kpi-value">{formatNumber(v, decimals > 0 ? decimals : 0)}</span>
 }
 
 export default function StatsPage(){
@@ -295,7 +297,7 @@ export default function StatsPage(){
       if (d) periods.add(d)
     }
     const n = periods.size
-    return n > 0 ? Math.round(totalPointsAll / n) : 0
+    return n > 0 ? roundNumber(totalPointsAll / n, 2) : 0
   }, [visibleWithoutRantevou, totalPointsAll])
 
   async function downloadExcel(){
@@ -339,8 +341,8 @@ export default function StatsPage(){
                 {progress.map(row => (
                   <tr key={row.category} style={{cursor:'pointer'}} onClick={()=> setDrillCategory(row.category)}>
                     <td style={{padding:'8px 12px', textDecoration:'underline'}}>{row.category}</td>
-                    <td style={{padding:'8px 12px'}}>{row.target}</td>
-                    <td style={{padding:'8px 12px'}}>{row.achieved}</td>
+                    <td style={{padding:'8px 12px'}}>{formatNumber(row.target, 2)}</td>
+                    <td style={{padding:'8px 12px'}}>{formatNumber(row.achieved, 2)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -368,7 +370,7 @@ export default function StatsPage(){
                             <td style={{padding:'8px 12px'}}>{e.date ? e.date.slice(0,10) : ''}</td>
                             <td style={{padding:'8px 12px'}}>{e.customerName || ''}</td>
                             <td style={{padding:'8px 12px'}}>{e.orderNumber || ''}</td>
-                            <td style={{padding:'8px 12px'}}>{e.points || 0}</td>
+                            <td style={{padding:'8px 12px'}}>{formatNumber(e.points || 0, 2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -486,19 +488,19 @@ export default function StatsPage(){
         <div className="kpi-row" style={{display:'flex',gap:12,marginTop:12}}>
           <div className="kpi-card">
             <div className="kpi-title">Σύνολο Γραμμών</div>
-            <AnimatedNumber value={totalPointsAll} />
+            <AnimatedNumber value={totalPointsAll} decimals={2} />
           </div>
           <div className="kpi-card">
             <div className="kpi-title">Σύνολο καταχωρήσεων</div>
-            <AnimatedNumber value={totalEntriesAll} />
+            <AnimatedNumber value={totalEntriesAll} decimals={0} />
           </div>
           <div className="kpi-card">
             <div className="kpi-title">Μέσο ανά περίοδο</div>
-            <AnimatedNumber value={avgPerPeriod} />
+            <AnimatedNumber value={avgPerPeriod} decimals={2} />
           </div>
           <div className="kpi-card">
             <div className="kpi-title">Ραντεβού (€)</div>
-            <AnimatedNumber value={Math.round(totalRantevouMoney)} />
+            <AnimatedNumber value={totalRantevouMoney} decimals={2} />
           </div>
         </div>
 
@@ -528,7 +530,7 @@ export default function StatsPage(){
                       <td style={{padding:'6px 8px'}}>{e.orderNumber || '-'}</td>
                       <td style={{padding:'6px 8px'}}>{e.customerName || '-'}</td>
                       <td style={{padding:'6px 8px'}}>{e.afm || '-'}</td>
-                      <td style={{padding:'6px 8px'}}>{e.points}</td>
+                      <td style={{padding:'6px 8px'}}>{formatNumber(e.points || 0, 2)}</td>
                       <td style={{padding:'6px 8px', textAlign:'right', whiteSpace:'nowrap'}}>
                         <button className="btn-ghost" onClick={()=> openEdit(e)}>Επεξεργασία</button>
                       </td>

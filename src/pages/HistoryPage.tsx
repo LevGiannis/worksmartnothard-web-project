@@ -2,6 +2,7 @@ import React, {useEffect, useMemo, useState} from 'react'
 import { DailyEntry, loadAllEntries, updateEntry } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import { formatNumber } from '../utils/formatNumber'
 
 export default function HistoryPage(){
   const [entries, setEntries] = useState<DailyEntry[]>([])
@@ -149,7 +150,7 @@ export default function HistoryPage(){
               </div>
 
               <div style={{display:'flex', alignItems:'center', gap: 12, flexShrink:0}}>
-                <div className="text-sm" style={{minWidth:90, textAlign:'right'}}>{e.points} {String(e.category).toUpperCase() === 'ΡΑΝΤΕΒΟΥ' ? '€' : 'pts'}</div>
+                <div className="text-sm" style={{minWidth:90, textAlign:'right'}}>{formatNumber(e.points || 0, 2)} {String(e.category).toUpperCase() === 'ΡΑΝΤΕΒΟΥ' ? '€' : 'pts'}</div>
                 <button className="btn-ghost" onClick={()=> openEdit(e)}>Επεξεργασία</button>
               </div>
             </div>
