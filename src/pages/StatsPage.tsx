@@ -5,6 +5,7 @@ import { exportEcoFriendlyExcel } from '../utils/exportExcel'
 import { formatNumber, roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
+import { HOME_TYPE_OPTIONS } from '../constants'
 
 // Minimal AnimatedNumber for KPI count-up
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }){
@@ -115,17 +116,6 @@ export default function StatsPage(){
   const [editAfm, setEditAfm] = useState('')
   const [editMobilePhone, setEditMobilePhone] = useState('')
   const [editLandlinePhone, setEditLandlinePhone] = useState('')
-
-  const HOME_TYPE_OPTIONS = [
-    'ADSL DOUBLE',
-    'ADSL TRIPLE',
-    'VDSL DOUBLE',
-    'VDSL TRIPLE',
-    '300/500/1000 FTTH DOUBLE',
-    '300/500/1000 FTTH TRIPLE',
-    'FWA',
-    'FWA VOICE'
-  ]
 
   const reload = async () => {
     const all = await loadAllEntries()

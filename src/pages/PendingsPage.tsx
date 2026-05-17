@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { loadPendingItems, savePendingItem, updatePendingItem, deletePendingItem, PendingItem, loadAllGoals, Goal } from '../services/storage'
 import PageHeader from '../components/PageHeader'
+import { STATIC_PENDING_TYPES } from '../constants'
 
 export default function PendingsPage(){
   const [items, setItems] = useState<PendingItem[]>([])
@@ -52,12 +53,8 @@ export default function PendingsPage(){
     return ()=>{ mounted = false }
   }, [])
 
-  // load known categories / domain types to populate pendingType select
   useEffect(()=>{
     let mounted = true
-    const STATIC_PENDING_TYPES = [
-      'Μεταβίβαση','Μετακόμιση','Δόσεις','Παραγγελία Συσκευής','Επικοινωνία','Διακανονισμός','Επιστροφή','Τεχνικό','Άλλο'
-    ]
     ;(async ()=>{
       try{
         const goals = await loadAllGoals()

@@ -3,6 +3,7 @@ import { DailyEntry, loadAllEntries, updateEntry } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { formatNumber } from '../utils/formatNumber'
+import { HOME_TYPE_OPTIONS } from '../constants'
 
 export default function HistoryPage(){
   const [entries, setEntries] = useState<DailyEntry[]>([])
@@ -19,17 +20,6 @@ export default function HistoryPage(){
   const [afm, setAfm] = useState('')
   const [mobilePhone, setMobilePhone] = useState('')
   const [landlinePhone, setLandlinePhone] = useState('')
-
-  const HOME_TYPE_OPTIONS = [
-    'ADSL DOUBLE',
-    'ADSL TRIPLE',
-    'VDSL DOUBLE',
-    'VDSL TRIPLE',
-    '300/500/1000 FTTH DOUBLE',
-    '300/500/1000 FTTH TRIPLE',
-    'FWA',
-    'FWA VOICE'
-  ]
 
   const reload = async () => {
     const all = await loadAllEntries()

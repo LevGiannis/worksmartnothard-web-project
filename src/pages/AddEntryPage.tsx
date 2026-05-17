@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
 import { formatNumber, roundNumber } from '../utils/formatNumber'
+import { STATIC_CATEGORIES, HOME_TYPE_OPTIONS, APPOINTMENT_AMOUNTS } from '../constants'
 
 export default function AddEntryPage(){
   const navigate = useNavigate()
@@ -22,22 +23,6 @@ export default function AddEntryPage(){
   const [recent, setRecent] = useState<DailyEntry[]>([])
   const [appointmentCounts, setAppointmentCounts] = useState<Record<number, number>>({})
   const categoryUpper = String(category || '').toUpperCase()
-
-  // Static categories borrowed from Android AddGoalActivity
-  const STATIC_CATEGORIES = [
-    'PORTIN MOBILE','EXPREPAY','VODAFONE HOME W/F','MIGRATION FTTH','POST2POST','EC2POST','FIRST','NEW CONNECTION','ΡΑΝΤΕΒΟΥ','ΣΥΣΚΕΥΕΣ','TV','MIGRATION VDSL'
-  ]
-  const HOME_TYPE_OPTIONS = [
-    'ADSL DOUBLE',
-    'ADSL TRIPLE',
-    'VDSL DOUBLE',
-    'VDSL TRIPLE',
-    '300/500/1000 FTTH DOUBLE',
-    '300/500/1000 FTTH TRIPLE',
-    'FWA',
-    'FWA VOICE'
-  ]
-  const APPOINTMENT_AMOUNTS = [6.85, 15.31, 10.47, 40.32]
 
   useEffect(()=>{
     loadAllGoals().then((goals: Goal[]) => {

@@ -5,6 +5,7 @@ import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
 import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
 import { formatNumber } from '../utils/formatNumber'
+import { STATIC_CATEGORIES } from '../constants'
 
 export default function AddGoalPage(){
   const navigate = useNavigate()
@@ -20,22 +21,6 @@ export default function AddGoalPage(){
   const [saving, setSaving] = useState(false)
   const [errors, setErrors] = useState<string[]>([])
   const [toastMsg, setToastMsg] = useState('')
-
-  // Static categories copied from the Android AddGoalActivity
-  const STATIC_CATEGORIES = [
-    'PORTIN MOBILE',
-    'EXPREPAY',
-    'VODAFONE HOME W/F',
-    'MIGRATION FTTH',
-    'POST2POST',
-    'EC2POST',
-    'FIRST',
-    'NEW CONNECTION',
-    'ΡΑΝΤΕΒΟΥ',
-    'ΣΥΣΚΕΥΕΣ',
-    'TV',
-    'MIGRATION VDSL'
-  ]
 
   useEffect(()=>{
     // load past goal categories to suggest, merged with static categories
