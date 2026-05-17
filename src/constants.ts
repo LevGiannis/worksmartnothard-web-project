@@ -12,6 +12,7 @@ export const STATIC_CATEGORIES = [
   'ΣΥΣΚΕΥΕΣ',
   'TV',
   'MIGRATION VDSL',
+  'CBU',
 ]
 
 export const HOME_TYPE_OPTIONS = [
