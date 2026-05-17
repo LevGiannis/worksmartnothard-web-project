@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 const PAGES_BASE = '/worksmartnothard-web-project/'
 
@@ -12,5 +12,9 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     base: isBuild && (isElectron || isPortable) ? './' : isBuild && isPages ? PAGES_BASE : '/',
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.ts'],
+    },
   }
 })
