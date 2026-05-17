@@ -118,7 +118,7 @@ export default function AddGoalPage(){
         subtitle="Δημιούργησε νέο μηνιαίο στόχο"
         breadcrumb="Στόχοι"
       />
-      <div className="space-y-4" style={{width:'100%', maxWidth:1400, margin:'0 auto'}}>
+      <div className="space-y-4 page-inner">
 
       <section className="panel-card grid grid-cols-1 md:grid-cols-3 gap-4" style={{padding:'14px', width:'100%'}}>
         {/* Form column (2/3 width on md+) */}

@@ -37,14 +37,14 @@ export default function HistoryPage() {
   const reversed = useMemo(() => entries.slice().reverse(), [entries])
 
   return (
-    <div style={{ padding: '28px 16px', paddingTop: '220px' }}>
+    <div className="page-content">
       <PageHeader
         title="History"
         subtitle="Χρονολογική λίστα καταχωρήσεων"
         breadcrumb="History"
       />
 
-      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+      <div className="page-inner">
         <div className="panel-card" style={{ marginBottom: 20 }}>
           <h2 className="heading-xl font-extrabold" style={{ fontSize: '1.3rem', margin: 0 }}>Καταχωρήσεις</h2>
           <div className="muted" style={{ marginTop: 4 }}>Δες τις πρόσφατες ενέργειες με σειρά αναστροφής.</div>

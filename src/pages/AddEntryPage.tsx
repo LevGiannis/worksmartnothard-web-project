@@ -139,7 +139,7 @@ export default function AddEntryPage(){
         subtitle="Πρόσθεσε γρήγορα μια εγγραφή — εμφανίζεται στο μηνιαίο dashboard."
         breadcrumb="Καταχωρήσεις"
       />
-      <div className="space-y-4" style={{width:'100%', maxWidth:1400, margin:'0 auto'}}>
+      <div className="space-y-4 page-inner">
 
       <section className="panel-card grid grid-cols-1 md:grid-cols-3 gap-6" style={{width:'100%'}}>
         <form className="md:col-span-2" onSubmit={(e)=>{e.preventDefault(); submit()}}>

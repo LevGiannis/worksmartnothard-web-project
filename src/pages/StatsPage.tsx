@@ -162,13 +162,13 @@ export default function StatsPage() {
   }
 
   return (
-    <div style={{ padding: '28px 16px', paddingTop: '220px' }}>
+    <div className="page-content">
       <PageHeader
         title="Στατιστικά & Αναφορές"
         subtitle="Ανάλυση επιδόσεων και αναφορές ανά περίοδο"
         breadcrumb="Στατιστικά"
       />
-      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+      <div className="page-inner">
         <MonthProgress progress={progress} month={month} year={year} entries={entries} mode={mode} />
 
         <StatsFilters

@@ -14,14 +14,14 @@ export default function TasksPage(){
   }
 
   return (
-    <div style={{padding:'28px 16px', paddingTop:'220px'}}>
+    <div className="page-content">
       <PageHeader
         title="Tasks"
         subtitle="Διαχείριση καθημερινών εργασιών"
         breadcrumb="Tasks"
       />
 
-      <div style={{maxWidth:1400, margin:'0 auto', width:'100%'}}>
+      <div className="page-inner">
         <div className="panel-card" style={{marginBottom:20}}>
           <div className="flex items-center justify-between" style={{gap:16, flexWrap:'wrap'}}>
             <div>

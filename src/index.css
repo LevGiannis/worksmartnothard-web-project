@@ -787,4 +787,10 @@ input[list] {
 .btn-icon{width:36px;height:36px;padding:6px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px}
 .btn-icon svg{display:block}
 
+/* Page layout helpers */
+.page-content{padding:28px 16px;padding-top:220px}
+.page-inner{max-width:1400px;margin:0 auto;width:100%}
+.form-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+.flex-1{flex:1}
+
 
