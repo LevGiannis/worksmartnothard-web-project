@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { exportBackup } from '../services/storage'
+import { getActiveDirHandle, writeFileToDir } from '../utils/backupDir'
 
 // Mon=1 Wed=3 Sat=6 → 15:20
 // Tue=2 Thu=4 Fri=5 → 20:55
@@ -21,16 +22,25 @@ function scheduleKeyFor(date: Date): string {
 async function triggerBackup() {
   const backup = await exportBackup()
   const json = JSON.stringify(backup, null, 2)
-  const blob = new Blob([json], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
   const date = new Date().toISOString().slice(0, 10)
-  a.href = url
-  a.download = `worksmart-backup-${date}.json`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+  const filename = `worksmart-backup-${date}.json`
+
+  const dirHandle = await getActiveDirHandle()
+  if (dirHandle) {
+    await writeFileToDir(dirHandle, filename, json)
+  } else {
+    // fallback: browser download
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   localStorage.setItem(LAST_BACKUP_KEY, scheduleKeyFor(new Date()))
 }
 

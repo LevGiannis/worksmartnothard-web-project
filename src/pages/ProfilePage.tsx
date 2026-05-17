@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { clearAllData, exportBackup, importBackup } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
+import { pickBackupDir, getActiveDirHandle, clearStoredDirHandle, isDirPickerSupported } from '../utils/backupDir'
 
 export default function ProfilePage(){
   const [firstName, setFirstName] = useState('')
@@ -30,6 +31,11 @@ export default function ProfilePage(){
   const pendingTimer = useRef<number|undefined>(undefined)
   const backupRef = useRef<{entries?:string, goals?:string, tasks?:string}>({})
   const importFileRef = useRef<HTMLInputElement | null>(null)
+  const [backupDirName, setBackupDirName] = useState<string | null>(null)
+
+  useEffect(() => {
+    getActiveDirHandle().then(h => setBackupDirName(h ? h.name : null)).catch(() => {})
+  }, [])
 
   useEffect(()=>{
     const f = safeLocalStorageGet('ws_user_first') || ''
@@ -378,6 +384,56 @@ export default function ProfilePage(){
             <p className="muted text-sm mt-3">
               Αν στο περιβάλλον σου τα δεδομένα χάνονται όταν κλείνει ο browser, κάνε <strong>Export</strong> πριν κλείσεις και <strong>Import</strong> όταν ανοίξεις.
             </p>
+
+            {isDirPickerSupported() && (
+              <div className="mt-4" style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 14 }}>
+                <div className="font-semibold text-sm" style={{ marginBottom: 6 }}>Αυτόματο backup — φάκελος αποθήκευσης</div>
+                <div className="muted text-sm" style={{ marginBottom: 10 }}>
+                  {backupDirName
+                    ? <>Αποθήκευση σε: <strong style={{ color: '#c4b5fd' }}>{backupDirName}</strong></>
+                    : 'Δεν έχει οριστεί φάκελος — τα backups κατεβαίνουν στα Downloads.'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={async () => {
+                      const handle = await pickBackupDir()
+                      setBackupDirName(handle ? handle.name : null)
+                      if (handle) setToast(`Φάκελος ορίστηκε: ${handle.name}`)
+                    }}
+                  >
+                    {backupDirName ? 'Αλλαγή φακέλου' : 'Επίλεξε φάκελο'}
+                  </button>
+                  {backupDirName && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={async () => {
+                        const handle = await getActiveDirHandle(true)
+                        setBackupDirName(handle ? handle.name : backupDirName)
+                        if (handle) setToast('Δικαίωμα πρόσβασης ανανεώθηκε')
+                      }}
+                    >
+                      Ανανέωση άδειας
+                    </button>
+                  )}
+                  {backupDirName && (
+                    <button
+                      type="button"
+                      className="btn-ghost"
+                      onClick={async () => {
+                        await clearStoredDirHandle()
+                        setBackupDirName(null)
+                        setToast('Φάκελος αφαιρέθηκε')
+                      }}
+                    >
+                      Αφαίρεση
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             {storagePersistSupported && (
               <p className="muted text-sm mt-2">
                 Κατάσταση μόνιμης αποθήκευσης: <strong>{storagePersisted === null ? '—' : (storagePersisted ? 'Ενεργή' : 'Όχι')}</strong>
