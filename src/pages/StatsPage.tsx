@@ -1,103 +1,25 @@
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { loadAllEntries, DailyEntry, getProgressForMonth } from '../services/storage'
 import { exportEcoFriendlyExcel } from '../utils/exportExcel'
-import { formatNumber, roundNumber } from '../utils/formatNumber'
+import { roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
-import Modal from '../components/Modal'
-import { HOME_TYPE_OPTIONS } from '../constants'
 import { useEntryForm } from '../hooks/useEntryForm'
+import MonthProgress from '../components/MonthProgress'
+import StatsFilters from '../components/StatsFilters'
+import StatsResults from '../components/StatsResults'
+import EntryEditModal from '../components/EntryEditModal'
 
-// Minimal AnimatedNumber for KPI count-up
-function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }){
-  const [v, setV] = useState(0)
-  useEffect(()=>{
-    let raf = 0
-    const start = performance.now()
-    const from = v
-    const dur = 600
-    const step = (t:number) => {
-      const p = Math.min(1, (t - start) / dur)
-      const nextRaw = from + (value - from) * p
-      const next = decimals > 0 ? roundNumber(nextRaw, decimals) : Math.round(nextRaw)
-      setV(next)
-      if(p < 1) raf = requestAnimationFrame(step)
-    }
-    raf = requestAnimationFrame(step)
-    return ()=> cancelAnimationFrame(raf)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, decimals])
-  return <span className="kpi-value">{formatNumber(v, decimals > 0 ? decimals : 0)}</span>
-}
-
-export default function StatsPage(){
+export default function StatsPage() {
   const [entries, setEntries] = useState<DailyEntry[]>([])
-  const [mode, setMode] = useState<'day'|'month'|'range'>('day')
+  const [mode, setMode] = useState<'day' | 'month' | 'range'>('day')
   const now = new Date()
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
-  const [dayDate, setDayDate] = useState<string>(new Date().toISOString().slice(0,10))
-  const [startDate, setStartDate] = useState<string>(new Date(Date.now() - 1000*60*60*24*30).toISOString().slice(0,10))
-  const [endDate, setEndDate] = useState<string>(new Date().toISOString().slice(0,10))
-
-  const [progress, setProgress] = useState<{category:string,target:number,achieved:number}[]>([])
-  const [drillCategory, setDrillCategory] = useState<string|null>(null)
-  const [monthView, setMonthView] = useState<'percent' | 'table'>('percent')
-
-  // Φόρτωση στόχων/επίτευξης για τον μήνα
-  useEffect(()=>{
-    if(mode !== 'month') return
-    getProgressForMonth(year, month).then(setProgress)
-  }, [mode, year, month])
-
-  // Εγγραφές του μήνα για την επιλεγμένη κατηγορία (drill-down)
-  const drillEntries: DailyEntry[] = useMemo(() => {
-    if (!drillCategory || mode !== 'month') return []
-    return entries.filter((e: DailyEntry) => {
-      if (!e.category || String(e.category).trim() !== drillCategory) return false
-      const d = new Date(e.date)
-      return d.getFullYear() === year && (d.getMonth() + 1) === month
-    })
-  }, [drillCategory, entries, year, month, mode])
-
-  const dateOnly = (iso: string) => {
-    const s = String(iso || '')
-    return s.length >= 10 ? s.slice(0, 10) : s
-  }
-
-  const goPrevMonth = () => {
-    setMonth(prev => {
-      if (prev <= 1) {
-        setYear(y => y - 1)
-        return 12
-      }
-      return prev - 1
-    })
-  }
-
-  const goNextMonth = () => {
-    setMonth(prev => {
-      if (prev >= 12) {
-        setYear(y => y + 1)
-        return 1
-      }
-      return prev + 1
-    })
-  }
-
-  const jumpToToday = () => {
-    const today = new Date().toISOString().slice(0, 10)
-    setMode('day')
-    setDayDate(today)
-  }
-
-  const jumpToCurrentMonth = () => {
-    const d = new Date()
-    setMode('month')
-    setYear(d.getFullYear())
-    setMonth(d.getMonth() + 1)
-  }
-
+  const [dayDate, setDayDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState<string>(new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString().slice(0, 10))
+  const [endDate, setEndDate] = useState<string>(new Date().toISOString().slice(0, 10))
+  const [progress, setProgress] = useState<{ category: string; target: number; achieved: number }[]>([])
   const [categoryQuery, setCategoryQuery] = useState('')
   const [categories, setCategories] = useState<string[]>([])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
@@ -109,22 +31,25 @@ export default function StatsPage(){
     setEntries(all || [])
   }
 
-  useEffect(()=>{
+  useEffect(() => {
     let mounted = true
-    ;(async ()=>{
+    ;(async () => {
       const all = await loadAllEntries()
-      if(!mounted) return
+      if (!mounted) return
       setEntries(all || [])
     })()
-
-    const onChange = () => { reload().catch(()=>{}) }
+    const onChange = () => { reload().catch(() => {}) }
     window.addEventListener('ws:entries-updated' as any, onChange)
-
-    return ()=> {
+    return () => {
       mounted = false
       window.removeEventListener('ws:entries-updated' as any, onChange)
     }
   }, [])
+
+  useEffect(() => {
+    if (mode !== 'month') return
+    getProgressForMonth(year, month).then(setProgress)
+  }, [mode, year, month])
 
   const {
     editing, saving,
@@ -141,69 +66,45 @@ export default function StatsPage(){
     openEdit, closeEdit, submitEdit,
   } = useEntryForm({ onSuccess: reload })
 
-  useEffect(()=>{
-    const set = Array.from(new Set(entries.map(e => (e.category||'').trim()).filter(Boolean)))
+  useEffect(() => {
+    const set = Array.from(new Set(entries.map(e => (e.category || '').trim()).filter(Boolean)))
     set.sort()
     setCategories(set)
-    if(selectedCategories.length === 0) setSelectedCategories(set)
+    if (selectedCategories.length === 0) setSelectedCategories(set)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entries])
 
+  const dateOnly = (iso: string) => {
+    const s = String(iso || '')
+    return s.length >= 10 ? s.slice(0, 10) : s
+  }
 
-  // filtered visible entries
-  const visible = useMemo(()=>{
+  const visible = useMemo(() => {
     return entries.filter(e => {
-      if(selectedCategories.length && !selectedCategories.includes((e.category||'').trim())) return false
-      if(customerFilter && !(e.customerName||'').toLowerCase().includes(customerFilter.toLowerCase())) return false
-
-      const dOnly = dateOnly(e.date)
-      if(mode === 'month'){
-        const d = new Date(e.date)
-        if(d.getFullYear() !== year) return false
-        if(d.getMonth() + 1 !== month) return false
+      if (selectedCategories.length && !selectedCategories.includes((e.category || '').trim())) return false
+      if (customerFilter && !(e.customerName || '').toLowerCase().includes(customerFilter.toLowerCase())) return false
+      const d = dateOnly(e.date)
+      if (mode === 'month') {
+        const dt = new Date(e.date)
+        if (dt.getFullYear() !== year) return false
+        if (dt.getMonth() + 1 !== month) return false
       } else if (mode === 'day') {
-        if (dayDate && dOnly !== dayDate) return false
+        if (dayDate && d !== dayDate) return false
       } else {
-        if(startDate && dOnly < startDate) return false
-        if(endDate && dOnly > endDate) return false
+        if (startDate && d < startDate) return false
+        if (endDate && d > endDate) return false
       }
       return true
     })
   }, [entries, selectedCategories, customerFilter, mode, year, month, dayDate, startDate, endDate])
 
-  // counts per category
-  const categoryCounts = useMemo(()=>{
-    const m: Record<string, number> = {}
-    const pts: Record<string, number> = {}
-    for(const e of entries){
-      const k = (e.category||'').trim()
-      if(!k) continue
-      m[k] = (m[k]||0) + 1
-      pts[k] = (pts[k]||0) + (e.points||0)
-    }
-    return { counts: m, points: pts }
-  }, [entries])
+  const isRantevou = (e: DailyEntry) => String(e.category || '').trim().toUpperCase() === 'ΡΑΝΤΕΒΟΥ'
 
-  const categoryPoints = categoryCounts.points
-  const categoryCountsMap = categoryCounts.counts
+  const visibleWithoutRantevou = useMemo(() => visible.filter(e => !isRantevou(e)), [visible])
 
-  const isRantevou = (e: DailyEntry) => {
-    const cat = String(e.category || '').trim().toUpperCase()
-    return cat === 'ΡΑΝΤΕΒΟΥ'
-  }
+  const totalRantevouMoney = useMemo(() => visible.reduce((s, e) => (isRantevou(e) ? s + (e.points || 0) : s), 0), [visible])
 
-  const totalRantevouMoney = useMemo(() => {
-    return visible.reduce((s, e) => (isRantevou(e) ? s + (e.points || 0) : s), 0)
-  }, [visible])
-
-  const visibleWithoutRantevou = useMemo(() => {
-    return visible.filter(e => !isRantevou(e))
-  }, [visible])
-
-  const totalPointsAll = useMemo(() => {
-    // Σημεία χωρίς τα ΡΑΝΤΕΒΟΥ
-    return visibleWithoutRantevou.reduce((s, e) => s + (e.points || 0), 0)
-  }, [visibleWithoutRantevou])
+  const totalPointsAll = useMemo(() => visibleWithoutRantevou.reduce((s, e) => s + (e.points || 0), 0), [visibleWithoutRantevou])
 
   const totalEntriesAll = visible.length
 
@@ -217,415 +118,115 @@ export default function StatsPage(){
     return n > 0 ? roundNumber(totalPointsAll / n, 2) : 0
   }, [visibleWithoutRantevou, totalPointsAll])
 
-  async function downloadExcel(){
-    // Εξαγωγή μόνο με κατηγορία, όνομα πελάτη, παραγγελία, ποσότητα
+  const goPrevMonth = () => {
+    setMonth(prev => {
+      if (prev <= 1) { setYear(y => y - 1); return 12 }
+      return prev - 1
+    })
+  }
+
+  const goNextMonth = () => {
+    setMonth(prev => {
+      if (prev >= 12) { setYear(y => y + 1); return 1 }
+      return prev + 1
+    })
+  }
+
+  const jumpToToday = () => {
+    setMode('day')
+    setDayDate(new Date().toISOString().slice(0, 10))
+  }
+
+  const jumpToCurrentMonth = () => {
+    const d = new Date()
+    setMode('month')
+    setYear(d.getFullYear())
+    setMonth(d.getMonth() + 1)
+  }
+
+  async function downloadExcel() {
     const headers = ['Κατηγορία', 'Πελάτης', 'Αρ. Παραγγελίας', 'Ποσότητα']
     const data = visible.map(e => ({
       'Κατηγορία': e.category || '',
       'Πελάτης': e.customerName || '',
       'Αρ. Παραγγελίας': e.orderNumber || '',
-      'Ποσότητα': e.points || 0
+      'Ποσότητα': e.points || 0,
     }))
     await exportEcoFriendlyExcel({
       data,
-      filename: `entries-${new Date().toISOString().slice(0,10)}.xlsx`,
+      filename: `entries-${new Date().toISOString().slice(0, 10)}.xlsx`,
       headers,
       sheetName: 'Εγγραφές',
-      greenHeader: true
+      greenHeader: true,
     })
   }
 
   return (
-    <div style={{padding:'28px 16px', paddingTop: '220px'}}>
+    <div style={{ padding: '28px 16px', paddingTop: '220px' }}>
       <PageHeader
         title="Στατιστικά & Αναφορές"
         subtitle="Ανάλυση επιδόσεων και αναφορές ανά περίοδο"
         breadcrumb="Στατιστικά"
       />
-      <div style={{maxWidth:1400, margin:'0 auto', width:'100%'}}>
-        {mode === 'month' && progress.length > 0 && (
-          <div className="panel-card mb-4">
-            <h3 className="font-semibold mb-2">Στόχοι ανά κατηγορία ({month}/{year})</h3>
+      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+        <MonthProgress progress={progress} month={month} year={year} entries={entries} mode={mode} />
 
-            <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-              <button
-                type="button"
-                className={monthView === 'percent' ? 'btn' : 'btn-ghost'}
-                onClick={()=> setMonthView('percent')}
-              >
-                Ποσοστά
-              </button>
-              <button
-                type="button"
-                className={monthView === 'table' ? 'btn' : 'btn-ghost'}
-                onClick={()=> setMonthView('table')}
-              >
-                Πίνακας
-              </button>
-            </div>
+        <StatsFilters
+          mode={mode} setMode={setMode}
+          year={year} setYear={setYear}
+          month={month} setMonth={setMonth}
+          dayDate={dayDate} setDayDate={setDayDate}
+          startDate={startDate} setStartDate={setStartDate}
+          endDate={endDate} setEndDate={setEndDate}
+          categories={categories}
+          selectedCategories={selectedCategories}
+          setSelectedCategories={setSelectedCategories}
+          categoryQuery={categoryQuery} setCategoryQuery={setCategoryQuery}
+          customerFilter={customerFilter} setCustomerFilter={setCustomerFilter}
+          showEntries={showEntries} setShowEntries={setShowEntries}
+          onDownloadExcel={downloadExcel}
+          jumpToToday={jumpToToday}
+          jumpToCurrentMonth={jumpToCurrentMonth}
+          goPrevMonth={goPrevMonth}
+          goNextMonth={goNextMonth}
+        />
 
-            {monthView === 'percent' ? (
-              <div className="stats-panel" aria-label="Ποσοστά επιτυχίας ανά κατηγορία">
-                <div>
-                  {progress.map(row => {
-                    const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
-                    const pctClamped = Math.max(0, Math.min(100, pct))
-                    return (
-                      <div
-                        key={row.category}
-                        className="stat-row"
-                        style={{cursor:'pointer'}}
-                        onClick={()=> setDrillCategory(row.category)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e)=> { if(e.key === 'Enter' || e.key === ' ') setDrillCategory(row.category) }}
-                      >
-                        <div className="stat-donut">
-                          <svg width="56" height="56" viewBox="0 0 36 36" className="donut-shadow" aria-hidden>
-                            <circle className="donut-bg" cx="18" cy="18" r="15.9155" fill="none" strokeWidth="3" />
-                            <circle
-                              className="donut-fg"
-                              cx="18"
-                              cy="18"
-                              r="15.9155"
-                              fill="none"
-                              strokeWidth="3"
-                              strokeLinecap="round"
-                              strokeDasharray={`${pctClamped} ${100 - pctClamped}`}
-                              transform="rotate(-90 18 18)"
-                            />
-                            <text x="18" y="20" textAnchor="middle" fontSize="6.5" fill="#fff">{pctClamped}%</text>
-                          </svg>
-                        </div>
+        <StatsResults
+          totalPoints={totalPointsAll}
+          totalEntries={totalEntriesAll}
+          avgPerPeriod={avgPerPeriod}
+          totalRantevou={totalRantevouMoney}
+          visible={visible}
+          showEntries={showEntries}
+          onEdit={openEdit}
+        />
 
-                        <div className="stat-content">
-                          <div className="stat-label">{row.category}</div>
-                          <div className="stat-sub">{formatNumber(row.achieved || 0, 2)} / {formatNumber(row.target || 0, 2)} ({pctClamped}%)</div>
-                          <div className="stat-bar" role="progressbar" aria-valuenow={pctClamped} aria-valuemin={0} aria-valuemax={100}>
-                            <div className="fill" style={{ width: `${pctClamped}%` }} />
-                          </div>
-                        </div>
-                        <div className="stat-percent">{pctClamped}%</div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div className="muted text-xs" style={{marginTop:10}}>Tip: πάτα σε κατηγορία για drill-down εγγραφές.</div>
-              </div>
-            ) : (
-            <table className="stats-table">
-              <thead>
-                <tr className="muted text-xs" style={{textAlign:'left'}}>
-                  <th style={{padding:'8px 12px'}}>Κατηγορία</th>
-                  <th style={{padding:'8px 12px'}}>Στόχος</th>
-                  <th style={{padding:'8px 12px'}}>Επίτευξη</th>
-                </tr>
-              </thead>
-              <tbody>
-                {progress.map(row => (
-                  <tr key={row.category} style={{cursor:'pointer'}} onClick={()=> setDrillCategory(row.category)}>
-                    <td style={{padding:'8px 12px', textDecoration:'underline'}}>{row.category}</td>
-                    <td style={{padding:'8px 12px'}}>{formatNumber(row.target, 2)}</td>
-                    <td style={{padding:'8px 12px'}}>{formatNumber(row.achieved, 2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            )}
-            {/* Drill-down modal για εγγραφές κατηγορίας */}
-            {drillCategory && (
-              <Modal isOpen={!!drillCategory} onClose={()=>setDrillCategory(null)}>
-                <div style={{maxWidth:600}}>
-                  <h3 className="font-semibold mb-2">Εγγραφές για "{drillCategory}" ({month}/{year})</h3>
-                  {drillEntries.length === 0 ? (
-                    <div className="muted">Δεν βρέθηκαν εγγραφές.</div>
-                  ) : (
-                    <table className="stats-table">
-                      <thead>
-                        <tr className="muted text-xs" style={{textAlign:'left'}}>
-                          <th style={{padding:'8px 12px'}}>Ημερομηνία</th>
-                          <th style={{padding:'8px 12px'}}>Πελάτης</th>
-                          <th style={{padding:'8px 12px'}}>Παραγγελία</th>
-                          <th style={{padding:'8px 12px'}}>Ποσότητα</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {drillEntries.map((e: DailyEntry) => (
-                          <tr key={e.id}>
-                            <td style={{padding:'8px 12px'}}>{e.date ? e.date.slice(0,10) : ''}</td>
-                            <td style={{padding:'8px 12px'}}>{e.customerName || ''}</td>
-                            <td style={{padding:'8px 12px'}}>{e.orderNumber || ''}</td>
-                            <td style={{padding:'8px 12px'}}>{formatNumber(e.points || 0, 2)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-              </Modal>
-            )}
-          </div>
-        )}
-      <div className="panel-card mb-4">
-        <div className="stats-controls" style={{display:'grid',gridTemplateColumns:'1fr',gap:14,alignItems:'start'}}>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:12}}>
-            <div>
-              <label className="text-sm muted">Τρόπος αναφοράς</label>
-              <div style={{marginTop:6}}>
-                <select className="panel-input" value={mode} onChange={e=> setMode(e.target.value as any)}>
-                  <option value="day">Εγγραφές ημέρας</option>
-                  <option value="month">Εγγραφές μήνα</option>
-                  <option value="range">Χρονική περίοδος</option>
-                </select>
-              </div>
-
-              <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
-                <button type="button" className="btn-ghost" onClick={jumpToToday}>Σήμερα</button>
-                <button type="button" className="btn-ghost" onClick={jumpToCurrentMonth}>Τρέχων μήνας</button>
-              </div>
-            </div>
-
-            {mode === 'month' ? (
-              <div>
-                <label className="text-sm muted">Μήνας</label>
-                <div style={{marginTop:6,display:'flex',gap:8}}>
-                  <button type="button" className="btn-ghost btn-icon" aria-label="Προηγούμενος μήνας" title="Προηγούμενος μήνας" onClick={goPrevMonth}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M15 18L9 12L15 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <input className="panel-input" type="number" min={2000} max={2100} value={year} onChange={e=> setYear(parseInt(e.target.value||String(now.getFullYear())))} style={{width:110}} />
-                  <select className="panel-input" value={month} onChange={e=> setMonth(parseInt(e.target.value))}>
-                    {Array.from({length:12},(_,i)=>(i+1)).map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <button type="button" className="btn-ghost btn-icon" aria-label="Επόμενος μήνας" title="Επόμενος μήνας" onClick={goNextMonth}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9 18L15 12L9 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                </div>
-              </div>
-            ) : mode === 'day' ? (
-              <div>
-                <label className="text-sm muted">Ημερομηνία</label>
-                <input className="panel-input" type="date" value={dayDate} onChange={e=> setDayDate(e.target.value)} />
-              </div>
-            ) : (
-              <>
-                <div>
-                  <label className="text-sm muted">Από</label>
-                  <input className="panel-input" type="date" value={startDate} onChange={e=> setStartDate(e.target.value)} />
-                </div>
-                <div>
-                  <label className="text-sm muted">Έως</label>
-                  <input className="panel-input" type="date" value={endDate} onChange={e=> setEndDate(e.target.value)} />
-                </div>
-              </>
-            )}
-
-            <div style={{gridColumn:'1 / -1'}}>
-              <label className="text-sm muted">Φίλτρο κατηγορίας</label>
-              <div style={{display:'flex',gap:8,marginTop:8,alignItems:'center'}}>
-                <input className="panel-input" placeholder="Αναζήτηση κατηγορίας" value={categoryQuery} onChange={e=> setCategoryQuery(e.target.value)} style={{flex:1}} />
-                <div style={{display:'flex',gap:8}}>
-                  <button type="button" className="btn-ghost btn-icon" aria-label="Επιλογή όλων" title="Επιλογή όλων" onClick={()=> setSelectedCategories(categories)}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 6H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 12H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M3 18H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                  <button type="button" className="btn-ghost btn-icon" aria-label="Εκκαθάριση" title="Εκκαθάριση" onClick={()=> setSelectedCategories([])}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div className="category-list" style={{marginTop:8}}>
-                {categories.filter(c => !categoryQuery || c.toLowerCase().includes(categoryQuery.toLowerCase())).map(c => (
-                  <button
-                    key={c}
-                    type="button"
-                    className={`category-item ${selectedCategories.includes(c) ? 'selected' : ''}`}
-                    onClick={() => setSelectedCategories(prev => prev.includes(c) ? prev.filter(x=>x!==c) : [...prev, c])}
-                  >
-                    <span className="cat-label">{c}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="input-hint" style={{marginTop:8}}>Επίλεξε μία ή περισσότερες κατηγορίες</div>
-            </div>
-
-            <div style={{gridColumn:'1 / -1'}}>
-              <label className="text-sm muted">Φίλτρο πελάτη</label>
-              <input className="panel-input" value={customerFilter} onChange={e=> setCustomerFilter(e.target.value)} placeholder="μέρος ονόματος πελάτη" />
-            </div>
-          </div>
-
-          <div style={{display:'flex',flexDirection:'column',gap:10,alignItems:'stretch'}}>
-            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
-              <button className="btn" onClick={downloadExcel}>Λήψη Excel (eco)</button>
-              <button className="btn-ghost" onClick={()=> setShowEntries(s => !s)}>{showEntries ? 'Απόκρυψη εγγραφών' : 'Εμφάνιση εγγραφών'}</button>
-            </div>
-          </div>
-        </div>
-          </div>
-
-      {/* Results section: KPIs + optional entries list */}
-  <section className="panel-card results-panel" style={{width:'100%'}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,justifyContent:'space-between'}}>
-          <h2 className="text-lg font-semibold mb-3">Σύνοψη</h2>
-        </div>
-
-        {/* KPIs below results */}
-        <div className="kpi-row" style={{display:'flex',gap:12,marginTop:12}}>
-          <div className="kpi-card">
-            <div className="kpi-title">Σύνολο Γραμμών</div>
-            <AnimatedNumber value={totalPointsAll} decimals={2} />
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-title">Σύνολο καταχωρήσεων</div>
-            <AnimatedNumber value={totalEntriesAll} decimals={0} />
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-title">Μέσο ανά περίοδο</div>
-            <AnimatedNumber value={avgPerPeriod} decimals={2} />
-          </div>
-          <div className="kpi-card">
-            <div className="kpi-title">Ραντεβού (€)</div>
-            <AnimatedNumber value={totalRantevouMoney} decimals={2} />
-          </div>
-        </div>
-
-        {showEntries && (
-          <div className="mt-4 entries-card">
-            <h3 className="font-semibold mb-2">Λίστα εγγραφών ({visible.length})</h3>
-            <div style={{overflow:'auto'}}>
-              <table className="entries-table w-full">
-                <thead>
-                  <tr className="muted text-xs" style={{textAlign:'left'}}>
-                    <th style={{padding:'6px 8px'}}>Ημερομηνία</th>
-                    <th style={{padding:'6px 8px'}}>Κατηγορία</th>
-                    <th style={{padding:'6px 8px'}}>Υποτύπος</th>
-                    <th style={{padding:'6px 8px'}}>Αρ. Παραγ.</th>
-                    <th style={{padding:'6px 8px'}}>Πελάτης</th>
-                    <th style={{padding:'6px 8px'}}>ΑΦΜ</th>
-                    <th style={{padding:'6px 8px'}}>Μονάδες</th>
-                    <th style={{padding:'6px 8px'}} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {visible.map((e:DailyEntry) => (
-                    <tr key={e.id} className="border-b" style={{borderColor:'rgba(0,0,0,0.06)'}}>
-                      <td style={{padding:'6px 8px'}}>{new Date(e.date).toLocaleString()}</td>
-                      <td style={{padding:'6px 8px'}}>{e.category}</td>
-                      <td style={{padding:'6px 8px'}}>{e.homeType || '-'}</td>
-                      <td style={{padding:'6px 8px'}}>{e.orderNumber || '-'}</td>
-                      <td style={{padding:'6px 8px'}}>{e.customerName || '-'}</td>
-                      <td style={{padding:'6px 8px'}}>{e.afm || '-'}</td>
-                      <td style={{padding:'6px 8px'}}>{formatNumber(e.points || 0, 2)}</td>
-                      <td style={{padding:'6px 8px', textAlign:'right', whiteSpace:'nowrap'}}>
-                        <button className="btn-ghost" onClick={()=> openEdit(e)}>Επεξεργασία</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <Modal
-        isOpen={!!editing}
-        title={editing ? `Επεξεργασία: ${editing.category || 'Entry'}` : 'Επεξεργασία'}
-        onClose={closeEdit}
-        size="md"
-        height="short"
-      >
-        <div className="grid gap-3">
-          {editErrors.length > 0 && (
-            <div className="panel-card" style={{padding:'12px 14px'}}>
-              <div style={{fontWeight:700, marginBottom:6}}>Διόρθωσε τα παρακάτω:</div>
-              <ul style={{margin:0, paddingLeft:18}}>
-                {editErrors.map((e, i) => <li key={i}>{e}</li>)}
-              </ul>
-            </div>
-          )}
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Κατηγορία</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editCategory} onChange={e=> setEditCategory(e.target.value ? e.target.value.toUpperCase() : '')} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Ημερομηνία</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" type="date" value={editDateOnly} onChange={e=> setEditDateOnly(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Αρ. παραγγελίας</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editOrderNumber} onChange={e=> setEditOrderNumber(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Ονοματεπώνυμο πελάτη</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editCustomerName} onChange={e=> setEditCustomerName(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Κινητό (προαιρετικό)</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editMobilePhone} onChange={e=> setEditMobilePhone(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Σταθερό (προαιρετικό)</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editLandlinePhone} onChange={e=> setEditLandlinePhone(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <label className="text-sm font-medium">ΑΦΜ (προαιρετικό)</label>
-            <div style={{flex:1}}>
-              <input className="panel-input" value={editAfm} onChange={e=> setEditAfm(e.target.value)} />
-            </div>
-          </div>
-
-          {String(editCategory || '').toUpperCase() === 'VODAFONE HOME W/F' && (
-            <div className="form-row">
-              <label className="text-sm font-medium">Υποτύπος</label>
-              <div style={{flex:1}}>
-                <select className="panel-input" value={editHomeType} onChange={e=> setEditHomeType(e.target.value)}>
-                  {HOME_TYPE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
-
-          <div className="form-row">
-            <label className="text-sm font-medium">Μονάδες / Σημεία</label>
-            <div style={{flex:1}}>
-              <input
-                className="panel-input"
-                type="number"
-                step="0.1"
-                value={editPoints}
-                onChange={e=> setEditPoints(e.target.value === '' ? '' : parseFloat(e.target.value))}
-              />
-            </div>
-          </div>
-
-          <div style={{display:'flex', gap:10, justifyContent:'flex-end', marginTop:8}}>
-            <button className="btn-ghost" onClick={closeEdit} disabled={saving}>Ακύρωση</button>
-            <button className="btn" onClick={submitEdit} disabled={saving}>{saving ? 'Αποθήκευση…' : 'Αποθήκευση'}</button>
-          </div>
-        </div>
-      </Modal>
+        <EntryEditModal
+          editing={editing}
+          saving={saving}
+          errors={editErrors}
+          category={editCategory}
+          setCategory={setEditCategory}
+          points={editPoints}
+          setPoints={setEditPoints}
+          dateOnly={editDateOnly}
+          setDateOnly={setEditDateOnly}
+          homeType={editHomeType}
+          setHomeType={setEditHomeType}
+          orderNumber={editOrderNumber}
+          setOrderNumber={setEditOrderNumber}
+          customerName={editCustomerName}
+          setCustomerName={setEditCustomerName}
+          afm={editAfm}
+          setAfm={setEditAfm}
+          mobilePhone={editMobilePhone}
+          setMobilePhone={setEditMobilePhone}
+          landlinePhone={editLandlinePhone}
+          setLandlinePhone={setEditLandlinePhone}
+          closeEdit={closeEdit}
+          submitEdit={submitEdit}
+        />
       </div>
     </div>
   )
 }
-
