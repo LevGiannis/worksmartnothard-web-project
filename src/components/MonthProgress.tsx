@@ -3,7 +3,7 @@ import { DailyEntry } from '../services/storage'
 import Modal from './Modal'
 import { formatNumber } from '../utils/formatNumber'
 
-interface ProgressRow { category: string; target: number; achieved: number }
+interface ProgressRow { category: string; target: number; achieved: number; color?: string }
 
 interface Props {
   progress: ProgressRow[]
@@ -78,7 +78,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
           {progress.map((row, idx) => {
             const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
             const pctClamped = Math.max(0, Math.min(100, pct))
-            const color = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+            const color = row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
             return (
               <div
                 key={row.category}
@@ -134,7 +134,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
               {progress.map((row, idx) => {
                 const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
                 const pctClamped = Math.max(0, Math.min(100, pct))
-                const color = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                const color = row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
                 return (
                   <tr key={row.category} onClick={() => setDrillCategory(row.category)} style={{ cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}

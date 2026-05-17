@@ -108,7 +108,7 @@ function getStorageBackend(): StorageBackend {
 export interface DailyEntry { id: string, points:number, date:string, category?:string, homeType?:string, orderNumber?:string, customerName?:string, afm?:string, mobilePhone?:string, landlinePhone?:string }
 export interface Goal { id: string, category?:string, title?:string, target:number, year?:number, month?:number, notes?:string, color?:string }
 export interface Task { id: string, title:string, done:boolean }
-export interface CategoryProgress { category: string, target:number, achieved:number, month:number, year:number }
+export interface CategoryProgress { category: string, target:number, achieved:number, month:number, year:number, color?:string }
 export interface PendingItem {
   id: string
   customerName?: string
@@ -427,7 +427,8 @@ export async function getProgressForMonth(year:number, month:number): Promise<Ca
       target: g.target || 0,
       achieved: totals[key] || 0,
       month: g.month || month,
-      year: g.year || year
+      year: g.year || year,
+      color: g.color || undefined
     }
   })
 

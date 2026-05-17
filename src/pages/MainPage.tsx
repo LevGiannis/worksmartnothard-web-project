@@ -164,7 +164,7 @@ export default function MainPage() {
               {(stats || []).map((s, idx) => {
                 const pct = s.target > 0 ? Math.round((s.achieved / s.target) * 100) : 0
                 const pctClamped = Math.max(0, Math.min(100, pct))
-                const color = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                const color = s.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
                 return (
                   <div key={s.category} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {/* Donut */}
