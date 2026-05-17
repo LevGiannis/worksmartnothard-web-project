@@ -1,12 +1,12 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { loadAllEntries, DailyEntry, updateEntry, getProgressForMonth } from '../services/storage'
+import { loadAllEntries, DailyEntry, getProgressForMonth } from '../services/storage'
 import { exportEcoFriendlyExcel } from '../utils/exportExcel'
 import { formatNumber, roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { HOME_TYPE_OPTIONS } from '../constants'
-import { validateEntry } from '../utils/validateEntry'
+import { useEntryForm } from '../hooks/useEntryForm'
 
 // Minimal AnimatedNumber for KPI count-up
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }){
@@ -104,20 +104,6 @@ export default function StatsPage(){
   const [customerFilter, setCustomerFilter] = useState('')
   const [showEntries, setShowEntries] = useState(false)
 
-  const [editing, setEditing] = useState<DailyEntry | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [editErrors, setEditErrors] = useState<string[]>([])
-
-  const [editCategory, setEditCategory] = useState('')
-  const [editPoints, setEditPoints] = useState<number | ''>('')
-  const [editDateOnly, setEditDateOnly] = useState('')
-  const [editHomeType, setEditHomeType] = useState('')
-  const [editOrderNumber, setEditOrderNumber] = useState('')
-  const [editCustomerName, setEditCustomerName] = useState('')
-  const [editAfm, setEditAfm] = useState('')
-  const [editMobilePhone, setEditMobilePhone] = useState('')
-  const [editLandlinePhone, setEditLandlinePhone] = useState('')
-
   const reload = async () => {
     const all = await loadAllEntries()
     setEntries(all || [])
@@ -140,80 +126,20 @@ export default function StatsPage(){
     }
   }, [])
 
-  const openEdit = (e: DailyEntry) => {
-    setEditing(e)
-    setEditErrors([])
-    setEditCategory(String(e.category || '').toUpperCase())
-    setEditPoints(typeof e.points === 'number' ? e.points : '')
-    try{
-      const d = e.date ? new Date(e.date) : new Date()
-      const yyyy = d.getFullYear()
-      const mm = String(d.getMonth()+1).padStart(2,'0')
-      const dd = String(d.getDate()).padStart(2,'0')
-      setEditDateOnly(`${yyyy}-${mm}-${dd}`)
-    }catch{
-      setEditDateOnly('')
-    }
-    setEditHomeType(String(e.homeType || ''))
-    setEditOrderNumber(String(e.orderNumber || ''))
-    setEditCustomerName(String(e.customerName || ''))
-    setEditAfm(String(e.afm || ''))
-    setEditMobilePhone(String(e.mobilePhone || ''))
-    setEditLandlinePhone(String(e.landlinePhone || ''))
-  }
-
-  const closeEdit = () => {
-    if (saving) return
-    setEditing(null)
-    setEditErrors([])
-  }
-
-  const validateEdit = () => {
-    const errs = validateEntry({
-      category: editCategory,
-      orderNumber: editOrderNumber,
-      customerName: editCustomerName,
-      points: editPoints,
-    })
-    setEditErrors(errs)
-    return errs.length === 0
-  }
-
-  const submitEdit = async () => {
-    if (!editing) return
-    if (!validateEdit()) return
-
-    setSaving(true)
-    try{
-      const categoryUpper = String(editCategory || '').toUpperCase().trim()
-      const pts = typeof editPoints === 'number' ? editPoints : parseFloat(String(editPoints || '0'))
-
-      const isoDate = editDateOnly
-        ? new Date(`${editDateOnly}T12:00:00`).toISOString()
-        : (editing.date || new Date().toISOString())
-
-      const nextPatch: Partial<DailyEntry> = {
-        category: categoryUpper,
-        points: Number(pts),
-        date: isoDate,
-        homeType: categoryUpper === 'VODAFONE HOME W/F' ? editHomeType : '',
-        orderNumber: editOrderNumber.trim(),
-        customerName: editCustomerName.trim(),
-        afm: editAfm.trim(),
-        mobilePhone: editMobilePhone.trim(),
-        landlinePhone: editLandlinePhone.trim()
-      }
-
-      await updateEntry(editing.id, nextPatch)
-      await reload()
-      setEditing(null)
-    }catch(e){
-      console.error(e)
-      setEditErrors(['Σφάλμα ενημέρωσης καταχώρησης'])
-    }finally{
-      setSaving(false)
-    }
-  }
+  const {
+    editing, saving,
+    errors: editErrors,
+    category: editCategory, setCategory: setEditCategory,
+    points: editPoints, setPoints: setEditPoints,
+    dateOnly: editDateOnly, setDateOnly: setEditDateOnly,
+    homeType: editHomeType, setHomeType: setEditHomeType,
+    orderNumber: editOrderNumber, setOrderNumber: setEditOrderNumber,
+    customerName: editCustomerName, setCustomerName: setEditCustomerName,
+    afm: editAfm, setAfm: setEditAfm,
+    mobilePhone: editMobilePhone, setMobilePhone: setEditMobilePhone,
+    landlinePhone: editLandlinePhone, setLandlinePhone: setEditLandlinePhone,
+    openEdit, closeEdit, submitEdit,
+  } = useEntryForm({ onSuccess: reload })
 
   useEffect(()=>{
     const set = Array.from(new Set(entries.map(e => (e.category||'').trim()).filter(Boolean)))

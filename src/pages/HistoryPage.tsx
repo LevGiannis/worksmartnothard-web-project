@@ -1,31 +1,32 @@
 import React, {useEffect, useMemo, useState} from 'react'
-import { DailyEntry, loadAllEntries, updateEntry } from '../services/storage'
+import { DailyEntry, loadAllEntries } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { formatNumber } from '../utils/formatNumber'
 import { HOME_TYPE_OPTIONS } from '../constants'
-import { validateEntry } from '../utils/validateEntry'
+import { useEntryForm } from '../hooks/useEntryForm'
 
 export default function HistoryPage(){
   const [entries, setEntries] = useState<DailyEntry[]>([])
-  const [editing, setEditing] = useState<DailyEntry | null>(null)
-  const [saving, setSaving] = useState(false)
-  const [errors, setErrors] = useState<string[]>([])
-
-  const [category, setCategory] = useState('')
-  const [points, setPoints] = useState<number | ''>('')
-  const [dateOnly, setDateOnly] = useState('')
-  const [homeType, setHomeType] = useState('')
-  const [orderNumber, setOrderNumber] = useState('')
-  const [customerName, setCustomerName] = useState('')
-  const [afm, setAfm] = useState('')
-  const [mobilePhone, setMobilePhone] = useState('')
-  const [landlinePhone, setLandlinePhone] = useState('')
 
   const reload = async () => {
     const all = await loadAllEntries()
     setEntries(all)
   }
+
+  const {
+    editing, saving, errors,
+    category, setCategory,
+    points, setPoints,
+    dateOnly, setDateOnly,
+    homeType, setHomeType,
+    orderNumber, setOrderNumber,
+    customerName, setCustomerName,
+    afm, setAfm,
+    mobilePhone, setMobilePhone,
+    landlinePhone, setLandlinePhone,
+    openEdit, closeEdit, submitEdit,
+  } = useEntryForm({ onSuccess: reload })
 
   useEffect(()=>{
     reload()
@@ -36,78 +37,6 @@ export default function HistoryPage(){
   }, [])
 
   const reversed = useMemo(() => entries.slice().reverse(), [entries])
-
-  const openEdit = (e: DailyEntry) => {
-    setEditing(e)
-    setErrors([])
-    setCategory(String(e.category || '').toUpperCase())
-    setPoints(typeof e.points === 'number' ? e.points : '')
-    // yyyy-mm-dd for <input type="date">
-    try{
-      const d = e.date ? new Date(e.date) : new Date()
-      const yyyy = d.getFullYear()
-      const mm = String(d.getMonth()+1).padStart(2,'0')
-      const dd = String(d.getDate()).padStart(2,'0')
-      setDateOnly(`${yyyy}-${mm}-${dd}`)
-    }catch{
-      setDateOnly('')
-    }
-    setHomeType(String(e.homeType || ''))
-    setOrderNumber(String(e.orderNumber || ''))
-    setCustomerName(String(e.customerName || ''))
-    setAfm(String(e.afm || ''))
-    setMobilePhone(String(e.mobilePhone || ''))
-    setLandlinePhone(String(e.landlinePhone || ''))
-  }
-
-  const closeEdit = () => {
-    if (saving) return
-    setEditing(null)
-    setErrors([])
-  }
-
-  const validate = () => {
-    const errs = validateEntry({ category, orderNumber, customerName, points })
-    setErrors(errs)
-    return errs.length === 0
-  }
-
-  const submitEdit = async () => {
-    if (!editing) return
-    if (!validate()) return
-
-    setSaving(true)
-    try{
-      const categoryUpper = String(category || '').toUpperCase().trim()
-      const pts = typeof points === 'number' ? points : parseFloat(String(points || '0'))
-
-      // keep date stable across TZ shifts by using midday local time
-      const isoDate = dateOnly
-        ? new Date(`${dateOnly}T12:00:00`).toISOString()
-        : (editing.date || new Date().toISOString())
-
-      const nextPatch: Partial<DailyEntry> = {
-        category: categoryUpper,
-        points: Number(pts),
-        date: isoDate,
-        homeType: categoryUpper === 'VODAFONE HOME W/F' ? homeType : '',
-        orderNumber: orderNumber.trim(),
-        customerName: customerName.trim(),
-        afm: afm.trim(),
-        mobilePhone: mobilePhone.trim(),
-        landlinePhone: landlinePhone.trim()
-      }
-
-      await updateEntry(editing.id, nextPatch)
-      await reload()
-      setEditing(null)
-    }catch(e){
-      console.error(e)
-      setErrors(['Σφάλμα ενημέρωσης καταχώρησης'])
-    }finally{
-      setSaving(false)
-    }
-  }
 
   return (
     <div style={{padding:'28px 16px', paddingTop:'220px'}}>
