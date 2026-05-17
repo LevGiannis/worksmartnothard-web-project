@@ -222,7 +222,7 @@ export async function updateEntry(id: string, patch: Partial<DailyEntry>): Promi
   await write(ENTRIES_KEY, entries)
 
   try{
-    if (typeof window !== 'undefined' && typeof (window as any).dispatchEvent === 'function'){
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'){
       const ev = new CustomEvent('ws:entries-updated', { detail: { action: 'update', entry: updated } })
       window.dispatchEvent(ev)
     }
@@ -248,7 +248,7 @@ export async function saveEntry(payload:Partial<DailyEntry>){
   await write(ENTRIES_KEY, entries)
   // notify the app that entries changed so UI can refresh (same-tab)
   try{
-    if (typeof window !== 'undefined' && typeof (window as any).dispatchEvent === 'function'){
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function'){
       const ev = new CustomEvent('ws:entries-updated', { detail: { action: 'add', entry } })
       window.dispatchEvent(ev)
     }
