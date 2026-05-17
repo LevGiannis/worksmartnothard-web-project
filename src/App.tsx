@@ -10,12 +10,14 @@ import ProfilePage from './pages/ProfilePage'
 import PendingPage from './pages/PendingPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useScheduledBackup } from './hooks/useScheduledBackup'
+import BackupCountdown from './components/BackupCountdown'
 
 export default function App() {
   useScheduledBackup()
 
   return (
     <div className="page-shell font-sans text-slate-100">
+      <BackupCountdown />
       <main className="container-wide">
         <Routes>
           <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
