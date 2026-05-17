@@ -9,9 +9,10 @@ import StatsPage from './pages/StatsPage'
 import ProfilePage from './pages/ProfilePage'
 import PendingPage from './pages/PendingPage'
 import ErrorBoundary from './components/ErrorBoundary'
+import { useScheduledBackup } from './hooks/useScheduledBackup'
 
 export default function App() {
-  const location = useLocation()
+  useScheduledBackup()
 
   return (
     <div className="page-shell font-sans text-slate-100">
