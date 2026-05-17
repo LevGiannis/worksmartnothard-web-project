@@ -6,6 +6,7 @@ import { formatNumber, roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { HOME_TYPE_OPTIONS } from '../constants'
+import { validateEntry } from '../utils/validateEntry'
 
 // Minimal AnimatedNumber for KPI count-up
 function AnimatedNumber({ value, decimals = 0 }: { value: number; decimals?: number }){
@@ -168,13 +169,12 @@ export default function StatsPage(){
   }
 
   const validateEdit = () => {
-    const errs: string[] = []
-    const categoryUpper = String(editCategory || '').toUpperCase().trim()
-    const pts = typeof editPoints === 'number' ? editPoints : parseFloat(String(editPoints || '0'))
-    if (!categoryUpper) errs.push('Επίλεξε ή γράψε κατηγορία')
-    if (!editOrderNumber.trim()) errs.push('Πρόσθεσε αριθμό παραγγελίας')
-    if (!editCustomerName.trim()) errs.push('Πρόσθεσε ονοματεπώνυμο πελάτη')
-    if (!pts || pts <= 0) errs.push('Πρόσθεσε έγκυρα σημεία (>0)')
+    const errs = validateEntry({
+      category: editCategory,
+      orderNumber: editOrderNumber,
+      customerName: editCustomerName,
+      points: editPoints,
+    })
     setEditErrors(errs)
     return errs.length === 0
   }

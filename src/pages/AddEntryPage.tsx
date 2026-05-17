@@ -5,6 +5,7 @@ import { showNotification } from '../utils/notifications'
 import PageHeader from '../components/PageHeader'
 import { formatNumber, roundNumber } from '../utils/formatNumber'
 import { STATIC_CATEGORIES, HOME_TYPE_OPTIONS, APPOINTMENT_AMOUNTS } from '../constants'
+import { validateEntry } from '../utils/validateEntry'
 
 export default function AddEntryPage(){
   const navigate = useNavigate()
@@ -99,20 +100,16 @@ export default function AddEntryPage(){
     })
   }
 
-  const validate = () =>{
-    const errs:string[] = []
+  const validate = () => {
     const appointmentTotal = APPOINTMENT_AMOUNTS.reduce((sum, amt) => sum + (appointmentCounts[amt] || 0) * amt, 0)
-    const val = categoryUpper === 'ΡΑΝΤΕΒΟΥ'
-      ? appointmentTotal
-      : (typeof points === 'number' ? points : parseFloat(String(points || '0')))
-    if(!category || !category.trim()) errs.push('Επίλεξε ή γράψε κατηγορία')
-    if(!orderNumber || !orderNumber.trim()) errs.push('Πρόσθεσε αριθμό παραγγελίας')
-    if(!customerName || !customerName.trim()) errs.push('Πρόσθεσε ονοματεπώνυμο πελάτη')
-    if(categoryUpper === 'ΡΑΝΤΕΒΟΥ'){
-      if(appointmentTotal <= 0) errs.push('Πρόσθεσε τουλάχιστον ένα ποσό για ραντεβού')
-    }else if(!val || val <= 0){
-      errs.push('Πρόσθεσε έγκυρα σημεία (>0)')
-    }
+    const errs = validateEntry({
+      category,
+      orderNumber,
+      customerName,
+      points,
+      isRantevou: categoryUpper === 'ΡΑΝΤΕΒΟΥ',
+      appointmentTotal,
+    })
     setErrors(errs)
     return errs.length === 0
   }

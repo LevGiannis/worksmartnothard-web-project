@@ -4,6 +4,7 @@ import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { formatNumber } from '../utils/formatNumber'
 import { HOME_TYPE_OPTIONS } from '../constants'
+import { validateEntry } from '../utils/validateEntry'
 
 export default function HistoryPage(){
   const [entries, setEntries] = useState<DailyEntry[]>([])
@@ -66,13 +67,7 @@ export default function HistoryPage(){
   }
 
   const validate = () => {
-    const errs: string[] = []
-    const categoryUpper = String(category || '').toUpperCase().trim()
-    const pts = typeof points === 'number' ? points : parseFloat(String(points || '0'))
-    if (!categoryUpper) errs.push('Επίλεξε ή γράψε κατηγορία')
-    if (!orderNumber.trim()) errs.push('Πρόσθεσε αριθμό παραγγελίας')
-    if (!customerName.trim()) errs.push('Πρόσθεσε ονοματεπώνυμο πελάτη')
-    if (!pts || pts <= 0) errs.push('Πρόσθεσε έγκυρα σημεία (>0)')
+    const errs = validateEntry({ category, orderNumber, customerName, points })
     setErrors(errs)
     return errs.length === 0
   }
