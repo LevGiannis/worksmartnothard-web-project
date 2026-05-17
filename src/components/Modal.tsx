@@ -58,18 +58,19 @@ export default function Modal({ isOpen, title, onClose, children, size = 'lg', h
       <div
         ref={panelRef}
         tabIndex={-1}
-        className={`bg-gradient-to-br from-purple-700/80 to-pink-600/60 backdrop-blur-md text-white rounded-2xl shadow-2xl ${sizeClass} ${heightClass} w-full mx-4 p-6 outline-none flex flex-col`}
+        className={`${sizeClass} ${heightClass} w-full mx-4 p-6 outline-none flex flex-col`}
+        style={{ background: 'linear-gradient(180deg, rgba(18,8,40,0.98), rgba(12,5,28,0.98))', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)', color: '#fff' }}
         onMouseDown={e => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 mb-4">
+        <div className="flex items-start justify-between gap-4 mb-4" style={{ paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="pr-4">
-            {title ? <h3 className="text-lg font-semibold">{title}</h3> : null}
+            {title ? <h3 className="text-lg font-semibold" style={{ color: '#fff', fontSize: '1rem', fontWeight: 700 }}>{title}</h3> : null}
           </div>
 
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="inline-flex items-center justify-center rounded-md p-2 text-white hover:bg-white/10 focus:ring-2 focus:ring-white/30"
+            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, padding: 6, color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer', flexShrink: 0 }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M6 6l12 12M6 18L18 6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
