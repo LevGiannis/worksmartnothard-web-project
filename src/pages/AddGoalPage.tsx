@@ -7,13 +7,26 @@ import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../util
 import { formatNumber } from '../utils/formatNumber'
 import { STATIC_CATEGORIES } from '../constants'
 
-export default function AddGoalPage(){
+const MONTH_NAMES = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
+
+function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+      <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'rgba(255,255,255,0.92)', letterSpacing: 0.3 }}>{title}</div>
+    </div>
+  )
+}
+
+export default function AddGoalPage() {
   const navigate = useNavigate()
   const now = new Date()
   const [category, setCategory] = useState('')
   const [target, setTarget] = useState<number | ''>('')
   const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth()+1)
+  const [month, setMonth] = useState(now.getMonth() + 1)
   const [notes, setNotes] = useState('')
   const [color, setColor] = useState('#7c3aed')
   const [entries, setEntries] = useState<DailyEntry[]>([])
@@ -22,17 +35,15 @@ export default function AddGoalPage(){
   const [errors, setErrors] = useState<string[]>([])
   const [toastMsg, setToastMsg] = useState('')
 
-  useEffect(()=>{
-    // load past goal categories to suggest, merged with static categories
+  useEffect(() => {
     loadAllGoals().then((goals: Goal[]) => {
       const past = Array.from(new Set(goals.map((g: Goal) => String(g.category || g.title || '').toUpperCase()).filter(Boolean))) as string[]
       const merged = Array.from(new Set([...STATIC_CATEGORIES, ...past]))
       setSuggestions(merged)
-      if(!category && merged.length) setCategory(merged[0])
+      if (!category && merged.length) setCategory(merged[0])
     })
   }, [])
 
-  // helper to persist goal category suggestions locally
   const persistCategorySuggestion = (value: string) => {
     if (!value) return
     try {
@@ -50,201 +61,240 @@ export default function AddGoalPage(){
 
   const validate = () => {
     const errs: string[] = []
-    if(!String(category || '').trim()) errs.push('Η κατηγορία είναι απαραίτητη')
-    const tnum = typeof target === 'number' ? target : parseFloat(String(target||'0'))
-    if(!tnum || tnum <= 0) errs.push('Ο στόχος πρέπει να είναι μεγαλύτερος του 0')
+    if (!String(category || '').trim()) errs.push('Η κατηγορία είναι απαραίτητη')
+    const tnum = typeof target === 'number' ? target : parseFloat(String(target || '0'))
+    if (!tnum || tnum <= 0) errs.push('Ο στόχος πρέπει να είναι μεγαλύτερος του 0')
     setErrors(errs)
     return errs.length === 0
   }
 
-  // preview achieved for this category/month
   const [achieved, setAchieved] = useState(0)
-  useEffect(()=>{
+  useEffect(() => {
     let mounted = true
-    loadEntriesForMonth(year, month).then((entries: DailyEntry[]) => {
-      if(!mounted) return
-  const key = String(category || '').toUpperCase()
-  const filtered = entries.filter((e: DailyEntry) => String(e.category || '').toUpperCase() === key)
-      const sum = filtered.reduce((s: number, e: DailyEntry)=> s + (e.points||0), 0)
+    loadEntriesForMonth(year, month).then((allEntries: DailyEntry[]) => {
+      if (!mounted) return
+      const key = String(category || '').toUpperCase()
+      const filtered = allEntries.filter((e: DailyEntry) => String(e.category || '').toUpperCase() === key)
+      const sum = filtered.reduce((s: number, e: DailyEntry) => s + (e.points || 0), 0)
       setAchieved(sum)
-      setEntries(filtered.slice().sort((a,b)=> (b.date||'').localeCompare(a.date)))
+      setEntries(filtered.slice().sort((a, b) => (b.date || '').localeCompare(a.date)))
     })
-    return ()=>{ mounted = false }
+    return () => { mounted = false }
   }, [category, year, month])
 
-  const years = useMemo(()=>{
+  const years = useMemo(() => {
     const y = now.getFullYear()
-    return [y, y+1]
+    return [y, y + 1]
   }, [now])
 
-  // derived preview values
   const safeTarget = (typeof target === 'number' && target > 0) ? target : (parseFloat(String(target || '0')) || 0)
   const percent = safeTarget > 0 ? Math.round((achieved / safeTarget) * 100) : 0
   const percentClamped = Math.max(0, Math.min(100, percent))
 
-  const onSave = async () =>{
-    if(!validate()) return
+  const onSave = async () => {
+    if (!validate()) return
     setSaving(true)
-    try{
+    try {
       const parsedTarget = typeof target === 'number' ? target : parseFloat(String(target))
       const normalizedCategory = String(category || '').toUpperCase()
-      // persist category suggestion for future use
       persistCategorySuggestion(normalizedCategory)
-      // Save goal using category as primary label and include notes/color
       await saveGoal({ category: normalizedCategory, title: '', target: parsedTarget, year, month, notes, color })
       setToastMsg('Ο στόχος αποθηκεύτηκε')
       showNotification('Στόχος αποθηκεύτηκε', { body: `${normalizedCategory} — στόχος ${parsedTarget}` })
-      setTimeout(()=> navigate('/'), 600)
-    }catch(e){
+      setTimeout(() => navigate('/'), 600)
+    } catch (e) {
       console.error(e)
       setErrors(['Σφάλμα αποθήκευσης'])
-    }finally{ setSaving(false) }
+    } finally { setSaving(false) }
   }
 
-  // quick validity flag for disabling the save button
-  const isValid = String(category || '').trim().length > 0 && (typeof target === 'number' ? target > 0 : parseFloat(String(target||'0')) > 0)
+  const isValid = String(category || '').trim().length > 0 && (typeof target === 'number' ? target > 0 : parseFloat(String(target || '0')) > 0)
 
-  // transient inline toast
-  useEffect(()=>{
-    if(!toastMsg) return
-    const t = setTimeout(()=> setToastMsg(''), 1800)
-    return ()=> clearTimeout(t)
+  useEffect(() => {
+    if (!toastMsg) return
+    const t = setTimeout(() => setToastMsg(''), 1800)
+    return () => clearTimeout(t)
   }, [toastMsg])
 
   return (
-    <div style={{minHeight: 'calc(100vh - 100px)', padding:'20px 12px'}}>
+    <div className="page-content">
       <PageHeader
-        title="Προσθήκη στόχου"
-        subtitle="Δημιούργησε νέο μηνιαίο στόχο"
+        title="Προσθήκη Στόχου"
+        subtitle="Δημιούργησε νέο μηνιαίο στόχο για την ομάδα"
         breadcrumb="Στόχοι"
       />
-      <div className="space-y-4 page-inner">
+      <div className="page-inner">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
 
-      <section className="panel-card grid grid-cols-1 md:grid-cols-3 gap-4" style={{padding:'14px', width:'100%'}}>
-        {/* Form column (2/3 width on md+) */}
-        <div className="md:col-span-2">
-          <div>
-            <div className="form-row" style={{marginBottom:10}}>
-              <label className="text-sm font-medium">Κατηγορία / Περιγραφή</label>
-              <div style={{flex:1}}>
-                <div style={{display:'flex',gap:8}}>
-                  <select className="panel-input" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} aria-label="Επιλογή κατηγορίας στόχου" style={{fontSize: '1rem', padding:'8px'}}>
-                    {suggestions.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <input aria-label="Ή νέα κατηγορία" className="panel-input" placeholder="ή νέα κατηγορία" value={category} onChange={e=> setCategory(e.target.value ? e.target.value.toUpperCase() : '')} style={{fontSize: '1rem', padding:'8px'}} />
-                </div>
-                {errors.some(er=> er.includes('κατηγορ')) && <div role="alert" className="text-sm text-red-300 mt-1">Η κατηγορία είναι απαραίτητη.</div>}
-              </div>
-            </div>
+          {/* ── Form card ── */}
+          <div className="panel-card" style={{ padding: 28 }}>
+            <SectionHeader
+              title="Στοιχεία στόχου"
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 2v20M2 12h20" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>}
+            />
 
-            <div className="form-row" style={{marginBottom:10}}>
-              <label className="text-sm font-medium">Στόχος (μονάδες)</label>
-              <div style={{flex:1}}>
-                <input aria-label="Στόχος" className="panel-input" inputMode="decimal" step="0.01" type="number" min={0} value={target} onChange={e=> setTarget(e.target.value === '' ? '' : parseFloat(e.target.value))} placeholder="π.χ. 150.5" aria-invalid={errors.some(er=> er.includes('στόχος'))} style={{padding:'8px'}} />
-                <div className="muted text-xs mt-1">Συνολικές μονάδες (δεκαδικό επιτρέπεται).</div>
-                {errors.some(er=> er.includes('στόχος')) && <div role="alert" className="text-sm text-red-300 mt-1">Ο στόχος πρέπει να είναι αριθμός μεγαλύτερος του 0.</div>}
-              </div>
-            </div>
-
-            <div className="form-row" style={{marginBottom:10}}>
-              <label className="text-sm font-medium">Μήνας / Έτος</label>
-              <div style={{flex:1, display:'flex', gap:8}}>
-                <select className="panel-input" value={month} onChange={e=> setMonth(parseInt(e.target.value))} aria-label="Επιλογή μήνα" style={{padding:'8px'}}>
-                  {[...Array(12)].map((_,i)=> <option key={i} value={i+1}>{i+1}</option>)}
+            {/* Category */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Κατηγορία</label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <select
+                  className="panel-input"
+                  value={category}
+                  onChange={e => setCategory(e.target.value ? e.target.value.toUpperCase() : '')}
+                  style={{ flex: 1 }}
+                  aria-label="Επιλογή κατηγορίας"
+                >
+                  {suggestions.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <select className="panel-input" value={year} onChange={e=> setYear(parseInt(e.target.value))} aria-label="Επιλογή έτους" style={{padding:'8px'}}>
-                  {years.map(y=> <option key={y} value={y}>{y}</option>)}
+                <input
+                  className="panel-input"
+                  placeholder="ή νέα κατηγορία"
+                  value={category}
+                  onChange={e => setCategory(e.target.value ? e.target.value.toUpperCase() : '')}
+                  style={{ flex: 1 }}
+                  aria-label="Νέα κατηγορία"
+                />
+              </div>
+              {errors.some(er => er.includes('κατηγορ')) && (
+                <div role="alert" style={{ color: '#fca5a5', fontSize: '0.8rem', marginTop: 6 }}>Η κατηγορία είναι απαραίτητη.</div>
+              )}
+            </div>
+
+            {/* Target */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Στόχος (μονάδες)</label>
+              <input
+                className="panel-input"
+                inputMode="decimal"
+                step="0.01"
+                type="number"
+                min={0}
+                value={target}
+                onChange={e => setTarget(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                placeholder="π.χ. 150.5"
+                aria-label="Στόχος"
+                style={{ width: '100%' }}
+              />
+              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 5 }}>Συνολικές μονάδες — δεκαδικό επιτρέπεται</div>
+              {errors.some(er => er.includes('στόχος')) && (
+                <div role="alert" style={{ color: '#fca5a5', fontSize: '0.8rem', marginTop: 6 }}>Ο στόχος πρέπει να είναι αριθμός μεγαλύτερος του 0.</div>
+              )}
+            </div>
+
+            {/* Month / Year */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Περίοδος</label>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <select className="panel-input" value={month} onChange={e => setMonth(parseInt(e.target.value))} aria-label="Μήνας" style={{ flex: 1 }}>
+                  {MONTH_NAMES.map((name, i) => <option key={i} value={i + 1}>{name}</option>)}
+                </select>
+                <select className="panel-input" value={year} onChange={e => setYear(parseInt(e.target.value))} aria-label="Έτος" style={{ width: 110 }}>
+                  {years.map(y => <option key={y} value={y}>{y}</option>)}
                 </select>
               </div>
             </div>
 
-            <div className="form-row" style={{marginBottom:10}}>
-              <label className="text-sm font-medium">Σημειώσεις (προαιρετικά)</label>
-              <textarea className="panel-input" rows={2} value={notes} onChange={e=> setNotes(e.target.value)} placeholder="Πρόσθεσε οδηγίες ή υπενθύμιση..." style={{minHeight:64, padding:'8px'}} />
+            {/* Notes */}
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Σημειώσεις <span style={{ fontWeight: 400, opacity: 0.6 }}>(προαιρετικά)</span></label>
+              <textarea
+                className="panel-input"
+                rows={3}
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Πρόσθεσε οδηγίες ή υπενθύμιση..."
+                style={{ width: '100%', resize: 'vertical', minHeight: 72 }}
+              />
             </div>
 
-            <div className="form-row" style={{marginBottom:6}}>
-              <label className="text-sm font-medium">Χρώμα κάρτας</label>
-              <div style={{flex:1, display:'flex', alignItems:'center', gap:8}}>
-                <input type="color" className="w-10 h-8 p-0 border-0" value={color} onChange={e=> setColor(e.target.value)} aria-label="Επιλογή χρώματος" />
-                <div className="muted text-sm">Εμφάνιση στην κάρτα στόχου</div>
+            {/* Color */}
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: 'block', fontSize: '0.83rem', fontWeight: 600, color: 'rgba(255,255,255,0.5)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Χρώμα κάρτας</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <input type="color" value={color} onChange={e => setColor(e.target.value)} aria-label="Επιλογή χρώματος" style={{ width: 44, height: 36, padding: 0, border: 'none', borderRadius: 8, cursor: 'pointer', background: 'none' }} />
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: color, boxShadow: `0 4px 14px ${color}55` }} />
+                <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.4)' }}>Εμφάνιση στην κάρτα στόχου</div>
               </div>
             </div>
 
             {errors.length > 0 && (
-              <div role="alert" className="mt-2 text-sm text-red-300">
-                {errors.map((er,i)=>(<div key={i}>{er}</div>))}
+              <div role="alert" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+                {errors.map((er, i) => <div key={i} style={{ color: '#fca5a5', fontSize: '0.85rem' }}>{er}</div>)}
               </div>
             )}
 
-            <div className="flex items-center gap-3 mt-4">
-              <button className="btn" onClick={onSave} disabled={saving}>{saving ? 'Αποθήκευση...' : 'Αποθήκευση στόχου'}</button>
-              <button className="btn-ghost" onClick={()=> navigate(-1)} aria-label="Ακύρωση">Ακύρωση</button>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <button
+                className="btn"
+                onClick={onSave}
+                disabled={saving || !isValid}
+                style={{ minWidth: 160, padding: '10px 20px', fontWeight: 700, background: 'linear-gradient(90deg,#7c3aed,#5b21b6)', border: 'none' }}
+              >
+                {saving ? 'Αποθήκευση...' : 'Αποθήκευση στόχου'}
+              </button>
+              <button className="btn-ghost" onClick={() => navigate(-1)} style={{ padding: '10px 18px' }}>Ακύρωση</button>
             </div>
           </div>
-        </div>
 
-        {/* Preview column (1/3 width) */}
-        <aside className="md:col-span-1">
-          <div className="card">
-            {/* CSS-first placeholder: centered pill with icon + label */}
-              <div style={{marginBottom:8, borderRadius:8, overflow:'hidden'}} aria-hidden>
-                <div style={{height:80,display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(90deg,#eef2ff,#fff7f7)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:10,padding:'6px 12px',borderRadius:999,background:'linear-gradient(90deg, rgba(124,58,237,0.10), rgba(255,107,138,0.05))'}}>
-                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
-                    <rect x="3" y="10" width="3" height="8" rx="1" fill="#7c3aed" />
-                    <rect x="9" y="6" width="3" height="12" rx="1" fill="#7c3aed" fillOpacity="0.8" />
-                    <rect x="15" y="14" width="3" height="4" rx="1" fill="#ff6b8a" />
-                  </svg>
-                  <div style={{display:'flex',flexDirection:'column'}}>
-                    <div style={{fontSize:13,fontWeight:700,color:'#1f2937'}}>Προεπισκόπηση</div>
-                    <div style={{fontSize:12,color:'rgba(31,41,55,0.6)'}}>Θα εμφανίζεται έτσι στην αρχική σελίδα</div>
-                  </div>
+          {/* ── Preview card ── */}
+          <div style={{ position: 'sticky', top: 100 }}>
+            <div className="panel-card" style={{ padding: 24 }}>
+              <SectionHeader
+                title="Προεπισκόπηση"
+                icon={<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" stroke="white" strokeWidth="2"/><circle cx="12" cy="12" r="3" stroke="white" strokeWidth="2"/></svg>}
+              />
+
+              {/* Category swatch */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20, padding: '14px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: color, boxShadow: `0 6px 20px ${color}55`, flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem' }}>{category || 'Κατηγορία'}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{MONTH_NAMES[month - 1]} {year}</div>
                 </div>
               </div>
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:12}}>
-              <div style={{width:48,height:48,borderRadius:12,background:color}}></div>
-              <div>
-                <div style={{fontWeight:700,color:'#fff'}}>{category || 'Προεπισκόπηση στόχου'}</div>
-                <div className="muted text-sm">{category || 'Κατηγορία'}</div>
-              </div>
-            </div>
 
-            <div style={{marginTop:14}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                <div className="muted text-sm">Πρόοδος μήνα</div>
-                <div className="text-sm" style={{fontWeight:700}}>{safeTarget > 0 ? `${percentClamped}%` : '—'}</div>
+              {/* Progress */}
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.45)' }}>Πρόοδος μήνα</div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>{safeTarget > 0 ? `${percentClamped}%` : '—'}</div>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${percentClamped}%`, background: `linear-gradient(90deg, ${color}, #ff6b8a)`, borderRadius: 999, transition: 'width 400ms ease' }} />
+                </div>
+                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', marginTop: 6 }}>
+                  {formatNumber(achieved || 0, 2)} / {safeTarget > 0 ? formatNumber(safeTarget, 2) : '—'} μον.
+                </div>
               </div>
-              <div className="stat-bar" style={{marginTop:8}}>
-                <div className="fill" style={{width: `${percentClamped}%`, background: 'linear-gradient(90deg,#7c3aed,#ff6b8a)'}} />
-              </div>
-              <div className="muted text-sm mt-2">{formatNumber(achieved || 0, 2)} / {(typeof target === 'number' ? formatNumber(target, 2) : (target || '—'))}</div>
 
-              {entries && entries.length > 0 && (
-                <div style={{marginTop:12}}>
-                  <div className="muted text-sm">Πρόσφατες καταχωρήσεις</div>
-                  <ul style={{marginTop:8, paddingLeft:16}}>
-                    {entries.slice(0,3).map(en => (
-                      <li key={en.id} className="text-sm" style={{marginBottom:6}}>{new Date(en.date).toLocaleDateString()} — {formatNumber(en.points || 0, 2)} μον.</li>
-                    ))}
-                  </ul>
+              {/* Recent entries */}
+              {entries.length > 0 && (
+                <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 14 }}>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>Πρόσφατες καταχωρήσεις</div>
+                  {entries.slice(0, 4).map(en => (
+                    <div key={en.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)' }}>{new Date(en.date).toLocaleDateString('el-GR', { day: '2-digit', month: 'short' })}</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#c4b5fd' }}>{formatNumber(en.points || 0, 2)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {!category && (
+                <div style={{ textAlign: 'center', padding: '20px 0', color: 'rgba(255,255,255,0.25)', fontSize: '0.82rem' }}>
+                  Συμπλήρωσε τη φόρμα για προεπισκόπηση
                 </div>
               )}
             </div>
-
-            <div className="muted text-xs mt-4">Η προεπισκόπηση δείχνει πώς θα εμφανίζεται ο στόχος στην αρχική σελίδα.</div>
           </div>
-        </aside>
-      </section>
-      {/* transient toast */}
+        </div>
+      </div>
+
       {toastMsg && (
-        <div style={{position:'fixed',right:20,bottom:20,background:'linear-gradient(90deg,#7c3aed,#5b21b6)',color:'#fff',padding:'12px 16px',borderRadius:10,boxShadow:'0 8px 30px rgba(0,0,0,0.4)'}} role="status">
+        <div style={{ position: 'fixed', right: 20, bottom: 20, background: 'linear-gradient(90deg,#7c3aed,#5b21b6)', color: '#fff', padding: '12px 18px', borderRadius: 10, boxShadow: '0 8px 30px rgba(0,0,0,0.4)', zIndex: 300, fontSize: '0.9rem', fontWeight: 600 }} role="status">
           {toastMsg}
         </div>
       )}
-      </div>
     </div>
   )
 }
-

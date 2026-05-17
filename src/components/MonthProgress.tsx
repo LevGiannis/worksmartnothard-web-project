@@ -13,6 +13,10 @@ interface Props {
   mode: string
 }
 
+const MONTH_NAMES = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
+
+const ACCENT_COLORS = ['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1']
+
 export default function MonthProgress({ progress, month, year, entries, mode }: Props) {
   const [monthView, setMonthView] = useState<'percent' | 'table'>('percent')
   const [drillCategory, setDrillCategory] = useState<string | null>(null)
@@ -28,106 +32,155 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
 
   if (mode !== 'month' || progress.length === 0) return null
 
-  return (
-    <div className="panel-card mb-4">
-      <h3 className="font-semibold mb-2">Στόχοι ανά κατηγορία ({month}/{year})</h3>
+  const totalAchieved = progress.reduce((s, r) => s + r.achieved, 0)
+  const totalTarget = progress.reduce((s, r) => s + r.target, 0)
+  const overallPct = totalTarget > 0 ? Math.round((totalAchieved / totalTarget) * 100) : 0
+  const overallClamped = Math.max(0, Math.min(100, overallPct))
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
-        <button type="button" className={monthView === 'percent' ? 'btn' : 'btn-ghost'} onClick={() => setMonthView('percent')}>
-          Ποσοστά
-        </button>
-        <button type="button" className={monthView === 'table' ? 'btn' : 'btn-ghost'} onClick={() => setMonthView('table')}>
-          Πίνακας
-        </button>
+  return (
+    <div className="panel-card mb-4" style={{ padding: 24 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2z" stroke="white" strokeWidth="2"/><path d="M12 6v6l4 2" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+          </div>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>Στόχοι — {MONTH_NAMES[month - 1]} {year}</div>
+            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>Συνολικά: {formatNumber(totalAchieved, 2)} / {formatNumber(totalTarget, 2)} · {overallClamped}%</div>
+          </div>
+        </div>
+
+        {/* View toggle */}
+        <div style={{ display: 'inline-flex', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 8, padding: 3, gap: 2 }}>
+          {(['percent', 'table'] as const).map(v => (
+            <button key={v} type="button" onClick={() => setMonthView(v)} style={{
+              padding: '5px 12px', borderRadius: 6, fontSize: '0.78rem', fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: monthView === v ? 'rgba(124,58,237,0.35)' : 'transparent',
+              color: monthView === v ? '#c4b5fd' : 'rgba(255,255,255,0.4)',
+              transition: 'all 120ms',
+            }}>
+              {v === 'percent' ? 'Μπάρες' : 'Πίνακας'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overall progress bar */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: `${overallClamped}%`, background: 'linear-gradient(90deg,#7c3aed,#ff6b8a)', borderRadius: 999, transition: 'width 500ms ease' }} />
+        </div>
       </div>
 
       {monthView === 'percent' ? (
-        <div className="stats-panel" aria-label="Ποσοστά επιτυχίας ανά κατηγορία">
-          <div>
-            {progress.map(row => {
-              const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
-              const pctClamped = Math.max(0, Math.min(100, pct))
-              return (
-                <div
-                  key={row.category}
-                  className="stat-row"
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => setDrillCategory(row.category)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDrillCategory(row.category) }}
-                >
-                  <div className="stat-donut">
-                    <svg width="56" height="56" viewBox="0 0 36 36" className="donut-shadow" aria-hidden>
-                      <circle className="donut-bg" cx="18" cy="18" r="15.9155" fill="none" strokeWidth="3" />
-                      <circle
-                        className="donut-fg"
-                        cx="18" cy="18" r="15.9155"
-                        fill="none" strokeWidth="3" strokeLinecap="round"
-                        strokeDasharray={`${pctClamped} ${100 - pctClamped}`}
-                        transform="rotate(-90 18 18)"
-                      />
-                      <text x="18" y="20" textAnchor="middle" fontSize="6.5" fill="#fff">{pctClamped}%</text>
-                    </svg>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {progress.map((row, idx) => {
+            const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
+            const pctClamped = Math.max(0, Math.min(100, pct))
+            const color = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+            return (
+              <div
+                key={row.category}
+                role="button"
+                tabIndex={0}
+                onClick={() => setDrillCategory(row.category)}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') setDrillCategory(row.category) }}
+                style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 10, cursor: 'pointer', transition: 'background 120ms' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.045)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.02)')}
+              >
+                {/* Donut */}
+                <svg width="48" height="48" viewBox="0 0 36 36" aria-hidden style={{ flexShrink: 0 }}>
+                  <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+                  <circle
+                    cx="18" cy="18" r="15.9155"
+                    fill="none" stroke={color} strokeWidth="3" strokeLinecap="round"
+                    strokeDasharray={`${pctClamped} ${100 - pctClamped}`}
+                    transform="rotate(-90 18 18)"
+                    style={{ transition: 'stroke-dasharray 600ms ease' }}
+                  />
+                  <text x="18" y="21" textAnchor="middle" fontSize="6" fill={color} fontWeight="bold">{pctClamped}%</text>
+                </svg>
+
+                {/* Details */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.category}</div>
+                  <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pctClamped}%`, background: color, borderRadius: 999, transition: 'width 600ms ease' }} />
                   </div>
-                  <div className="stat-content">
-                    <div className="stat-label">{row.category}</div>
-                    <div className="stat-sub">{formatNumber(row.achieved || 0, 2)} / {formatNumber(row.target || 0, 2)} ({pctClamped}%)</div>
-                    <div className="stat-bar" role="progressbar" aria-valuenow={pctClamped} aria-valuemin={0} aria-valuemax={100}>
-                      <div className="fill" style={{ width: `${pctClamped}%` }} />
-                    </div>
+                  <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.38)', marginTop: 4 }}>
+                    {formatNumber(row.achieved, 2)} / {formatNumber(row.target, 2)}
                   </div>
-                  <div className="stat-percent">{pctClamped}%</div>
                 </div>
-              )
-            })}
-          </div>
-          <div className="muted text-xs" style={{ marginTop: 10 }}>Tip: πάτα σε κατηγορία για drill-down εγγραφές.</div>
+
+                <div style={{ fontSize: '1.1rem', fontWeight: 900, color, flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{pctClamped}%</div>
+              </div>
+            )
+          })}
+          <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', marginTop: 4, textAlign: 'right' }}>Πάτα σε κατηγορία για αναλυτικές εγγραφές</div>
         </div>
       ) : (
-        <table className="stats-table">
-          <thead>
-            <tr className="muted text-xs" style={{ textAlign: 'left' }}>
-              <th style={{ padding: '8px 12px' }}>Κατηγορία</th>
-              <th style={{ padding: '8px 12px' }}>Στόχος</th>
-              <th style={{ padding: '8px 12px' }}>Επίτευξη</th>
-            </tr>
-          </thead>
-          <tbody>
-            {progress.map(row => (
-              <tr key={row.category} style={{ cursor: 'pointer' }} onClick={() => setDrillCategory(row.category)}>
-                <td style={{ padding: '8px 12px', textDecoration: 'underline' }}>{row.category}</td>
-                <td style={{ padding: '8px 12px' }}>{formatNumber(row.target, 2)}</td>
-                <td style={{ padding: '8px 12px' }}>{formatNumber(row.achieved, 2)}</td>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['Κατηγορία','Στόχος','Επίτευξη','%'].map((h, i) => (
+                  <th key={i} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {progress.map((row, idx) => {
+                const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
+                const pctClamped = Math.max(0, Math.min(100, pct))
+                const color = ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                return (
+                  <tr key={row.category} onClick={() => setDrillCategory(row.category)} style={{ cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
+                  >
+                    <td style={{ padding: '10px 12px', fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{row.category}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>{formatNumber(row.target, 2)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>{formatNumber(row.achieved, 2)}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '0.9rem', fontWeight: 700, color }}>{pctClamped}%</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {drillCategory && (
         <Modal isOpen={!!drillCategory} onClose={() => setDrillCategory(null)}>
-          <div style={{ maxWidth: 600 }}>
-            <h3 className="font-semibold mb-2">Εγγραφές για "{drillCategory}" ({month}/{year})</h3>
+          <div style={{ maxWidth: 620 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 7, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'rgba(255,255,255,0.9)' }}>
+                {drillCategory} · {MONTH_NAMES[month - 1]} {year}
+              </div>
+            </div>
             {drillEntries.length === 0 ? (
-              <div className="muted">Δεν βρέθηκαν εγγραφές.</div>
+              <div style={{ color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '20px 0' }}>Δεν βρέθηκαν εγγραφές.</div>
             ) : (
-              <table className="stats-table">
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr className="muted text-xs" style={{ textAlign: 'left' }}>
-                    <th style={{ padding: '8px 12px' }}>Ημερομηνία</th>
-                    <th style={{ padding: '8px 12px' }}>Πελάτης</th>
-                    <th style={{ padding: '8px 12px' }}>Παραγγελία</th>
-                    <th style={{ padding: '8px 12px' }}>Ποσότητα</th>
+                  <tr>
+                    {['Ημερομηνία','Πελάτης','Παραγγελία','Ποσότητα'].map((h, i) => (
+                      <th key={i} style={{ padding: '7px 10px', textAlign: 'left', fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>{h}</th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {drillEntries.map(e => (
-                    <tr key={e.id}>
-                      <td style={{ padding: '8px 12px' }}>{e.date ? e.date.slice(0, 10) : ''}</td>
-                      <td style={{ padding: '8px 12px' }}>{e.customerName || ''}</td>
-                      <td style={{ padding: '8px 12px' }}>{e.orderNumber || ''}</td>
-                      <td style={{ padding: '8px 12px' }}>{formatNumber(e.points || 0, 2)}</td>
+                    <tr key={e.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                      <td style={{ padding: '8px 10px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)' }}>{e.date ? e.date.slice(0, 10) : ''}</td>
+                      <td style={{ padding: '8px 10px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)' }}>{e.customerName || '—'}</td>
+                      <td style={{ padding: '8px 10px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', fontFamily: 'monospace' }}>{e.orderNumber || '—'}</td>
+                      <td style={{ padding: '8px 10px', fontSize: '0.88rem', fontWeight: 700, color: '#c4b5fd', textAlign: 'right' }}>{formatNumber(e.points || 0, 2)}</td>
                     </tr>
                   ))}
                 </tbody>
