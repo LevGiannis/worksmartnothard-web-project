@@ -54,6 +54,15 @@ const quickLinks = [
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="white" strokeWidth="2"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
     ),
   },
+  {
+    to: '/manager',
+    label: 'Manager',
+    hint: 'Διαχείριση ομάδας και αναφορές',
+    gradient: 'linear-gradient(135deg,#0891b2,#0e7490)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="white" strokeWidth="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" stroke="white" strokeWidth="2" strokeLinecap="round"/><path d="M12 12v4M10 14h4" stroke="white" strokeWidth="2" strokeLinecap="round"/></svg>
+    ),
+  },
 ]
 
 export default function MainPage() {

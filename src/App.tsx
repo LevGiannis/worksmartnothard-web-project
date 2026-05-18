@@ -8,6 +8,7 @@ import AddGoalPage from './pages/AddGoalPage'
 import StatsPage from './pages/StatsPage'
 import ProfilePage from './pages/ProfilePage'
 import PendingPage from './pages/PendingPage'
+import ManagerPage from './pages/ManagerPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useScheduledBackup } from './hooks/useScheduledBackup'
 import BackupCountdown from './components/BackupCountdown'
@@ -28,6 +29,7 @@ export default function App() {
           <Route path="/stats" element={<ErrorBoundary><StatsPage /></ErrorBoundary>} />
           <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
           <Route path="/pending" element={<ErrorBoundary><PendingPage /></ErrorBoundary>} />
+          <Route path="/manager" element={<ErrorBoundary><ManagerPage /></ErrorBoundary>} />
         </Routes>
       </main>
     </div>
