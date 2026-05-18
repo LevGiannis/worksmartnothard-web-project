@@ -99,8 +99,10 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           }
 
           user = user.trim()
+          const s = status.trim()
+          if (s.toUpperCase().includes('ΑΚΥΡΩΜΕΝ')) continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: status.trim(), customer: customer.trim(), requestId: requestId.trim() })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim() })
           }
         }
 
