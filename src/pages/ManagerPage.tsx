@@ -329,38 +329,46 @@ export default function ManagerPage() {
             {/* ── Daily view ── */}
             {tab === 'daily' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {/* Date filter */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <button
-                    onClick={() => {
-                      const idx = sortedDates.indexOf(selectedDate)
-                      const next = idx < sortedDates.length - 1 ? sortedDates[idx + 1] : sortedDates[sortedDates.length - 1]
-                      setSelectedDate(next)
-                    }}
-                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) === sortedDates.length - 1}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                  >‹</button>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={e => setSelectedDate(e.target.value)}
-                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.88rem', outline: 'none', colorScheme: 'dark' }}
-                  />
-                  <button
-                    onClick={() => {
-                      const idx = sortedDates.indexOf(selectedDate)
-                      const prev = idx > 0 ? sortedDates[idx - 1] : sortedDates[0]
-                      setSelectedDate(prev)
-                    }}
-                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) === 0}
-                    style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                  >›</button>
-                  {selectedDate && (
+
+                {/* Date navigation bar */}
+                <div className="panel-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Ημερομηνία</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1 }}>
                     <button
-                      onClick={() => setSelectedDate('')}
-                      style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem', cursor: 'pointer' }}
-                    >Όλες οι ημέρες</button>
-                  )}
+                      onClick={() => {
+                        const idx = sortedDates.indexOf(selectedDate)
+                        setSelectedDate(idx < sortedDates.length - 1 ? sortedDates[idx + 1] : sortedDates[sortedDates.length - 1])
+                      }}
+                      disabled={!selectedDate || sortedDates.indexOf(selectedDate) === sortedDates.length - 1}
+                      style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, flexShrink: 0, opacity: (!selectedDate || sortedDates.indexOf(selectedDate) === sortedDates.length - 1) ? 0.3 : 1 }}
+                    >‹</button>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={e => setSelectedDate(e.target.value)}
+                      style={{ flex: 1, maxWidth: 200, padding: '7px 14px', borderRadius: 8, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.1)', color: '#fff', fontSize: '0.9rem', outline: 'none', colorScheme: 'dark', cursor: 'pointer' }}
+                    />
+                    <button
+                      onClick={() => {
+                        const idx = sortedDates.indexOf(selectedDate)
+                        setSelectedDate(idx > 0 ? sortedDates[idx - 1] : sortedDates[0])
+                      }}
+                      disabled={!selectedDate || sortedDates.indexOf(selectedDate) === 0}
+                      style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, flexShrink: 0, opacity: (!selectedDate || sortedDates.indexOf(selectedDate) === 0) ? 0.3 : 1 }}
+                    >›</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      onClick={() => setSelectedDate(sortedDates[0] ?? '')}
+                      style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >Τελευταία</button>
+                    {selectedDate && (
+                      <button
+                        onClick={() => setSelectedDate('')}
+                        style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', fontSize: '0.78rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >Όλες</button>
+                    )}
+                  </div>
                 </div>
 
                 {(selectedDate ? sortedDates.filter(dk => dk === selectedDate) : sortedDates).map(dk => {
