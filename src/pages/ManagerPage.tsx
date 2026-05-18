@@ -98,7 +98,8 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             status = String(row[1] ?? '')
             customer = `${row[10] ?? ''} ${row[11] ?? ''}`.trim()
             requestId = String(row[0] ?? '')
-            subCategory = String(row[20] ?? '')
+            const speed = row[31] ? String(row[31]).trim() : ''
+            subCategory = [String(row[20] ?? '').trim(), speed].filter(Boolean).join(' · ')
           }
 
           user = user.trim()
