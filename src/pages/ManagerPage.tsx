@@ -148,6 +148,7 @@ export default function ManagerPage() {
   const [pwError, setPwError] = useState(false)
   const [entries, setEntries] = useState<ParsedEntry[]>([])
   const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
+  const [selectedDate, setSelectedDate] = useState('')
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [userMap, setUserMap] = useState<Record<string, string>>({})
@@ -328,7 +329,41 @@ export default function ManagerPage() {
             {/* ── Daily view ── */}
             {tab === 'daily' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {sortedDates.map(dk => {
+                {/* Date filter */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={() => {
+                      const idx = sortedDates.indexOf(selectedDate)
+                      const next = idx < sortedDates.length - 1 ? sortedDates[idx + 1] : sortedDates[sortedDates.length - 1]
+                      setSelectedDate(next)
+                    }}
+                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) === sortedDates.length - 1}
+                    style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >‹</button>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={e => setSelectedDate(e.target.value)}
+                    style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.88rem', outline: 'none', colorScheme: 'dark' }}
+                  />
+                  <button
+                    onClick={() => {
+                      const idx = sortedDates.indexOf(selectedDate)
+                      const prev = idx > 0 ? sortedDates[idx - 1] : sortedDates[0]
+                      setSelectedDate(prev)
+                    }}
+                    disabled={!selectedDate || sortedDates.indexOf(selectedDate) === 0}
+                    style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  >›</button>
+                  {selectedDate && (
+                    <button
+                      onClick={() => setSelectedDate('')}
+                      style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)', background: 'transparent', color: 'rgba(255,255,255,0.35)', fontSize: '0.8rem', cursor: 'pointer' }}
+                    >Όλες οι ημέρες</button>
+                  )}
+                </div>
+
+                {(selectedDate ? sortedDates.filter(dk => dk === selectedDate) : sortedDates).map(dk => {
                   const byUser = dailyMap.get(dk)!
                   const dateObj = new Date(dk + 'T00:00:00')
                   const totalDay = [...byUser.values()].flat().length
