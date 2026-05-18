@@ -167,7 +167,8 @@ export default function ManagerPage() {
   const [userMap, setUserMap] = useState<Record<string, string>>({})
   const [mapDraft, setMapDraft] = useState<Record<string, string>>({})
   const [mapSaved, setMapSaved] = useState(false)
-  const [monthlyTargets, setMonthlyTargets] = useState<Record<string, Record<Category, number>>>({})
+  type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
+  const [monthlyTargets, setMonthlyTargets] = useState<Record<string, MonthTargets>>({})
 
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
@@ -178,13 +179,19 @@ export default function ManagerPage() {
     }
     const storedTargets = localStorage.getItem(TARGETS_KEY)
     if (storedTargets) {
-      setMonthlyTargets(JSON.parse(storedTargets) as Record<string, Record<Category, number>>)
+      setMonthlyTargets(JSON.parse(storedTargets) as Record<string, MonthTargets>)
     }
   }, [])
 
-  const getTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.[cat] ?? 0
-  const setTarget = (cat: Category, val: number) => {
-    const updated = { ...monthlyTargets, [selectedMonth]: { ...monthlyTargets[selectedMonth], [cat]: val } }
+  const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
+  const getDoneTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.done?.[cat] ?? 0
+  const setRegTarget = (cat: Category, val: number) => {
+    const updated = { ...monthlyTargets, [selectedMonth]: { ...monthlyTargets[selectedMonth], reg: { ...monthlyTargets[selectedMonth]?.reg, [cat]: val } } }
+    setMonthlyTargets(updated)
+    localStorage.setItem(TARGETS_KEY, JSON.stringify(updated))
+  }
+  const setDoneTarget = (cat: Category, val: number) => {
+    const updated = { ...monthlyTargets, [selectedMonth]: { ...monthlyTargets[selectedMonth], done: { ...monthlyTargets[selectedMonth]?.done, [cat]: val } } }
     setMonthlyTargets(updated)
     localStorage.setItem(TARGETS_KEY, JSON.stringify(updated))
   }
@@ -293,6 +300,15 @@ export default function ManagerPage() {
   const monthEntries = viewEntries.filter(e => {
     const d = e.implDate || e.date
     return d ? d.getFullYear() === mYear && d.getMonth() + 1 === mMonth : false
+  })
+  const regMonthEntries = viewEntries.filter(e => {
+    return e.date ? e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth : false
+  })
+  const doneMonthEntries = viewEntries.filter(e => {
+    const d = e.implDate || e.date
+    if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+    const s = e.status.toUpperCase()
+    return s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
   })
 
   return (
@@ -488,16 +504,13 @@ export default function ManagerPage() {
 
             {tab === 'monthly' && !selectedUser && (
               <>
-              {/* Category totals vs targets */}
+              {/* Registrations vs target */}
               <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Στόχοι μαγαζιού — {monthLabel}</div>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Καταχωρήσεις — {monthLabel}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {cats.map(c => {
-                    const actual = monthEntries.filter(e =>
-                      e.category === c &&
-                      (e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
-                    ).length
-                    const target = getTarget(c)
+                    const actual = regMonthEntries.filter(e => e.category === c).length
+                    const target = getRegTarget(c)
                     const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
                     const color = CATEGORY_COLORS[c]
                     return (
@@ -507,21 +520,44 @@ export default function ManagerPage() {
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
                             <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{CATEGORY_LABELS[c]}</span>
                           </div>
-                          {target > 0 && (
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pct >= 100 ? '#10b981' : pct >= 70 ? color : 'rgba(255,255,255,0.4)' }}>{pct}%</span>
-                          )}
+                          {target > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pct >= 100 ? '#10b981' : pct >= 70 ? color : 'rgba(255,255,255,0.4)' }}>{pct}%</span>}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
                           <span style={{ fontSize: '1.6rem', fontWeight: 900, color, lineHeight: 1 }}>{actual}</span>
                           <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>/ στόχος</span>
-                          <input
-                            type="number"
-                            min={0}
-                            value={target || ''}
-                            placeholder="0"
-                            onChange={e => setTarget(c, Math.max(0, parseInt(e.target.value) || 0))}
-                            style={{ width: 54, padding: '3px 8px', borderRadius: 7, border: `1px solid ${color}40`, background: `${color}15`, color: '#fff', fontSize: '0.85rem', fontWeight: 700, outline: 'none', textAlign: 'center' }}
-                          />
+                          <input type="number" min={0} value={target || ''} placeholder="0" onChange={e => setRegTarget(c, Math.max(0, parseInt(e.target.value) || 0))} style={{ width: 54, padding: '3px 8px', borderRadius: 7, border: `1px solid ${color}40`, background: `${color}15`, color: '#fff', fontSize: '0.85rem', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
+                        </div>
+                        <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999, transition: 'width 400ms ease' }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Completions vs target */}
+              <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Ολοκληρωμένα / Συνδεδεμένα — {monthLabel}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                  {cats.map(c => {
+                    const actual = doneMonthEntries.filter(e => e.category === c).length
+                    const target = getDoneTarget(c)
+                    const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
+                    const color = CATEGORY_COLORS[c]
+                    return (
+                      <div key={c} style={{ padding: '14px 16px', borderRadius: 12, background: `${color}10`, border: `1px solid ${color}30` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{CATEGORY_LABELS[c]}</span>
+                          </div>
+                          {target > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pct >= 100 ? '#10b981' : pct >= 70 ? color : 'rgba(255,255,255,0.4)' }}>{pct}%</span>}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
+                          <span style={{ fontSize: '1.6rem', fontWeight: 900, color, lineHeight: 1 }}>{actual}</span>
+                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>/ στόχος</span>
+                          <input type="number" min={0} value={target || ''} placeholder="0" onChange={e => setDoneTarget(c, Math.max(0, parseInt(e.target.value) || 0))} style={{ width: 54, padding: '3px 8px', borderRadius: 7, border: `1px solid ${color}40`, background: `${color}15`, color: '#fff', fontSize: '0.85rem', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
                         </div>
                         <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999, transition: 'width 400ms ease' }} />
