@@ -28,6 +28,7 @@ interface ParsedEntry {
   status: string
   customer: string
   requestId: string
+  subCategory?: string
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -70,7 +71,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = ''
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = ''
 
           if (cat === 'mobile') {
             user = String(row[5] ?? '')
@@ -78,6 +79,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             status = String(row[1] ?? '')
             customer = String(row[3] ?? '')
             requestId = String(row[2] ?? '')
+            subCategory = String(row[4] ?? '')
           } else if (cat === 'prepay') {
             user = String(row[13] ?? '')
             date = toDate(row[5])
@@ -96,13 +98,14 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             status = String(row[1] ?? '')
             customer = `${row[10] ?? ''} ${row[11] ?? ''}`.trim()
             requestId = String(row[0] ?? '')
+            subCategory = String(row[20] ?? '')
           }
 
           user = user.trim()
           const s = status.trim()
           if (s.toUpperCase().includes('ΑΚΥΡΩΜΕΝ')) continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim() })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined })
           }
         }
 
@@ -352,7 +355,7 @@ export default function ManagerPage() {
                             {userEntries.map((e, idx) => (
                               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.025)' }}>
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}{e.subCategory ? <span style={{ fontWeight: 400, color: `${CATEGORY_COLORS[e.category]}aa`, marginLeft: 5 }}>· {e.subCategory}</span> : null}</span>
                                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer}</span>
                                 <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 10, background: `${statusColor(e.status)}20`, color: statusColor(e.status), fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
                               </div>
