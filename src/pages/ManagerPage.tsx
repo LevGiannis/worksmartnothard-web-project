@@ -65,6 +65,9 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
         const cat = detectCategory(headers)
         if (!cat) { resolve([]); return }
 
+        const col = (name: string) => headers.indexOf(name)
+        const get = (row: unknown[], name: string) => { const i = col(name); return i >= 0 ? row[i] : null }
+
         const entries: ParsedEntry[] = []
 
         for (let i = 1; i < rows.length; i++) {
@@ -74,32 +77,33 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = ''
 
           if (cat === 'mobile') {
-            user = String(row[5] ?? '')
-            date = toDate(row[6])
-            status = String(row[1] ?? '')
-            customer = String(row[3] ?? '')
-            requestId = String(row[2] ?? '')
-            subCategory = String(row[4] ?? '')
+            user = String(get(row, 'Όνομα Χρήστη') ?? '')
+            date = toDate(get(row, 'Ημ/νία Αίτησης'))
+            status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
+            customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
+            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
+            subCategory = String(get(row, 'Τύπος Αίτησης') ?? '')
           } else if (cat === 'prepay') {
-            user = String(row[13] ?? '')
-            date = toDate(row[5])
-            status = String(row[11] ?? '')
-            customer = String(row[2] ?? '')
-            requestId = String(row[0] ?? '')
+            user = String(get(row, 'Όνομα Χρήστη') ?? '')
+            date = toDate(get(row, 'Ημερομηνία Δημιουργίας'))
+            status = String(get(row, 'Κατάσταση') ?? '')
+            customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
+            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
           } else if (cat === 'migra') {
-            user = String(row[20] ?? '')
-            date = toDate(row[13])
-            status = String(row[1] ?? '')
-            customer = `${row[3] ?? ''} ${row[4] ?? ''}`.trim()
-            requestId = String(row[0] ?? '')
+            user = String(get(row, 'Κωδ. Χρήστη') ?? '')
+            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
+            customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
+            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
           } else if (cat === 'home') {
-            user = String(row[19] ?? '')
-            date = toDate(row[12])
-            status = String(row[1] ?? '')
-            customer = `${row[10] ?? ''} ${row[11] ?? ''}`.trim()
-            requestId = String(row[0] ?? '')
-            const speed = row[31] ? String(row[31]).trim() : ''
-            subCategory = [String(row[20] ?? '').trim(), speed].filter(Boolean).join(' · ')
+            user = String(get(row, 'Username') ?? '')
+            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
+            customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
+            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
+            const prog = String(get(row, 'Προγραμμά Χρήσης') ?? '').trim()
+            const speed = String(get(row, 'Ταχύτητα') ?? '').trim()
+            subCategory = [prog, speed].filter(Boolean).join(' · ')
           }
 
           user = user.trim()
