@@ -15,7 +15,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
 }
 
 const CATEGORY_COLORS: Record<Category, string> = {
-  mobile: '#ef4444',
+  mobile: '#06b6d4',
   prepay: '#3b82f6',
   migra: '#10b981',
   home: '#f59e0b',
@@ -109,6 +109,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           user = user.trim()
           const s = status.trim()
           if (s.toUpperCase().includes('ΑΚΥΡΩΜΕΝ')) continue
+          if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (user || date) {
             entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined })
           }
@@ -433,7 +434,7 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = entries.filter(e => effectiveName(e.user) === user).length
+                        const total = entries.filter(e => effectiveName(e.user) === user && e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')).length
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <td style={{ padding: '12px 20px' }}>
@@ -452,10 +453,10 @@ export default function ManagerPage() {
                               ).length
                               return (
                                 <td key={c} style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                  {catEntries.length > 0 ? (
+                                  {done > 0 ? (
                                     <div>
-                                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: CATEGORY_COLORS[c] }}>{catEntries.length}</div>
-                                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{done} ✓</div>
+                                      <div style={{ fontWeight: 800, fontSize: '1.1rem', color: CATEGORY_COLORS[c] }}>{done}</div>
+                                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{catEntries.length} σύνολο</div>
                                     </div>
                                   ) : (
                                     <span style={{ color: 'rgba(255,255,255,0.15)' }}>—</span>
