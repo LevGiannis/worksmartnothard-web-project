@@ -29,6 +29,7 @@ interface ParsedEntry {
   customer: string
   requestId: string
   subCategory?: string
+  implDate?: Date | null
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -74,7 +75,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = ''
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -83,18 +84,21 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             subCategory = String(get(row, 'Τύπος Αίτησης') ?? '')
+            implDate = toDate(get(row, 'Ημ/νία Υλοποίησης'))
           } else if (cat === 'prepay') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
             date = toDate(get(row, 'Ημερομηνία Δημιουργίας'))
             status = String(get(row, 'Κατάσταση') ?? '')
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
+            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης'))
           } else if (cat === 'migra') {
             user = String(get(row, 'Κωδ. Χρήστη') ?? '')
             date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
             status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
             customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
+            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης (Από - Έως)'))
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
@@ -104,6 +108,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             const prog = String(get(row, 'Προγραμμά Χρήσης') ?? '').trim()
             const speed = String(get(row, 'Ταχύτητα') ?? '').trim()
             subCategory = [prog, speed].filter(Boolean).join(' · ')
+            implDate = toDate(get(row, 'Ημ/νια Ολοκλήρωσης (Κ5)'))
           }
 
           user = user.trim()
@@ -111,7 +116,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (s.toUpperCase().includes('ΑΚΥΡΩΜΕΝ')) continue
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate })
           }
         }
 
@@ -151,6 +156,10 @@ export default function ManagerPage() {
   const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [userMap, setUserMap] = useState<Record<string, string>>({})
@@ -260,6 +269,17 @@ export default function ManagerPage() {
     byUser.get(name)!.push(e)
   }
   const sortedDates = [...dailyMap.keys()].sort((a, b) => b.localeCompare(a))
+
+  const [mYear, mMonth] = selectedMonth.split('-').map(Number)
+  const monthLabel = new Date(mYear, mMonth - 1, 1).toLocaleDateString('el-GR', { month: 'long', year: 'numeric' })
+  const shiftMonth = (delta: number) => {
+    const d = new Date(mYear, mMonth - 1 + delta, 1)
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`)
+  }
+  const monthEntries = viewEntries.filter(e => {
+    const d = e.implDate || e.date
+    return d ? d.getFullYear() === mYear && d.getMonth() + 1 === mMonth : false
+  })
 
   return (
     <div className="page-content">
@@ -438,6 +458,20 @@ export default function ManagerPage() {
             )}
 
             {/* ── Monthly view ── */}
+            {tab === 'monthly' && (
+              <div className="panel-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Μήνας</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <button onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>‹</button>
+                  <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem', minWidth: 180, textAlign: 'center', textTransform: 'capitalize' }}>{monthLabel}</span>
+                  <button onClick={() => shiftMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>›</button>
+                </div>
+                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
+                  {monthEntries.filter(e => e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')).length} ολοκλ.
+                </span>
+              </div>
+            )}
+
             {tab === 'monthly' && !selectedUser && (
               <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
@@ -453,7 +487,8 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = entries.filter(e => effectiveName(e.user) === user && e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')).length
+                        const total = monthEntries.filter(e => effectiveName(e.user) === user && e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')).length
+                        if (!monthEntries.some(e => effectiveName(e.user) === user)) return null
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
                             <td style={{ padding: '12px 20px' }}>
@@ -465,7 +500,7 @@ export default function ManagerPage() {
                               </div>
                             </td>
                             {cats.map(c => {
-                              const catEntries = entries.filter(e => effectiveName(e.user) === user && e.category === c)
+                              const catEntries = monthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
                               const done = catEntries.filter(e =>
                                 e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
                                 e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
@@ -499,7 +534,7 @@ export default function ManagerPage() {
             {tab === 'monthly' && selectedUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {cats.map(c => {
-                  const catEntries = viewEntries.filter(e => e.category === c)
+                  const catEntries = monthEntries.filter(e => e.category === c)
                   if (!catEntries.length) return null
                   const subGroups = new Map<string, ParsedEntry[]>()
                   for (const e of catEntries) {
