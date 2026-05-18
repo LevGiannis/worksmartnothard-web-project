@@ -150,6 +150,8 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
+
 export default function ManagerPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [pwInput, setPwInput] = useState('')
@@ -167,7 +169,6 @@ export default function ManagerPage() {
   const [userMap, setUserMap] = useState<Record<string, string>>({})
   const [mapDraft, setMapDraft] = useState<Record<string, string>>({})
   const [mapSaved, setMapSaved] = useState(false)
-  type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
   const [monthlyTargets, setMonthlyTargets] = useState<Record<string, MonthTargets>>({})
 
   useEffect(() => {
