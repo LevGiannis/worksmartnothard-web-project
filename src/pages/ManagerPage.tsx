@@ -1,8 +1,9 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import PageHeader from '../components/PageHeader'
 
 const MANAGER_PASSWORD = 'manager123'
+const USER_MAP_KEY = 'ws_manager_user_map'
 
 type Category = 'mobile' | 'prepay' | 'migra' | 'home'
 
@@ -136,9 +137,32 @@ export default function ManagerPage() {
   const [pwInput, setPwInput] = useState('')
   const [pwError, setPwError] = useState(false)
   const [entries, setEntries] = useState<ParsedEntry[]>([])
-  const [tab, setTab] = useState<'daily' | 'monthly'>('daily')
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [userMap, setUserMap] = useState<Record<string, string>>({})
+  const [mapDraft, setMapDraft] = useState<Record<string, string>>({})
+  const [mapSaved, setMapSaved] = useState(false)
+
+  useEffect(() => {
+    const stored = localStorage.getItem(USER_MAP_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored) as Record<string, string>
+      setUserMap(parsed)
+      setMapDraft(parsed)
+    }
+  }, [])
+
+  const saveUserMap = () => {
+    localStorage.setItem(USER_MAP_KEY, JSON.stringify(mapDraft))
+    setUserMap(mapDraft)
+    setMapSaved(true)
+    setTimeout(() => setMapSaved(false), 2000)
+  }
+
+  const effectiveName = (raw: string) => userMap[raw] || raw
+
+  const allRawUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
 
   const handleLogin = () => {
     if (pwInput === MANAGER_PASSWORD) {
@@ -211,14 +235,15 @@ export default function ManagerPage() {
   for (const e of entries) {
     if (!e.date) continue
     const dk = dateKey(e.date)
+    const name = effectiveName(e.user)
     if (!dailyMap.has(dk)) dailyMap.set(dk, new Map())
     const byUser = dailyMap.get(dk)!
-    if (!byUser.has(e.user)) byUser.set(e.user, [])
-    byUser.get(e.user)!.push(e)
+    if (!byUser.has(name)) byUser.set(name, [])
+    byUser.get(name)!.push(e)
   }
   const sortedDates = [...dailyMap.keys()].sort((a, b) => b.localeCompare(a))
 
-  const allUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
+  const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
   const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
 
   return (
@@ -279,13 +304,13 @@ export default function ManagerPage() {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
-              {(['daily', 'monthly'] as const).map(t => (
+              {(['daily', 'monthly', 'users'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   style={{ padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', background: tab === t ? 'rgba(8,145,178,0.3)' : 'transparent', color: tab === t ? '#22d3ee' : 'rgba(255,255,255,0.4)', transition: 'all 150ms' }}
                 >
-                  {t === 'daily' ? 'Ημερήσια' : 'Μηνιαία'}
+                  {t === 'daily' ? 'Ημερήσια' : t === 'monthly' ? 'Μηνιαία' : 'Χρήστες'}
                 </button>
               ))}
             </div>
@@ -355,7 +380,7 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = entries.filter(e => e.user === user).length
+                        const total = entries.filter(e => effectiveName(e.user) === user).length
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                             <td style={{ padding: '12px 20px' }}>
@@ -367,7 +392,7 @@ export default function ManagerPage() {
                               </div>
                             </td>
                             {cats.map(c => {
-                              const catEntries = entries.filter(e => e.user === user && e.category === c)
+                              const catEntries = entries.filter(e => effectiveName(e.user) === user && e.category === c)
                               const done = catEntries.filter(e =>
                                 e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
                                 e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
@@ -394,6 +419,52 @@ export default function ManagerPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+            {/* ── Users mapping tab ── */}
+            {tab === 'users' && (
+              <div className="panel-card" style={{ padding: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.95rem', marginBottom: 4 }}>Αντιστοίχιση χρηστών</div>
+                    <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)' }}>Ορίσου ποιο αναγνωριστικό αντιστοιχεί σε ποιον χρήστη. Αποθηκεύεται αυτόματα.</div>
+                  </div>
+                  <button
+                    onClick={saveUserMap}
+                    style={{ padding: '9px 20px', borderRadius: 9, background: mapSaved ? 'rgba(16,185,129,0.2)' : 'rgba(8,145,178,0.2)', border: `1px solid ${mapSaved ? '#10b981' : 'rgba(8,145,178,0.4)'}`, color: mapSaved ? '#10b981' : '#22d3ee', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', transition: 'all 200ms', whiteSpace: 'nowrap' }}
+                  >
+                    {mapSaved ? '✓ Αποθηκεύτηκε' : 'Αποθήκευση'}
+                  </button>
+                </div>
+
+                {allRawUsers.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.88rem', padding: '20px 0' }}>
+                    Ανέβασε αρχεία πρώτα για να εμφανιστούν οι χρήστες
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 12, padding: '0 4px', marginBottom: 4 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Αναγνωριστικό στο αρχείο</div>
+                      <div />
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Εμφανιζόμενο όνομα</div>
+                    </div>
+                    {allRawUsers.map(raw => (
+                      <div key={raw} style={{ display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 12, alignItems: 'center' }}>
+                        <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', fontSize: '0.85rem', color: 'rgba(255,255,255,0.55)', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {raw}
+                        </div>
+                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.2)', fontSize: '1rem' }}>→</div>
+                        <input
+                          type="text"
+                          placeholder={raw}
+                          value={mapDraft[raw] ?? ''}
+                          onChange={e => setMapDraft(prev => ({ ...prev, [raw]: e.target.value }))}
+                          style={{ padding: '10px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.85rem', outline: 'none' }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </>
