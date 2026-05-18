@@ -150,6 +150,7 @@ export default function ManagerPage() {
   const [entries, setEntries] = useState<ParsedEntry[]>([])
   const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
+  const [selectedUser, setSelectedUser] = useState('')
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const [userMap, setUserMap] = useState<Record<string, string>>({})
@@ -243,8 +244,13 @@ export default function ManagerPage() {
   }
 
   // ── Compute views ──
+  const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
+  const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
+
+  const viewEntries = selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries
+
   const dailyMap = new Map<string, Map<string, ParsedEntry[]>>()
-  for (const e of entries) {
+  for (const e of viewEntries) {
     if (!e.date) continue
     const dk = dateKey(e.date)
     const name = effectiveName(e.user)
@@ -254,9 +260,6 @@ export default function ManagerPage() {
     byUser.get(name)!.push(e)
   }
   const sortedDates = [...dailyMap.keys()].sort((a, b) => b.localeCompare(a))
-
-  const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
-  const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
 
   return (
     <div className="page-content">
@@ -300,7 +303,7 @@ export default function ManagerPage() {
         ) : (
           <>
             {/* Category pills */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
               {cats.map(c => {
                 const count = entries.filter(e => e.category === c).length
                 if (!count) return null
@@ -312,6 +315,22 @@ export default function ManagerPage() {
                   </div>
                 )
               })}
+            </div>
+
+            {/* User selector */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginRight: 4 }}>Χρήστης</span>
+              <button
+                onClick={() => setSelectedUser('')}
+                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${!selectedUser ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)'}`, background: !selectedUser ? 'rgba(255,255,255,0.08)' : 'transparent', color: !selectedUser ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+              >Όλοι</button>
+              {allUsers.map(u => (
+                <button
+                  key={u}
+                  onClick={() => setSelectedUser(u === selectedUser ? '' : u)}
+                  style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${selectedUser === u ? '#0891b2' : 'rgba(255,255,255,0.08)'}`, background: selectedUser === u ? 'rgba(8,145,178,0.2)' : 'transparent', color: selectedUser === u ? '#22d3ee' : 'rgba(255,255,255,0.5)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+                >{u}</button>
+              ))}
             </div>
 
             {/* Tabs */}
@@ -419,7 +438,7 @@ export default function ManagerPage() {
             )}
 
             {/* ── Monthly view ── */}
-            {tab === 'monthly' && (
+            {tab === 'monthly' && !selectedUser && (
               <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -436,7 +455,7 @@ export default function ManagerPage() {
                       {allUsers.map(user => {
                         const total = entries.filter(e => effectiveName(e.user) === user && e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')).length
                         return (
-                          <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
                             <td style={{ padding: '12px 20px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <div style={{ width: 30, height: 30, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
@@ -473,6 +492,55 @@ export default function ManagerPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* ── Monthly view — single user detail ── */}
+            {tab === 'monthly' && selectedUser && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {cats.map(c => {
+                  const catEntries = viewEntries.filter(e => e.category === c)
+                  if (!catEntries.length) return null
+                  const subGroups = new Map<string, ParsedEntry[]>()
+                  for (const e of catEntries) {
+                    const key = e.subCategory || '—'
+                    if (!subGroups.has(key)) subGroups.set(key, [])
+                    subGroups.get(key)!.push(e)
+                  }
+                  const totalDone = catEntries.filter(e =>
+                    e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
+                    e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+                  ).length
+                  return (
+                    <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
+                      <div style={{ padding: '13px 20px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: CATEGORY_COLORS[c] }} />
+                          <span style={{ fontWeight: 700, color: CATEGORY_COLORS[c], fontSize: '0.9rem' }}>{CATEGORY_LABELS[c]}</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: 14 }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: CATEGORY_COLORS[c] }}>{totalDone} ολοκλ.</span>
+                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{catEntries.length} σύνολο</span>
+                        </div>
+                      </div>
+                      <div style={{ padding: '10px 0' }}>
+                        {[...subGroups.entries()].map(([sub, subEntries]) => {
+                          const subDone = subEntries.filter(e =>
+                            e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
+                            e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+                          ).length
+                          return (
+                            <div key={sub} style={{ display: 'flex', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12 }}>
+                              <span style={{ flex: 1, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{sub}</span>
+                              <span style={{ fontWeight: 800, fontSize: '1rem', color: CATEGORY_COLORS[c], minWidth: 28, textAlign: 'right' }}>{subDone}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', minWidth: 60, textAlign: 'right' }}>{subEntries.length} σύνολο</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
             {/* ── Users mapping tab ── */}
