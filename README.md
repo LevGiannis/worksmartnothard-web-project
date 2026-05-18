@@ -1,112 +1,174 @@
-# WorkSmartNotHard — Web + Portable (Double‑Click)
+# WorkSmartNotHard
 
-React/Vite SPA που τρέχει:
+React/Vite SPA για παρακολούθηση εργασίας, στόχων και απόδοσης. Σχεδιασμένο για επαγγελματίες του κλάδου τηλεπικοινωνιών.
 
+Τρέχει:
 - ως **Web app** (π.χ. GitHub Pages) με αποθήκευση στο `localStorage`
 - ως **Portable offline** build που ανοίγει με **διπλό κλικ** στο `portable/index.html` (χωρίς server)
 
-## Γρήγορη εικόνα
+---
 
-- **Web mode**: δεδομένα ανά browser/profile (χωρίς sync)
-- **Portable mode**: ίδιο app σε `file://` (σε μερικά εταιρικά/locked‑down περιβάλλοντα το storage μπορεί να καθαρίζεται)
-- **Routing**: Web `BrowserRouter` / Portable `HashRouter` (auto‑detect)
+## Λειτουργίες
+
+- **Καταχώρηση εργασιών** — Εγγραφή ημερήσιων εργασιών με κατηγορία, στοιχεία πελάτη (όνομα, τηλέφωνο, ΑΦΜ), αρ. παραγγελίας και πόντους
+- **Στόχοι μήνα** — Ορισμός μηνιαίων targets ανά κατηγορία με visual progress bars
+- **Dashboard** — KPIs, πρόοδος μήνα, γρήγορες συνδέσεις
+- **Στατιστικά & Export** — Φιλτράρισμα ανά ημέρα/μήνα/κατηγορία/πελάτη · εξαγωγή σε Excel με ελληνική μορφοποίηση
+- **Εκκρεμότητες** — Παρακολούθηση follow-ups, επισκευών, παραγγελιών εξοπλισμού με badges επείγοντος
+- **Tasks** — Απλή λίστα υπενθυμίσεων/εργασιών ομάδας
+- **Προφίλ** — Αποθήκευση στοιχείων χρήστη, διαπιστευτηρίων καταστήματος, backup/restore
+- **Dark mode** — Αυτόματη ανίχνευση system preference + manual toggle
+- **Αυτόματο backup** — Trigger σε τακτά χρονικά διαστήματα με επιλογή φακέλου (File System Access API)
+
+---
+
+## Tech Stack
+
+| Κατηγορία | Τεχνολογία |
+|-----------|------------|
+| Frontend | React 18, TypeScript 5.2 |
+| Build | Vite 5 |
+| Styling | Tailwind CSS 3.4 |
+| Routing | React Router DOM 6 |
+| Export | xlsx 0.18 |
+| Tests | Vitest 2 |
+| Icons | @heroicons/react |
+
+---
+
+## Δομή project
+
+```
+src/
+├── pages/          # Σελίδες app (Dashboard, AddEntry, Stats, Pendings, Tasks, Profile, Manager…)
+├── components/     # Επαναχρησιμοποιούμενα UI components (Button, Card, Modal, MonthProgress…)
+├── hooks/          # Custom hooks (useProgress, useEntryForm, useScheduledBackup)
+├── services/       # storage.ts — data layer (localStorage → in-memory fallback)
+├── utils/          # Βοηθητικές συναρτήσεις (exportExcel, validateEntry, formatNumber…)
+└── types/          # TypeScript type definitions
+```
+
+---
 
 ## Προαπαιτούμενα (development)
 
 - Node.js 18+ (προτείνεται 20)
 - npm 9+
 
-## Τοπικό development (Web)
+---
+
+## Εκτέλεση & Build
+
+### Τοπικό development
 
 ```bash
 npm ci
 npm run dev
+# → http://localhost:5173
 ```
 
-## Build (Web)
+### Web build (GitHub Pages)
 
 ```bash
 npm run build
 npm run preview
 ```
 
-## Portable Offline (διπλό κλικ)
+### Portable Offline (διπλό κλικ)
 
-Φτιάχνει self‑contained folder για άνοιγμα με διπλό κλικ (χωρίς server):
+Self-contained folder χωρίς server:
 
 ```bash
 npm ci
 npm run build:portable
+# → portable/index.html
 ```
 
-Μετά άνοιξε:
+### Tests
 
-- `portable/index.html`
+```bash
+npm test
+```
 
-### Portable troubleshooting
+---
 
-- Αν δεις κενή σελίδα, θα εμφανιστεί **Portable Debug** panel.
-- Πάτα **Download log** και δες/στείλε το `worksmart-portable-log.txt`.
+## Δεδομένα & Αποθήκευση
 
-DevTools shortcuts:
+Το app είναι **fully offline** — δεν υπάρχει backend.
 
-- Windows: `Ctrl+Shift+I` (ή `Fn+F12` σε laptops)
-- macOS: `Cmd+Option+I`
+| Κλειδί localStorage | Περιεχόμενο |
+|--------------------|-------------|
+| `ws_entries` | Ημερήσιες εγγραφές εργασίας |
+| `ws_goals` | Μηνιαίοι στόχοι ανά κατηγορία |
+| `ws_tasks` | Tasks λίστα |
+| `ws_pendings` | Εκκρεμότητες |
+| `ws_user_*` | Στοιχεία προφίλ |
 
-### Portable download (zip) από GitHub
-
-GitHub → **Actions** → **Build Portable (Double-Click Index)** → artifact `WorkSmartNotHard-portable`.
-
-## Δεδομένα & Backup
-
-### Πού αποθηκεύονται τα δεδομένα;
-
-- Web/Portable: `localStorage` (δες `src/services/storage.ts`)
-
-Σε `file://` ή σε locked‑down browsers, το app μπορεί να δουλέψει **χωρίς μόνιμη αποθήκευση** (fallback σε in‑memory storage). Για πιο σταθερή συμπεριφορά:
-
-- Πήγαινε **Προφίλ** → ζήτησε **Μόνιμη αποθήκευση** (όπου υποστηρίζεται)
+Σε `file://` ή σε locked-down browsers, το app χρησιμοποιεί **in-memory fallback**. Για μόνιμη αποθήκευση: **Προφίλ → Μόνιμη αποθήκευση**.
 
 ### Export / Import
 
 Από τη σελίδα **Προφίλ**:
 
-- **Export**: κατεβάζει αρχείο `worksmart-backup-YYYY-MM-DDTHH-MM-SS.json`
-- **Import**: εισάγει backup και κάνει refresh
+- **Export**: `worksmart-backup-YYYY-MM-DDTHH-MM-SS.json`
+- **Import**: φόρτωση backup + refresh
 
-Το backup είναι σε format:
-
-- `format: "worksmart-backup"`
-- `version: 1`
-- `data`: raw JSON strings για τα app keys (entries/goals/tasks/pendings + profile/suggestions)
+Μορφή backup:
+```json
+{
+  "format": "worksmart-backup",
+  "version": 1,
+  "createdAt": "ISO timestamp",
+  "data": { "ws_entries": "...", "ws_goals": "..." }
+}
+```
 
 ### Demo δεδομένα
 
-Το [demo.json](demo.json) είναι έτοιμο **importable backup** που γεμίζει demo entries (χωρίς να πειράζει profile/suggestions).
+Το [demo.json](demo.json) είναι έτοιμο importable backup με δείγματα εγγραφών.
 
-## GitHub Pages
+---
 
-Το deploy γίνεται με workflow:
+## Deployment
 
-- `/.github/workflows/deploy-pages.yml` (τρέχει σε push στο `main`)
+### GitHub Pages
 
-Σημείωση: το base path για Pages είναι hardcoded στο `vite.config.ts` (`PAGES_BASE`). Αν αλλάξεις όνομα repo, ενημέρωσε αυτό το path.
+Αυτόματο deploy με κάθε push στο `main`:
 
-## Workflows
+```
+.github/workflows/deploy-pages.yml
+```
 
-- `/.github/workflows/deploy-pages.yml`: deploy στο GitHub Pages (`main`)
-- `/.github/workflows/build-portable.yml`: build portable artifact (`main` + manual)
+> Το base path (`PAGES_BASE`) είναι hardcoded στο `vite.config.ts`. Αν αλλάξει το όνομα του repo, ενημέρωσε αυτή την τιμή.
+
+### Portable artifact (GitHub Actions)
+
+```
+.github/workflows/build-portable.yml
+```
+
+GitHub → **Actions** → **Build Portable** → artifact `WorkSmartNotHard-portable`
+
+---
 
 ## Troubleshooting
 
-### Dev: “vite: command not found”
-
-Λείπουν dependencies:
+### "vite: command not found"
 
 ```bash
 npm ci
 ```
 
+### Κενή σελίδα σε Portable
+
+Εμφανίζεται **Portable Debug** panel. Πάτα **Download log** και δες το `worksmart-portable-log.txt`.
+
+DevTools:
+- Windows: `Ctrl+Shift+I` / `F12`
+- macOS: `Cmd+Option+I`
+
+---
+
 ## Audit
 
-Δες [AUDIT_REPORT.md](AUDIT_REPORT.md) για συνοπτικό έλεγχο (τι υποστηρίζεται, builds, γνωστά θέματα, προτάσεις).
+Δες [AUDIT_REPORT.md](AUDIT_REPORT.md) για τεχνικό έλεγχο (supported features, builds, γνωστά θέματα, προτάσεις).
