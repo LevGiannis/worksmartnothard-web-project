@@ -701,19 +701,10 @@ export default function ManagerPage() {
                   const catDoneEntries = doneMonthEntries.filter(e => e.category === c)
                   const catRegEntries = regMonthEntries.filter(e => e.category === c)
                   if (!catDoneEntries.length && !catRegEntries.length) return null
-                  const subRegCounts = new Map<string, number>()
-                  for (const e of catRegEntries) {
-                    const key = e.subCategory || '—'
-                    subRegCounts.set(key, (subRegCounts.get(key) ?? 0) + 1)
-                  }
-                  const subDoneCounts = new Map<string, number>()
-                  for (const e of catDoneEntries) {
-                    const key = e.subCategory || '—'
-                    subDoneCounts.set(key, (subDoneCounts.get(key) ?? 0) + 1)
-                  }
-                  const allSubCats = [...new Set([...subRegCounts.keys(), ...subDoneCounts.keys()])]
                   const totalDone = catDoneEntries.length
                   const totalReg = catRegEntries.length
+                  const doneIds = new Set(catDoneEntries.map(e => e.requestId).filter(Boolean))
+                  const regOnlyEntries = catRegEntries.filter(e => !e.requestId || !doneIds.has(e.requestId))
                   return (
                     <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '13px 20px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -726,18 +717,23 @@ export default function ManagerPage() {
                           <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{totalReg} σύνολο</span>
                         </div>
                       </div>
-                      <div style={{ padding: '10px 0' }}>
-                        {allSubCats.map(sub => {
-                          const subDone = subDoneCounts.get(sub) ?? 0
-                          const subReg = subRegCounts.get(sub) ?? 0
-                          return (
-                            <div key={sub} style={{ display: 'flex', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12 }}>
-                              <span style={{ flex: 1, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{sub}</span>
-                              <span style={{ fontWeight: 800, fontSize: '1rem', color: CATEGORY_COLORS[c], minWidth: 28, textAlign: 'right' }}>{subDone}</span>
-                              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', minWidth: 60, textAlign: 'right' }}>{subReg} σύνολο</span>
-                            </div>
-                          )
-                        })}
+                      <div style={{ padding: '6px 0' }}>
+                        {catDoneEntries.map((e, idx) => (
+                          <div key={`done-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[c], flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                            {e.subCategory && <span style={{ fontSize: '0.72rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                          </div>
+                        ))}
+                        {regOnlyEntries.map((e, idx) => (
+                          <div key={`reg-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10, opacity: 0.55 }}>
+                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.6)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                            {e.subCategory && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )
