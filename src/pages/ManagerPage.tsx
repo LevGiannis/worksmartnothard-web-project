@@ -505,6 +505,7 @@ export default function ManagerPage() {
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
                                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}{e.subCategory ? <span style={{ fontWeight: 400, color: `${CATEGORY_COLORS[e.category]}aa`, marginLeft: 5 }}>· {e.subCategory}</span> : null}</span>
                                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer}</span>
+                                {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'monospace' }}>{e.requestId}</span>}
                                 <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 10, background: `${statusColor(e.status)}20`, color: statusColor(e.status), fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
                               </div>
                             ))}
