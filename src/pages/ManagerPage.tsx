@@ -332,6 +332,15 @@ export default function ManagerPage() {
     return isMobileCountable(e) && isDone(e)
   })
 
+  const mobilePending = viewEntries.filter(e => e.category === 'mobile' && e.status.toUpperCase().includes('ΠΡΟΕΓΚΡΙΣΗ'))
+  const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+  const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+  const pendingByUser = (arr: ParsedEntry[]): [string, number][] => {
+    const m = new Map<string, number>()
+    for (const e of arr) { const u = effectiveName(e.user); m.set(u, (m.get(u) ?? 0) + 1) }
+    return [...m.entries()].sort((a, b) => b[1] - a[1])
+  }
+
   return (
     <div className="page-content">
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
@@ -588,6 +597,41 @@ export default function ManagerPage() {
                   })}
                 </div>
               </div>
+
+              {/* Pending / Under implementation panel */}
+              {(mobilePending.length > 0 || homePending.length > 0 || migraPending.length > 0) && (
+                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 }}>Σε εκκρεμότητα</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {([
+                      { label: 'Mobile — Προέγκριση', entries: mobilePending, color: CATEGORY_COLORS.mobile },
+                      { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home },
+                      { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra },
+                    ] as const).map(({ label, entries: pe, color }) => {
+                      if (!pe.length) return null
+                      const byUser = pendingByUser(pe)
+                      return (
+                        <div key={label}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{pe.length} σύνολο</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
+                            {byUser.map(([user, count]) => (
+                              <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
