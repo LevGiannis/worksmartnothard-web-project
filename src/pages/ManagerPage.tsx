@@ -701,6 +701,51 @@ export default function ManagerPage() {
                   </table>
                 </div>
               </div>
+
+              {/* Per-user entry breakdown */}
+              {allUsers.map(user => {
+                const userDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user)
+                const userReg = regMonthEntries.filter(e => effectiveName(e.user) === user)
+                if (!userDone.length && !userReg.length) return null
+                const regOnlyIds = new Set(userDone.map(e => e.requestId).filter(Boolean))
+                const regOnly = userReg.filter(e => !e.requestId || !regOnlyIds.has(e.requestId))
+                return (
+                  <div key={user} className="panel-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 4 }}>
+                    <div style={{ padding: '11px 20px', background: 'rgba(124,58,237,0.12)', borderBottom: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                          {user.charAt(0).toUpperCase()}
+                        </div>
+                        <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>{user}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 14 }}>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#a78bfa' }}>{userDone.length} ολοκλ.</span>
+                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{userReg.length} σύνολο</span>
+                      </div>
+                    </div>
+                    <div style={{ padding: '6px 0' }}>
+                      {userDone.map((e, idx) => (
+                        <div key={`d-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
+                          <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                          {e.subCategory && <span style={{ fontSize: '0.7rem', color: `${CATEGORY_COLORS[e.category]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                          {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                        </div>
+                      ))}
+                      {regOnly.map((e, idx) => (
+                        <div key={`r-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10, opacity: 0.45 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
+                          <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                          {e.subCategory && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{e.subCategory}</span>}
+                          {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
               </>
             )}
 
