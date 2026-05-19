@@ -100,6 +100,10 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης (Από - Έως)'))
+            const speedBefore = String(get(row, 'Ταχύτητα πριν το Retention') ?? '')
+            const speedAfter = String(get(row, 'Επιλεγμένη Ταχύτητα') ?? '')
+            if (!speedAfter.toUpperCase().includes('FTTH') || speedBefore.toUpperCase().includes('FTTH')) continue
+            subCategory = speedAfter.trim()
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
@@ -143,7 +147,7 @@ function isMobileCountable(e: ParsedEntry): boolean {
 function isDone(e: ParsedEntry): boolean {
   const s = e.status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')) return true
-  if (e.category === 'home' && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
+  if ((e.category === 'home' || e.category === 'migra') && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
   return false
 }
 
@@ -323,7 +327,7 @@ export default function ManagerPage() {
     return isMobileCountable(e)
   })
   const doneMonthEntries = viewEntries.filter(e => {
-    const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
+    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
     if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
     return isMobileCountable(e) && isDone(e)
   })
