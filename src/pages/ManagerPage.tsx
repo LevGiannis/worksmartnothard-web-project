@@ -355,6 +355,12 @@ export default function ManagerPage() {
   const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
   const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+  const homeDocIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
+    .filter(e => {
+      if (e.category !== 'home') return false
+      const s = e.status.toUpperCase()
+      return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ')
+    })
   const pendingByUser = (arr: ParsedEntry[]): [string, number][] => {
     const m = new Map<string, number>()
     for (const e of arr) { const u = effectiveName(e.user); m.set(u, (m.get(u) ?? 0) + 1) }
@@ -691,6 +697,29 @@ export default function ManagerPage() {
                         </div>
                       )
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* Home doc issues panel */}
+              {homeDocIssues.length > 0 && (
+                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.home, flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 1.2 }}>Vodafone Home — Δικαιολογητικά</span>
+                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{homeDocIssues.length} σύνολο</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {homeDocIssues.map((e, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, background: `${CATEGORY_COLORS.home}0d`, border: `1px solid ${CATEGORY_COLORS.home}25` }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{effectiveName(e.user)}</span>
+                        </div>
+                        {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
