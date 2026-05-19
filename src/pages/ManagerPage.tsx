@@ -31,6 +31,7 @@ interface ParsedEntry {
   requestId: string
   subCategory?: string
   implDate?: Date | null
+  connections?: number
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -76,7 +77,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -86,6 +87,8 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             subCategory = String(get(row, 'Τύπος Αίτησης') ?? '')
             implDate = toDate(get(row, 'Ημ/νία Υλοποίησης'))
+            const connVal = get(row, 'Αριθμός Συνδέσεων')
+            connections = typeof connVal === 'number' ? Math.max(1, connVal) : 1
           } else if (cat === 'prepay') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
             date = toDate(get(row, 'Ημερομηνία Δημιουργίας'))
@@ -122,7 +125,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (allStatuses.includes('ΑΚΥΡΩ')) continue
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined })
           }
         }
 
@@ -149,6 +152,10 @@ function isDone(e: ParsedEntry): boolean {
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')) return true
   if ((e.category === 'home' || e.category === 'migra') && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
   return false
+}
+
+function countEntries(arr: ParsedEntry[]): number {
+  return arr.reduce((sum, e) => sum + (e.connections ?? 1), 0)
 }
 
 function statusColor(status: string): string {
@@ -518,6 +525,7 @@ export default function ManagerPage() {
                                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
                                 <span style={{ fontSize: '0.75rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}{e.subCategory ? <span style={{ fontWeight: 400, color: `${CATEGORY_COLORS[e.category]}aa`, marginLeft: 5 }}>· {e.subCategory}</span> : null}</span>
                                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer}</span>
+                                {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                                 {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'monospace' }}>{e.requestId}</span>}
                                 <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 10, background: `${statusColor(e.status)}20`, color: statusColor(e.status), fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
                               </div>
@@ -541,7 +549,7 @@ export default function ManagerPage() {
                   <button onClick={() => shiftMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>›</button>
                 </div>
                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
-                  {effectiveDoneMonthEntries.length} ολοκλ.
+                  {countEntries(effectiveDoneMonthEntries)} ολοκλ.
                 </span>
               </div>
             )}
@@ -553,7 +561,7 @@ export default function ManagerPage() {
                 <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Καταχωρήσεις — {monthLabel}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {cats.map(c => {
-                    const actual = regMonthEntries.filter(e => e.category === c).length
+                    const actual = countEntries(regMonthEntries.filter(e => e.category === c))
                     const target = getRegTarget(c)
                     const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
                     const color = CATEGORY_COLORS[c]
@@ -585,7 +593,7 @@ export default function ManagerPage() {
                 <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Ολοκληρωμένα / Συνδεδεμένα — {monthLabel}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {cats.map(c => {
-                    const actual = effectiveDoneMonthEntries.filter(e => e.category === c).length
+                    const actual = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
                     const target = getDoneTarget(c)
                     const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
                     const color = CATEGORY_COLORS[c]
@@ -660,7 +668,7 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user).length
+                        const total = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user))
                         const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || effectiveDoneMonthEntries.some(e => effectiveName(e.user) === user)
                         if (!hasEntries) return null
                         return (
@@ -676,8 +684,8 @@ export default function ManagerPage() {
                             {cats.map(c => {
                               const catDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
                               const catReg = regMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
-                              const done = catDone.length
-                              const reg = catReg.length
+                              const done = countEntries(catDone)
+                              const reg = countEntries(catReg)
                               return (
                                 <td key={c} style={{ padding: '12px 16px', textAlign: 'center' }}>
                                   {done > 0 || reg > 0 ? (
@@ -719,8 +727,8 @@ export default function ManagerPage() {
                         <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>{user}</span>
                       </div>
                       <div style={{ display: 'flex', gap: 14 }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#a78bfa' }}>{userDone.length} ολοκλ.</span>
-                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{userReg.length} σύνολο</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#a78bfa' }}>{countEntries(userDone)} ολοκλ.</span>
+                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{countEntries(userReg)} σύνολο</span>
                       </div>
                     </div>
                     <div style={{ padding: '6px 0' }}>
@@ -729,6 +737,7 @@ export default function ManagerPage() {
                           <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
                           <span style={{ fontSize: '0.72rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
                           <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                          {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                           {e.subCategory && <span style={{ fontSize: '0.7rem', color: `${CATEGORY_COLORS[e.category]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
                           {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                         </div>
@@ -756,8 +765,8 @@ export default function ManagerPage() {
                   const catDoneEntries = effectiveDoneMonthEntries.filter(e => e.category === c)
                   const catRegEntries = regMonthEntries.filter(e => e.category === c)
                   if (!catDoneEntries.length && !catRegEntries.length) return null
-                  const totalDone = catDoneEntries.length
-                  const totalReg = catRegEntries.length
+                  const totalDone = countEntries(catDoneEntries)
+                  const totalReg = countEntries(catRegEntries)
                   const doneIds = new Set(catDoneEntries.map(e => e.requestId).filter(Boolean))
                   const regOnlyEntries = catRegEntries.filter(e => !e.requestId || !doneIds.has(e.requestId))
                   return (
@@ -777,6 +786,7 @@ export default function ManagerPage() {
                           <div key={`done-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10 }}>
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[c], flexShrink: 0 }} />
                             <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                            {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                             {e.subCategory && <span style={{ fontSize: '0.72rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
                             {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
