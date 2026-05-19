@@ -336,6 +336,16 @@ export default function ManagerPage() {
   })
 
   const mobilePending = viewEntries.filter(e => e.category === 'mobile' && e.status.toUpperCase().includes('ΠΡΟΕΓΚΡΙΣΗ'))
+  const portInPrepayDone = viewEntries
+    .filter(e => {
+      if (e.category !== 'mobile') return false
+      if (!(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')) return false
+      const d = e.implDate || e.date
+      if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+      return isDone(e)
+    })
+    .map(e => ({ ...e, category: 'prepay' as Category }))
+  const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
   const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const pendingByUser = (arr: ParsedEntry[]): [string, number][] => {
@@ -531,7 +541,7 @@ export default function ManagerPage() {
                   <button onClick={() => shiftMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>›</button>
                 </div>
                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
-                  {monthEntries.filter(e => isMobileCountable(e) && isDone(e)).length} ολοκλ.
+                  {effectiveDoneMonthEntries.length} ολοκλ.
                 </span>
               </div>
             )}
@@ -575,7 +585,7 @@ export default function ManagerPage() {
                 <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Ολοκληρωμένα / Συνδεδεμένα — {monthLabel}</div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
                   {cats.map(c => {
-                    const actual = doneMonthEntries.filter(e => e.category === c).length
+                    const actual = effectiveDoneMonthEntries.filter(e => e.category === c).length
                     const target = getDoneTarget(c)
                     const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
                     const color = CATEGORY_COLORS[c]
@@ -650,8 +660,8 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = doneMonthEntries.filter(e => effectiveName(e.user) === user).length
-                        const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || doneMonthEntries.some(e => effectiveName(e.user) === user)
+                        const total = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user).length
+                        const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || effectiveDoneMonthEntries.some(e => effectiveName(e.user) === user)
                         if (!hasEntries) return null
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
@@ -664,7 +674,7 @@ export default function ManagerPage() {
                               </div>
                             </td>
                             {cats.map(c => {
-                              const catDone = doneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
+                              const catDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
                               const catReg = regMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
                               const done = catDone.length
                               const reg = catReg.length
@@ -698,7 +708,7 @@ export default function ManagerPage() {
             {tab === 'monthly' && selectedUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {cats.map(c => {
-                  const catDoneEntries = doneMonthEntries.filter(e => e.category === c)
+                  const catDoneEntries = effectiveDoneMonthEntries.filter(e => e.category === c)
                   const catRegEntries = regMonthEntries.filter(e => e.category === c)
                   if (!catDoneEntries.length && !catRegEntries.length) return null
                   const totalDone = catDoneEntries.length
