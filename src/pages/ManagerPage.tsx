@@ -143,7 +143,7 @@ function isMobileCountable(e: ParsedEntry): boolean {
 function isDone(e: ParsedEntry): boolean {
   const s = e.status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')) return true
-  if (e.category === 'home' && s.includes('ΥΛΟΠΟΙΗΘΗΚΕ')) return true
+  if (e.category === 'home' && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
   return false
 }
 
@@ -322,7 +322,7 @@ export default function ManagerPage() {
     return isMobileCountable(e)
   })
   const doneMonthEntries = viewEntries.filter(e => {
-    const d = e.implDate || e.date
+    const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
     if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
     return isMobileCountable(e) && isDone(e)
   })
@@ -597,8 +597,9 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = monthEntries.filter(e => effectiveName(e.user) === user && isMobileCountable(e) && isDone(e)).length
-                        if (!monthEntries.some(e => effectiveName(e.user) === user)) return null
+                        const total = doneMonthEntries.filter(e => effectiveName(e.user) === user).length
+                        const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || doneMonthEntries.some(e => effectiveName(e.user) === user)
+                        if (!hasEntries) return null
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
                             <td style={{ padding: '12px 20px' }}>
@@ -610,14 +611,16 @@ export default function ManagerPage() {
                               </div>
                             </td>
                             {cats.map(c => {
-                              const catEntries = monthEntries.filter(e => effectiveName(e.user) === user && e.category === c && isMobileCountable(e))
-                              const done = catEntries.filter(isDone).length
+                              const catDone = doneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
+                              const catReg = regMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
+                              const done = catDone.length
+                              const reg = catReg.length
                               return (
                                 <td key={c} style={{ padding: '12px 16px', textAlign: 'center' }}>
-                                  {done > 0 ? (
+                                  {done > 0 || reg > 0 ? (
                                     <div>
                                       <div style={{ fontWeight: 800, fontSize: '1.1rem', color: CATEGORY_COLORS[c] }}>{done}</div>
-                                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{catEntries.length} σύνολο</div>
+                                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{reg} σύνολο</div>
                                     </div>
                                   ) : (
                                     <span style={{ color: 'rgba(255,255,255,0.15)' }}>—</span>
@@ -642,15 +645,22 @@ export default function ManagerPage() {
             {tab === 'monthly' && selectedUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {cats.map(c => {
-                  const catEntries = monthEntries.filter(e => e.category === c && isMobileCountable(e))
-                  if (!catEntries.length) return null
-                  const subGroups = new Map<string, ParsedEntry[]>()
-                  for (const e of catEntries) {
+                  const catDoneEntries = doneMonthEntries.filter(e => e.category === c)
+                  const catRegEntries = regMonthEntries.filter(e => e.category === c)
+                  if (!catDoneEntries.length && !catRegEntries.length) return null
+                  const subRegCounts = new Map<string, number>()
+                  for (const e of catRegEntries) {
                     const key = e.subCategory || '—'
-                    if (!subGroups.has(key)) subGroups.set(key, [])
-                    subGroups.get(key)!.push(e)
+                    subRegCounts.set(key, (subRegCounts.get(key) ?? 0) + 1)
                   }
-                  const totalDone = catEntries.filter(isDone).length
+                  const subDoneCounts = new Map<string, number>()
+                  for (const e of catDoneEntries) {
+                    const key = e.subCategory || '—'
+                    subDoneCounts.set(key, (subDoneCounts.get(key) ?? 0) + 1)
+                  }
+                  const allSubCats = [...new Set([...subRegCounts.keys(), ...subDoneCounts.keys()])]
+                  const totalDone = catDoneEntries.length
+                  const totalReg = catRegEntries.length
                   return (
                     <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '13px 20px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -660,17 +670,18 @@ export default function ManagerPage() {
                         </div>
                         <div style={{ display: 'flex', gap: 14 }}>
                           <span style={{ fontSize: '0.78rem', fontWeight: 800, color: CATEGORY_COLORS[c] }}>{totalDone} ολοκλ.</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{catEntries.length} σύνολο</span>
+                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{totalReg} σύνολο</span>
                         </div>
                       </div>
                       <div style={{ padding: '10px 0' }}>
-                        {[...subGroups.entries()].map(([sub, subEntries]) => {
-                          const subDone = subEntries.filter(isDone).length
+                        {allSubCats.map(sub => {
+                          const subDone = subDoneCounts.get(sub) ?? 0
+                          const subReg = subRegCounts.get(sub) ?? 0
                           return (
                             <div key={sub} style={{ display: 'flex', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12 }}>
                               <span style={{ flex: 1, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{sub}</span>
                               <span style={{ fontWeight: 800, fontSize: '1rem', color: CATEGORY_COLORS[c], minWidth: 28, textAlign: 'right' }}>{subDone}</span>
-                              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', minWidth: 60, textAlign: 'right' }}>{subEntries.length} σύνολο</span>
+                              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)', minWidth: 60, textAlign: 'right' }}>{subReg} σύνολο</span>
                             </div>
                           )
                         })}
