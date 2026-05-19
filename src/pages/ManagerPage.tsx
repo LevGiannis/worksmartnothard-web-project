@@ -293,7 +293,8 @@ export default function ManagerPage() {
   const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
   const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
 
-  const viewEntries = selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries
+  const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
+    .filter(e => !e.status.toUpperCase().includes('ΑΚΥΡΩ'))
 
   const dailyMap = new Map<string, Map<string, ParsedEntry[]>>()
   for (const e of viewEntries) {
