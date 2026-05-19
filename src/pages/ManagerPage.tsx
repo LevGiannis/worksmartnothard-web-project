@@ -139,7 +139,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
   })
 }
 
-const MOBILE_COUNTED_SUBCATS = ['EX PREPAY', 'PRE2EC', 'PORT IN POSTPAY', 'PORT IN EC', 'NEW CONNECTION']
+const MOBILE_COUNTED_SUBCATS = ['EX PREPAY', 'PRE2EC', 'PORT IN POSTPAY', 'PORT IN EC', 'NEW CONNECTION', 'NEW EC', 'PREPAY 2 EC']
 
 function isMobileCountable(e: ParsedEntry): boolean {
   if (e.category !== 'mobile') return true
