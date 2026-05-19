@@ -132,6 +132,21 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
   })
 }
 
+const MOBILE_COUNTED_SUBCATS = ['EX PREPAY', 'PRE2EC', 'PORT IN POSTPAY', 'PORT IN EC', 'NEW CONNECTION']
+
+function isMobileCountable(e: ParsedEntry): boolean {
+  if (e.category !== 'mobile') return true
+  const sub = (e.subCategory ?? '').toUpperCase().trim()
+  return MOBILE_COUNTED_SUBCATS.some(s => sub.includes(s))
+}
+
+function isDone(e: ParsedEntry): boolean {
+  const s = e.status.toUpperCase()
+  if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')) return true
+  if (e.category === 'home' && s.includes('ΥΛΟΠΟΙΗΘΗΚΕ')) return true
+  return false
+}
+
 function statusColor(status: string): string {
   const s = status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')) return '#10b981'
@@ -303,13 +318,13 @@ export default function ManagerPage() {
     return d ? d.getFullYear() === mYear && d.getMonth() + 1 === mMonth : false
   })
   const regMonthEntries = viewEntries.filter(e => {
-    return e.date ? e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth : false
+    if (!e.date || !(e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth)) return false
+    return isMobileCountable(e)
   })
   const doneMonthEntries = viewEntries.filter(e => {
     const d = e.implDate || e.date
     if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
-    const s = e.status.toUpperCase()
-    return s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+    return isMobileCountable(e) && isDone(e)
   })
 
   return (
@@ -498,7 +513,7 @@ export default function ManagerPage() {
                   <button onClick={() => shiftMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>›</button>
                 </div>
                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
-                  {monthEntries.filter(e => e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')).length} ολοκλ.
+                  {monthEntries.filter(e => isMobileCountable(e) && isDone(e)).length} ολοκλ.
                 </span>
               </div>
             )}
@@ -582,7 +597,7 @@ export default function ManagerPage() {
                     </thead>
                     <tbody>
                       {allUsers.map(user => {
-                        const total = monthEntries.filter(e => effectiveName(e.user) === user && e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')).length
+                        const total = monthEntries.filter(e => effectiveName(e.user) === user && isMobileCountable(e) && isDone(e)).length
                         if (!monthEntries.some(e => effectiveName(e.user) === user)) return null
                         return (
                           <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
@@ -595,11 +610,8 @@ export default function ManagerPage() {
                               </div>
                             </td>
                             {cats.map(c => {
-                              const catEntries = monthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
-                              const done = catEntries.filter(e =>
-                                e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
-                                e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
-                              ).length
+                              const catEntries = monthEntries.filter(e => effectiveName(e.user) === user && e.category === c && isMobileCountable(e))
+                              const done = catEntries.filter(isDone).length
                               return (
                                 <td key={c} style={{ padding: '12px 16px', textAlign: 'center' }}>
                                   {done > 0 ? (
@@ -630,7 +642,7 @@ export default function ManagerPage() {
             {tab === 'monthly' && selectedUser && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {cats.map(c => {
-                  const catEntries = monthEntries.filter(e => e.category === c)
+                  const catEntries = monthEntries.filter(e => e.category === c && isMobileCountable(e))
                   if (!catEntries.length) return null
                   const subGroups = new Map<string, ParsedEntry[]>()
                   for (const e of catEntries) {
@@ -638,10 +650,7 @@ export default function ManagerPage() {
                     if (!subGroups.has(key)) subGroups.set(key, [])
                     subGroups.get(key)!.push(e)
                   }
-                  const totalDone = catEntries.filter(e =>
-                    e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
-                    e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
-                  ).length
+                  const totalDone = catEntries.filter(isDone).length
                   return (
                     <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                       <div style={{ padding: '13px 20px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -656,10 +665,7 @@ export default function ManagerPage() {
                       </div>
                       <div style={{ padding: '10px 0' }}>
                         {[...subGroups.entries()].map(([sub, subEntries]) => {
-                          const subDone = subEntries.filter(e =>
-                            e.status.toUpperCase().includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') ||
-                            e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
-                          ).length
+                          const subDone = subEntries.filter(isDone).length
                           return (
                             <div key={sub} style={{ display: 'flex', alignItems: 'center', padding: '8px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 12 }}>
                               <span style={{ flex: 1, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>{sub}</span>
