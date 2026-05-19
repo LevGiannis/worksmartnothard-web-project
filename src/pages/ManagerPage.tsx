@@ -86,7 +86,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             subCategory = String(get(row, 'Τύπος Αίτησης') ?? '')
-            implDate = toDate(get(row, 'Ημ/νία Υλοποίησης'))
+            implDate = toDate(get(row, 'Ημερομηνία Έγκρισης'))
             const connVal = get(row, 'Αριθμός Συνδέσεων')
             connections = typeof connVal === 'number' ? Math.max(1, connVal) : 1
           } else if (cat === 'prepay') {
