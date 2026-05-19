@@ -298,7 +298,10 @@ export default function ManagerPage() {
   const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
 
   const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
-    .filter(e => !e.status.toUpperCase().includes('ΑΚΥΡΩ'))
+    .filter(e => {
+      const s = e.status.toUpperCase()
+      return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
+    })
 
   const dailyMap = new Map<string, Map<string, ParsedEntry[]>>()
   for (const e of viewEntries) {
