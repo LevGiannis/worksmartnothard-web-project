@@ -361,6 +361,36 @@ export default function ManagerPage() {
     return [...m.entries()].sort((a, b) => b[1] - a[1])
   }
 
+  const handleExportMonthly = () => {
+    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, migra: 2, home: 3 }
+    const rows = viewEntries
+      .filter(e => {
+        const d = e.date || e.implDate
+        return d ? d.getFullYear() === mYear && d.getMonth() + 1 === mMonth : false
+      })
+      .sort((a, b) => {
+        if (catOrder[a.category] !== catOrder[b.category]) return catOrder[a.category] - catOrder[b.category]
+        return effectiveName(a.user).localeCompare(effectiveName(b.user))
+      })
+      .map(e => ({
+        'Κατηγορία': CATEGORY_LABELS[e.category],
+        'Υποκατηγορία': e.subCategory ?? '',
+        'Χρήστης': effectiveName(e.user),
+        'Ονοματεπώνυμο': e.customer,
+        'Αριθμός Παραγγελίας': e.requestId,
+        'Κατάσταση': e.status,
+        'Ημ/νία Αίτησης': e.date ? formatDate(e.date) : '',
+        'Ημ/νία Ολοκλήρωσης': e.implDate ? formatDate(e.implDate) : '',
+        'Συνδέσεις': e.connections ?? 1,
+      }))
+    if (!rows.length) return
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Παραγγελίες')
+    const suffix = selectedUser ? `-${selectedUser}` : ''
+    XLSX.writeFile(wb, `manager-${selectedMonth}${suffix}.xlsx`)
+  }
+
   return (
     <div className="page-content">
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
@@ -551,6 +581,17 @@ export default function ManagerPage() {
                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
                   {countEntries(effectiveDoneMonthEntries)} ολοκλ.
                 </span>
+                <button
+                  onClick={handleExportMonthly}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                    <polyline points="7 10 12 15 17 10" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="12" y1="15" x2="12" y2="3" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                  Excel
+                </button>
               </div>
             )}
 
