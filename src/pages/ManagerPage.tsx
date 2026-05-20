@@ -196,7 +196,7 @@ export default function ManagerPage() {
   const [mapDraft, setMapDraft] = useState<Record<string, string>>({})
   const [mapSaved, setMapSaved] = useState(false)
   const [monthlyTargets, setMonthlyTargets] = useState<Record<string, MonthTargets>>({})
-
+  const [exportMode, setExportMode] = useState<'reg' | 'done'>('done')
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -369,11 +369,10 @@ export default function ManagerPage() {
 
   const handleExportMonthly = () => {
     const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, migra: 2, home: 3 }
-    const rows = viewEntries
-      .filter(e => {
-        const d = e.date || e.implDate
-        return d ? d.getFullYear() === mYear && d.getMonth() + 1 === mMonth : false
-      })
+    const source = exportMode === 'done'
+      ? effectiveDoneMonthEntries
+      : viewEntries.filter(e => e.date && e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth)
+    const rows = [...source]
       .sort((a, b) => {
         if (catOrder[a.category] !== catOrder[b.category]) return catOrder[a.category] - catOrder[b.category]
         return effectiveName(a.user).localeCompare(effectiveName(b.user))
@@ -393,8 +392,9 @@ export default function ManagerPage() {
     const ws = XLSX.utils.json_to_sheet(rows)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Παραγγελίες')
-    const suffix = selectedUser ? `-${selectedUser}` : ''
-    XLSX.writeFile(wb, `manager-${selectedMonth}${suffix}.xlsx`)
+    const userSuffix = selectedUser ? `-${selectedUser}` : ''
+    const modeSuffix = exportMode === 'done' ? '-συνδεδεμενα' : '-καταχωρημενα'
+    XLSX.writeFile(wb, `manager-${selectedMonth}${userSuffix}${modeSuffix}.xlsx`)
   }
 
   return (
@@ -587,14 +587,18 @@ export default function ManagerPage() {
                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
                   {countEntries(effectiveDoneMonthEntries)} ολοκλ.
                 </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: 3, flexShrink: 0 }}>
+                  <button onClick={() => setExportMode('done')} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, background: exportMode === 'done' ? 'rgba(16,185,129,0.25)' : 'transparent', color: exportMode === 'done' ? '#10b981' : 'rgba(255,255,255,0.3)', transition: 'all 150ms' }}>Συνδ.</button>
+                  <button onClick={() => setExportMode('reg')} style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700, background: exportMode === 'reg' ? 'rgba(8,145,178,0.25)' : 'transparent', color: exportMode === 'reg' ? '#22d3ee' : 'rgba(255,255,255,0.3)', transition: 'all 150ms' }}>Καταχ.</button>
+                </div>
                 <button
                   onClick={handleExportMonthly}
-                  style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                  style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${exportMode === 'done' ? 'rgba(16,185,129,0.4)' : 'rgba(8,145,178,0.4)'}`, background: exportMode === 'done' ? 'rgba(16,185,129,0.1)' : 'rgba(8,145,178,0.1)', color: exportMode === 'done' ? '#10b981' : '#22d3ee', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
                 >
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
-                    <polyline points="7 10 12 15 17 10" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <line x1="12" y1="15" x2="12" y2="3" stroke="#10b981" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
                   </svg>
                   Excel
                 </button>
