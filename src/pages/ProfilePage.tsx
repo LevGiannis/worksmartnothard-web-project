@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { clearAllData, exportBackup, importBackup } from '../services/storage'
 import PageHeader from '../components/PageHeader'
 import { safeJsonParse, safeLocalStorageGet, safeLocalStorageSet } from '../utils/safeLocalStorage'
-import { pickBackupDir, getActiveDirHandle, clearStoredDirHandle, isDirPickerSupported } from '../utils/backupDir'
+import { pickBackupDir, getActiveDirHandle, clearStoredDirHandle, isDirPickerSupported, writeFileToDir } from '../utils/backupDir'
 
 function SectionCard({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
   return (
@@ -185,11 +185,23 @@ export default function ProfilePage() {
   const downloadBackup = async () => {
     try {
       const backup = await exportBackup()
-      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json;charset=utf-8' })
+      const json = JSON.stringify(backup, null, 2)
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+      const filename = `worksmart-backup-${stamp}.json`
+      if (isDirPickerSupported()) {
+        let dirHandle = await getActiveDirHandle(true)
+        if (!dirHandle) dirHandle = await pickBackupDir()
+        if (dirHandle) {
+          await writeFileToDir(dirHandle, filename, json)
+          setBackupDirName(dirHandle.name)
+          showToast('Έγινε export σε αρχείο')
+          return
+        }
+      }
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-      a.href = url; a.download = `worksmart-backup-${stamp}.json`
+      a.href = url; a.download = filename
       document.body.appendChild(a); a.click(); a.remove()
       URL.revokeObjectURL(url)
       showToast('Έγινε export σε αρχείο')
@@ -346,7 +358,7 @@ export default function ProfilePage() {
                   <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)', marginBottom: 12 }}>
                     {backupDirName
                       ? <span>Αποθήκευση σε: <strong style={{ color: '#c4b5fd' }}>{backupDirName}</strong></span>
-                      : 'Δεν έχει οριστεί φάκελος — τα backups κατεβαίνουν στα Downloads.'}
+                      : 'Δεν έχει οριστεί φάκελος — το πρώτο export θα ανοίξει επιλογή φακέλου στα Downloads (δημιουργεί αυτόματα υποφάκελο exports).'}
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button type="button" className="btn-ghost" onClick={async () => {

@@ -50,11 +50,12 @@ export async function clearStoredDirHandle(): Promise<void> {
   })
 }
 
-// Opens a folder picker and stores the chosen handle. Requires user gesture.
+// Opens a folder picker starting at Downloads, auto-creates 'exports' subfolder.
 export async function pickBackupDir(): Promise<FileSystemDirectoryHandle | null> {
   if (!('showDirectoryPicker' in window)) return null
   try {
-    const handle = await (window as any).showDirectoryPicker({ mode: 'readwrite' })
+    const parent = await (window as any).showDirectoryPicker({ mode: 'readwrite', startIn: 'downloads' })
+    const handle = await parent.getDirectoryHandle('exports', { create: true })
     await setStoredDirHandle(handle)
     return handle
   } catch (e: any) {
