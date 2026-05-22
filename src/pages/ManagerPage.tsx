@@ -149,7 +149,7 @@ function isMobileCountable(e: ParsedEntry): boolean {
 
 function isDone(e: ParsedEntry): boolean {
   const s = e.status.toUpperCase()
-  if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')) return true
+  if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')) return true
   if ((e.category === 'home' || e.category === 'migra') && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
   return false
 }
