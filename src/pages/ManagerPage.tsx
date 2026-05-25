@@ -300,6 +300,25 @@ export default function ManagerPage() {
     setUploading(false)
   }, [])
 
+  const processExtraMobile = useCallback(async (files: FileList | File[]) => {
+    setUploading(true)
+    const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
+    try {
+      const results = await Promise.all(fileArr.map(parseFile))
+      const newMobile = results.flat().filter(e => e.category === 'mobile')
+      if (newMobile.length) {
+        setEntries(prev => {
+          const existingIds = new Set(prev.filter(e => e.category === 'mobile').map(e => e.requestId).filter(Boolean))
+          const toAdd = newMobile.filter(e => !e.requestId || !existingIds.has(e.requestId))
+          return [...prev, ...toAdd]
+        })
+      }
+    } catch (err) {
+      console.error('Parse error:', err)
+    }
+    setUploading(false)
+  }, [])
+
   // ── Password gate ──
   if (!authenticated) {
     return (
@@ -482,6 +501,20 @@ export default function ManagerPage() {
             </span>
           </label>
           <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', marginTop: 10 }}>ή σύρε &amp; άφησε εδώ</div>
+        </div>
+
+        {/* Extra mobile upload */}
+        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)', display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>Επιπλέον Mobile</div>
+            <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Προσθήκη στο υπάρχον mobile — νέες εγγραφές μόνο (χωρίς αντικατάσταση)</div>
+          </div>
+          <label style={{ cursor: 'pointer' }}>
+            <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processExtraMobile(e.target.files)} />
+            <span style={{ display: 'inline-block', padding: '7px 16px', borderRadius: 8, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa', fontSize: '0.82rem', fontWeight: 600 }}>
+              {uploading ? 'Επεξεργασία...' : '+ Mobile'}
+            </span>
+          </label>
         </div>
 
         {entries.length === 0 ? (
