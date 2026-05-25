@@ -219,6 +219,8 @@ export default function ManagerPage() {
   const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
+  const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
+  const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
@@ -344,6 +346,7 @@ export default function ManagerPage() {
 
   const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => {
+      if (excludedUsers.has(effectiveName(e.user))) return false
       const s = e.status.toUpperCase()
       return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
     })
@@ -509,13 +512,23 @@ export default function ManagerPage() {
                 onClick={() => setSelectedUser('')}
                 style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${!selectedUser ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)'}`, background: !selectedUser ? 'rgba(255,255,255,0.08)' : 'transparent', color: !selectedUser ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
               >Όλοι</button>
-              {allUsers.map(u => (
-                <button
-                  key={u}
-                  onClick={() => setSelectedUser(u === selectedUser ? '' : u)}
-                  style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${selectedUser === u ? '#0891b2' : 'rgba(255,255,255,0.08)'}`, background: selectedUser === u ? 'rgba(8,145,178,0.2)' : 'transparent', color: selectedUser === u ? '#22d3ee' : 'rgba(255,255,255,0.5)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
-                >{u}</button>
-              ))}
+              {allUsers.map(u => {
+                const isSelected = selectedUser === u
+                const isExcluded = excludedUsers.has(u)
+                return (
+                  <div key={u} style={{ display: 'flex', alignItems: 'center', borderRadius: 20, border: `1px solid ${isExcluded ? 'rgba(239,68,68,0.3)' : isSelected ? '#0891b2' : 'rgba(255,255,255,0.08)'}`, background: isExcluded ? 'rgba(239,68,68,0.06)' : isSelected ? 'rgba(8,145,178,0.2)' : 'transparent', overflow: 'hidden' }}>
+                    <button
+                      onClick={() => { if (!isExcluded) setSelectedUser(u === selectedUser ? '' : u) }}
+                      style={{ padding: '5px 10px 5px 14px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.45)' : isSelected ? '#22d3ee' : 'rgba(255,255,255,0.5)', fontSize: '0.82rem', fontWeight: 600, cursor: isExcluded ? 'default' : 'pointer', textDecoration: isExcluded ? 'line-through' : 'none' }}
+                    >{u}</button>
+                    <button
+                      onClick={() => { toggleExclude(u); if (isExcluded === false && selectedUser === u) setSelectedUser('') }}
+                      style={{ padding: '4px 8px 4px 4px', background: 'transparent', border: 'none', color: isExcluded ? '#f87171' : 'rgba(255,255,255,0.25)', fontSize: '0.78rem', cursor: 'pointer', lineHeight: 1 }}
+                      title={isExcluded ? 'Επαναφορά' : 'Αφαίρεση'}
+                    >{isExcluded ? '+' : '×'}</button>
+                  </div>
+                )
+              })}
             </div>
 
             {/* Tabs */}
