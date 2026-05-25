@@ -352,7 +352,16 @@ export default function ManagerPage() {
       return isDone(e)
     })
     .map(e => ({ ...e, category: 'prepay' as Category }))
-  const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
+  const fixedActivationDone = viewEntries
+    .filter(e => {
+      if (e.category !== 'mobile') return false
+      if ((e.subCategory ?? '').toUpperCase().trim() !== 'FIXED ACTIVATION') return false
+      const d = e.implDate || e.date
+      if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+      return isDone(e)
+    })
+    .map(e => ({ ...e, category: 'home' as Category }))
+  const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone, ...fixedActivationDone]
   const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
