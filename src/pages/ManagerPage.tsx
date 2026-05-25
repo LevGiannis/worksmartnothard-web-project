@@ -358,7 +358,8 @@ export default function ManagerPage() {
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => {
       const s = e.status.toUpperCase()
-      if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
+      if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ') || s === 'ΝΕΑ'
+      if (e.category === 'mobile') return s === 'ΝΕΑ' || s === 'ΚΑΤΑΧΩΡΗΜΕΝΗ'
       if (e.category === 'migra') return s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
       return false
     })
