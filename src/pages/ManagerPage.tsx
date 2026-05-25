@@ -5,6 +5,39 @@ import PageHeader from '../components/PageHeader'
 const MANAGER_PASSWORD = 'manager123'
 const USER_MAP_KEY = 'ws_manager_user_map'
 const TARGETS_KEY = 'ws_manager_targets'
+const DISMISSED_PAIRS_KEY = 'ws_manager_dismissed_pairs'
+
+function normalizeForMatch(s: string): string {
+  return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '')
+}
+
+function levenshtein(a: string, b: string): number {
+  const m = a.length, n = b.length
+  const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0))
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i - 1] === b[j - 1] ? dp[i - 1][j - 1] : 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])
+  return dp[m][n]
+}
+
+type MatchSuggestion = { a: string; b: string; key: string; score: 'exact' | 'close' }
+
+function computeAutoSuggestions(rawUsers: string[]): MatchSuggestion[] {
+  const result: MatchSuggestion[] = []
+  const seen = new Set<string>()
+  for (let i = 0; i < rawUsers.length; i++) {
+    for (let j = i + 1; j < rawUsers.length; j++) {
+      const a = rawUsers[i], b = rawUsers[j]
+      const na = normalizeForMatch(a), nb = normalizeForMatch(b)
+      if (!na || !nb) continue
+      const key = [a, b].sort().join('|||')
+      if (seen.has(key)) continue
+      if (na === nb) { seen.add(key); result.push({ a, b, key, score: 'exact' }) }
+      else if (levenshtein(na, nb) <= 2) { seen.add(key); result.push({ a, b, key, score: 'close' }) }
+    }
+  }
+  return result
+}
 
 type Category = 'mobile' | 'prepay' | 'migra' | 'home'
 
@@ -197,6 +230,8 @@ export default function ManagerPage() {
   const [mapSaved, setMapSaved] = useState(false)
   const [monthlyTargets, setMonthlyTargets] = useState<Record<string, MonthTargets>>({})
   const [exportMode, setExportMode] = useState<'reg' | 'done'>('done')
+  const [dismissedPairs, setDismissedPairs] = useState<string[]>([])
+  const [suggestionInputs, setSuggestionInputs] = useState<Record<string, string>>({})
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -208,6 +243,8 @@ export default function ManagerPage() {
     if (storedTargets) {
       setMonthlyTargets(JSON.parse(storedTargets) as Record<string, MonthTargets>)
     }
+    const storedDismissed = localStorage.getItem(DISMISSED_PAIRS_KEY)
+    if (storedDismissed) setDismissedPairs(JSON.parse(storedDismissed) as string[])
   }, [])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
@@ -233,6 +270,7 @@ export default function ManagerPage() {
   const effectiveName = (raw: string) => userMap[raw] || raw
 
   const allRawUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
+  const autoSuggestions = computeAutoSuggestions(allRawUsers).filter(s => !dismissedPairs.includes(s.key))
 
   const handleLogin = () => {
     if (pwInput === MANAGER_PASSWORD) {
@@ -911,7 +949,61 @@ export default function ManagerPage() {
                     Ανέβασε αρχεία πρώτα για να εμφανιστούν οι χρήστες
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <>
+                    {autoSuggestions.length > 0 && (
+                      <div style={{ marginBottom: 24 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                          Προτεινόμενες Ταυτίσεις
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {autoSuggestions.map(s => {
+                            const inputVal = suggestionInputs[s.key] ?? mapDraft[s.a] ?? mapDraft[s.b] ?? s.a
+                            return (
+                              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)' }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.a}</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>=</span>
+                                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.b}</span>
+                                    {s.score === 'exact'
+                                      ? <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 600 }}>ακριβής</span>
+                                      : <span style={{ fontSize: '0.68rem', color: '#fbbf24', fontWeight: 600 }}>παρόμοιο</span>}
+                                  </div>
+                                  <input
+                                    type="text"
+                                    placeholder="Εμφανιζόμενο όνομα…"
+                                    value={inputVal}
+                                    onChange={ev => setSuggestionInputs(prev => ({ ...prev, [s.key]: ev.target.value }))}
+                                    style={{ width: '100%', padding: '7px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '0.83rem', outline: 'none', boxSizing: 'border-box' }}
+                                  />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
+                                  <button
+                                    onClick={() => {
+                                      const name = inputVal.trim() || s.a
+                                      setMapDraft(prev => ({ ...prev, [s.a]: name, [s.b]: name }))
+                                      const newDismissed = [...dismissedPairs, s.key]
+                                      setDismissedPairs(newDismissed)
+                                      localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify(newDismissed))
+                                    }}
+                                    style={{ padding: '5px 12px', borderRadius: 7, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
+                                  >Αποδοχή</button>
+                                  <button
+                                    onClick={() => {
+                                      const newDismissed = [...dismissedPairs, s.key]
+                                      setDismissedPairs(newDismissed)
+                                      localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify(newDismissed))
+                                    }}
+                                    style={{ padding: '5px 12px', borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
+                                  >Απόρριψη</button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 40px 1fr', gap: 12, padding: '0 4px', marginBottom: 4 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Αναγνωριστικό στο αρχείο</div>
                       <div />
@@ -933,6 +1025,7 @@ export default function ManagerPage() {
                       </div>
                     ))}
                   </div>
+                  </>
                 )}
               </div>
             )}
