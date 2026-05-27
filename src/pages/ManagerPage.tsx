@@ -1022,34 +1022,34 @@ export default function ManagerPage() {
                   const regOnlyEntries = catRegEntries.filter(e => !e.requestId || !doneIds.has(e.requestId))
                   return (
                     <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
-                      <div style={{ padding: '13px 20px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ width: 10, height: 10, borderRadius: '50%', background: CATEGORY_COLORS[c] }} />
-                          <span style={{ fontWeight: 700, color: CATEGORY_COLORS[c], fontSize: '0.9rem' }}>{CATEGORY_LABELS[c]}</span>
+                      <div style={{ padding: '6px 12px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[c] }} />
+                          <span style={{ fontWeight: 700, color: CATEGORY_COLORS[c], fontSize: '0.75rem' }}>{CATEGORY_LABELS[c]}</span>
                         </div>
-                        <div style={{ display: 'flex', gap: 14 }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 800, color: CATEGORY_COLORS[c] }}>{totalDone} ολοκλ.</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{totalReg} σύνολο</span>
+                        <div style={{ display: 'flex', gap: 10 }}>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: CATEGORY_COLORS[c] }}>{totalDone} ολοκλ.</span>
+                          <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>{totalReg} σύνολο</span>
                         </div>
                       </div>
-                      <div style={{ padding: '6px 0' }}>
+                      <div style={{ padding: '2px 0' }}>
                         {catDoneEntries.map((e, idx) => (
-                          <div key={`done-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[c], flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                            {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
-                            {e.subCategory && <span style={{ fontSize: '0.72rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
-                            {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
-                            {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                          <div key={`done-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 8 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: CATEGORY_COLORS[c], flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                            {e.connections && e.connections > 1 && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 5, padding: '1px 5px', flexShrink: 0 }}>x{e.connections}</span>}
+                            {e.subCategory && <span style={{ fontSize: '0.65rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.date && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
+                            {e.requestId && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
                         ))}
                         {regOnlyEntries.map((e, idx) => (
-                          <div key={`reg-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10, opacity: 0.55 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.6)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                            {e.subCategory && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{e.subCategory}</span>}
-                            {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
-                            {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                          <div key={`reg-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 8, opacity: 0.55 }}>
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                            {e.subCategory && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.date && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.15)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
+                            {e.requestId && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
                         ))}
                       </div>
