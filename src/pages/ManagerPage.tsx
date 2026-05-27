@@ -539,24 +539,24 @@ export default function ManagerPage() {
             </div>
 
             {/* User selector */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 20, alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginRight: 4 }}>Χρήστης</span>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 20, alignItems: 'center', opacity: 0.7 }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 4 }}>Χρήστης</span>
               <button
                 onClick={() => setSelectedUser('')}
-                style={{ padding: '5px 14px', borderRadius: 20, border: `1px solid ${!selectedUser ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)'}`, background: !selectedUser ? 'rgba(255,255,255,0.08)' : 'transparent', color: !selectedUser ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}
+                style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${!selectedUser ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`, background: !selectedUser ? 'rgba(255,255,255,0.05)' : 'transparent', color: !selectedUser ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer' }}
               >Όλοι</button>
               {allUsers.map(u => {
                 const isSelected = selectedUser === u
                 const isExcluded = excludedUsers.has(u)
                 return (
-                  <div key={u} style={{ display: 'flex', alignItems: 'center', borderRadius: 20, border: `1px solid ${isExcluded ? 'rgba(239,68,68,0.3)' : isSelected ? '#0891b2' : 'rgba(255,255,255,0.08)'}`, background: isExcluded ? 'rgba(239,68,68,0.06)' : isSelected ? 'rgba(8,145,178,0.2)' : 'transparent', overflow: 'hidden' }}>
+                  <div key={u} style={{ display: 'flex', alignItems: 'center', borderRadius: 20, border: `1px solid ${isExcluded ? 'rgba(239,68,68,0.2)' : isSelected ? 'rgba(8,145,178,0.5)' : 'rgba(255,255,255,0.05)'}`, background: isExcluded ? 'rgba(239,68,68,0.04)' : isSelected ? 'rgba(8,145,178,0.12)' : 'transparent', overflow: 'hidden' }}>
                     <button
                       onClick={() => { if (!isExcluded) setSelectedUser(u === selectedUser ? '' : u) }}
-                      style={{ padding: '5px 10px 5px 14px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.45)' : isSelected ? '#22d3ee' : 'rgba(255,255,255,0.5)', fontSize: '0.82rem', fontWeight: 600, cursor: isExcluded ? 'default' : 'pointer', textDecoration: isExcluded ? 'line-through' : 'none' }}
+                      style={{ padding: '3px 8px 3px 10px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.4)' : isSelected ? '#7dd3fc' : 'rgba(255,255,255,0.38)', fontSize: '0.73rem', fontWeight: 500, cursor: isExcluded ? 'default' : 'pointer', textDecoration: isExcluded ? 'line-through' : 'none' }}
                     >{u}</button>
                     <button
                       onClick={() => { toggleExclude(u); if (isExcluded === false && selectedUser === u) setSelectedUser('') }}
-                      style={{ padding: '4px 8px 4px 4px', background: 'transparent', border: 'none', color: isExcluded ? '#f87171' : 'rgba(255,255,255,0.25)', fontSize: '0.78rem', cursor: 'pointer', lineHeight: 1 }}
+                      style={{ padding: '3px 7px 3px 2px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.15)', fontSize: '0.68rem', cursor: 'pointer', lineHeight: 1 }}
                       title={isExcluded ? 'Επαναφορά' : 'Αφαίρεση'}
                     >{isExcluded ? '+' : '×'}</button>
                   </div>
