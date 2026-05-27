@@ -919,6 +919,8 @@ export default function ManagerPage() {
 
               {/* Per-user entry breakdown */}
               {allUsers.map(user => {
+                if (selectedUser && selectedUser !== user) return null
+                if (!selectedUser) return null
                 const userDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user)
                 const userReg = regMonthEntries.filter(e => effectiveName(e.user) === user)
                 if (!userDone.length && !userReg.length) return null
