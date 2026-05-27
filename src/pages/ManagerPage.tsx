@@ -1035,6 +1035,7 @@ export default function ManagerPage() {
                             <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                             {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                             {e.subCategory && <span style={{ fontSize: '0.72rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
                             {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
                         ))}
@@ -1043,6 +1044,7 @@ export default function ManagerPage() {
                             <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', flexShrink: 0 }} />
                             <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.6)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                             {e.subCategory && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
                             {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.2)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
                         ))}
