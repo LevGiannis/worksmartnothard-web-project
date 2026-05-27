@@ -11,6 +11,12 @@ function normalizeForMatch(s: string): string {
   return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '')
 }
 
+// Split into meaningful tokens (min 4 chars), stripping separators like . _ @ spaces
+function tokenize(s: string): string[] {
+  return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .split(/[^A-Z0-9]+/).filter(t => t.length >= 4)
+}
+
 function levenshtein(a: string, b: string): number {
   const m = a.length, n = b.length
   const dp = Array.from({ length: m + 1 }, (_, i) => Array.from({ length: n + 1 }, (_, j) => i === 0 ? j : j === 0 ? i : 0))
@@ -32,11 +38,65 @@ function computeAutoSuggestions(rawUsers: string[]): MatchSuggestion[] {
       if (!na || !nb) continue
       const key = [a, b].sort().join('|||')
       if (seen.has(key)) continue
-      if (na === nb) { seen.add(key); result.push({ a, b, key, score: 'exact' }) }
-      else if (levenshtein(na, nb) <= 2) { seen.add(key); result.push({ a, b, key, score: 'close' }) }
+
+      let score: 'exact' | 'close' | null = null
+
+      if (na === nb) {
+        score = 'exact'
+      } else if (levenshtein(na, nb) <= 2) {
+        score = 'close'
+      } else {
+        // Token overlap: at least one significant token (≥5 chars) in common
+        const ta = tokenize(a), tb = tokenize(b)
+        if (ta.length && tb.length) {
+          const common = ta.filter(t => tb.includes(t))
+          if (common.some(t => t.length >= 5)) score = 'close'
+        }
+        // Substring: one normalized name fully contained in the other (min 5 chars)
+        if (!score) {
+          const [short, long] = na.length <= nb.length ? [na, nb] : [nb, na]
+          if (short.length >= 5 && long.includes(short)) score = 'close'
+        }
+      }
+
+      if (score) { seen.add(key); result.push({ a, b, key, score }) }
     }
   }
   return result
+}
+
+// Union-Find: group matched users, pick the most readable canonical name per group
+function buildAutoMap(rawUsers: string[]): Record<string, string> {
+  const suggestions = computeAutoSuggestions(rawUsers)
+  const parent = new Map<string, string>(rawUsers.map(u => [u, u]))
+  const find = (x: string): string => {
+    if (parent.get(x) === x) return x
+    const root = find(parent.get(x)!)
+    parent.set(x, root)
+    return root
+  }
+  suggestions.forEach(({ a, b }) => {
+    const pa = find(a), pb = find(b)
+    if (pa !== pb) parent.set(pa, pb)
+  })
+  const groups = new Map<string, string[]>()
+  rawUsers.forEach(u => {
+    const root = find(u)
+    if (!groups.has(root)) groups.set(root, [])
+    groups.get(root)!.push(u)
+  })
+  // Canonical: prefer names with spaces (full name), then longest
+  const canonical = (names: string[]) => {
+    const withSpaces = names.filter(n => n.trim().includes(' '))
+    return (withSpaces.length ? withSpaces : names).reduce((a, b) => a.length >= b.length ? a : b)
+  }
+  const autoMap: Record<string, string> = {}
+  groups.forEach(members => {
+    if (members.length < 2) return
+    const canon = canonical(members)
+    members.forEach(m => { autoMap[m] = canon })
+  })
+  return autoMap
 }
 
 type Category = 'mobile' | 'prepay' | 'migra' | 'home'
@@ -283,10 +343,11 @@ export default function ManagerPage() {
     setTimeout(() => setMapSaved(false), 2000)
   }
 
-  const effectiveName = (raw: string) => userMap[raw] || raw
-
   const allRawUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
   const autoSuggestions = computeAutoSuggestions(allRawUsers).filter(s => !dismissedPairs.includes(s.key))
+  const autoMap = buildAutoMap(allRawUsers)
+  // Manual userMap overrides autoMap; autoMap applies automatically without user intervention
+  const effectiveName = (raw: string) => userMap[raw] || autoMap[raw] || raw
 
   const handleLogin = () => {
     if (pwInput === MANAGER_PASSWORD) {
