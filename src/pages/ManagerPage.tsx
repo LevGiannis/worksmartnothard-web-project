@@ -769,8 +769,27 @@ export default function ManagerPage() {
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 }}>Σε εκκρεμότητα</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    {mobilePending.length > 0 && (
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.mobile, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: CATEGORY_COLORS.mobile }}>Mobile — Προέγκριση</span>
+                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{mobilePending.length} σύνολο</span>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
+                          {mobilePending.map((e, idx) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${CATEGORY_COLORS.mobile}0d`, border: `1px solid ${CATEGORY_COLORS.mobile}25` }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.subCategory ? <> · <span style={{ color: CATEGORY_COLORS.mobile }}>{e.subCategory}</span></> : null}</span>
+                              </div>
+                              {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {([
-                      { label: 'Mobile — Προέγκριση', entries: mobilePending, color: CATEGORY_COLORS.mobile },
                       { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home },
                       { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra },
                     ] as const).map(({ label, entries: pe, color }) => {
