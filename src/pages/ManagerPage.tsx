@@ -68,8 +68,8 @@ interface ParsedEntry {
 }
 
 function detectCategory(headers: string[]): Category | null {
+  if (headers.includes('Ημ/νία Αίτησης') && headers.includes('Τύπος Αίτησης')) return 'mobile'
   if (headers.includes('MSISDN')) return 'prepay'
-  if (headers.includes('Ημ/νία Αίτησης')) return 'mobile'
   if (headers.includes('Κωδ. Χρήστη')) return 'migra'
   if (headers.includes('Τηλέφωνο Υπηρεσίας')) return 'home'
   return null
@@ -119,7 +119,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             subCategory = String(get(row, 'Τύπος Αίτησης') ?? '')
-            implDate = toDate(get(row, 'Ημερομηνία Έγκρισης'))
+            implDate = toDate(get(row, 'Ημ/νία Σύνδεσης'))
             const connVal = get(row, 'Αριθμός Συνδέσεων')
             connections = typeof connVal === 'number' ? Math.max(1, connVal) : 1
           } else if (cat === 'prepay') {
