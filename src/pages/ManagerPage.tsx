@@ -910,14 +910,14 @@ export default function ManagerPage() {
 
               <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
                 <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.7rem' }}>
                     <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                        <th style={{ padding: '8px 16px', textAlign: 'left', color: 'rgba(255,255,255,0.4)', fontWeight: 600, whiteSpace: 'nowrap' }}>Χρήστης</th>
+                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+                        <th style={{ padding: '5px 12px', textAlign: 'left', color: 'rgba(255,255,255,0.35)', fontWeight: 600, whiteSpace: 'nowrap' }}>Χρήστης</th>
                         {cats.map(c => (
-                          <th key={c} style={{ padding: '8px 12px', textAlign: 'center', color: CATEGORY_COLORS[c], fontWeight: 700, whiteSpace: 'nowrap' }}>{CATEGORY_LABELS[c]}</th>
+                          <th key={c} style={{ padding: '5px 10px', textAlign: 'center', color: CATEGORY_COLORS[c], fontWeight: 700, whiteSpace: 'nowrap' }}>{CATEGORY_LABELS[c]}</th>
                         ))}
-                        <th style={{ padding: '8px 12px', textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontWeight: 600 }}>Σύνολο</th>
+                        <th style={{ padding: '5px 10px', textAlign: 'center', color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>Σύνολο</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -926,13 +926,13 @@ export default function ManagerPage() {
                         const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || effectiveDoneMonthEntries.some(e => effectiveName(e.user) === user)
                         if (!hasEntries) return null
                         return (
-                          <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
-                            <td style={{ padding: '7px 16px' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                <div style={{ width: 22, height: 22, borderRadius: 6, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                          <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
+                            <td style={{ padding: '5px 12px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 18, height: 18, borderRadius: 5, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.58rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
                                   {user.charAt(0).toUpperCase()}
                                 </div>
-                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.8)', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{user}</span>
+                                <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.75)', whiteSpace: 'nowrap' }}>{user}</span>
                               </div>
                             </td>
                             {cats.map(c => {
@@ -941,19 +941,19 @@ export default function ManagerPage() {
                               const done = countEntries(catDone)
                               const reg = countEntries(catReg)
                               return (
-                                <td key={c} style={{ padding: '7px 12px', textAlign: 'center' }}>
+                                <td key={c} style={{ padding: '5px 10px', textAlign: 'center' }}>
                                   {done > 0 || reg > 0 ? (
                                     <div>
-                                      <div style={{ fontWeight: 800, fontSize: '0.95rem', color: CATEGORY_COLORS[c] }}>{done}</div>
-                                      <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>{reg}</div>
+                                      <div style={{ fontWeight: 800, fontSize: '0.82rem', color: CATEGORY_COLORS[c] }}>{done}</div>
+                                      <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', marginTop: 1 }}>{reg}</div>
                                     </div>
                                   ) : (
-                                    <span style={{ color: 'rgba(255,255,255,0.1)' }}>—</span>
+                                    <span style={{ color: 'rgba(255,255,255,0.08)' }}>—</span>
                                   )}
                                 </td>
                               )
                             })}
-                            <td style={{ padding: '7px 12px', textAlign: 'center', fontWeight: 800, fontSize: '0.95rem', color: 'rgba(255,255,255,0.8)' }}>
+                            <td style={{ padding: '5px 10px', textAlign: 'center', fontWeight: 800, fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)' }}>
                               {total}
                             </td>
                           </tr>
