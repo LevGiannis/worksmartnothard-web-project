@@ -416,12 +416,17 @@ export default function ManagerPage() {
   const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
   const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !excludedUsers.has(effectiveName(e.user)))
     .filter(e => {
       const s = e.status.toUpperCase()
       if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ') || s === 'ΝΕΑ'
-      if (e.category === 'mobile') return s === 'ΝΕΑ' || s === 'ΚΑΤΑΧΩΡΗΜΕΝΗ'
+      if (e.category === 'mobile') {
+        if (s === 'ΝΕΑ' || s === 'ΚΑΤΑΧΩΡΗΜΕΝΗ') return true
+        if (s === 'ΣΕ ΕΚΚΡΕΜΟΤΗΤΑ') return e.date != null && e.date >= thirtyDaysAgo
+        return false
+      }
       if (e.category === 'migra') return s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
       return false
     })
