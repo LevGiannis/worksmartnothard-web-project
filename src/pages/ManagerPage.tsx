@@ -984,6 +984,7 @@ export default function ManagerPage() {
                           <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                           {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                           {e.subCategory && <span style={{ fontSize: '0.7rem', color: `${CATEGORY_COLORS[e.category]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                          {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
                           {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                         </div>
                       ))}
@@ -993,6 +994,7 @@ export default function ManagerPage() {
                           <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
                           <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                           {e.subCategory && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{e.subCategory}</span>}
+                          {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
                           {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                         </div>
                       ))}
