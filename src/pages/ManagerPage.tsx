@@ -157,6 +157,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const allStatuses = [s, String(get(row, 'Κατάσταση') ?? '')].join(' ').toUpperCase()
           if (allStatuses.includes('ΑΚΥΡΩ')) continue
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
+          if (cat === 'mobile' && String(get(row, 'Περιγραφή Προγράμματος Χρήσης') ?? '').toUpperCase().trim() === 'GPDAT') continue
           if (user || date) {
             entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined })
           }
