@@ -82,6 +82,10 @@ function toDate(val: unknown): Date | null {
     const d = XLSX.SSF.parse_date_code(val)
     if (d) return new Date(d.y, d.m - 1, d.d, d.H, d.M, d.S)
   }
+  if (typeof val === 'string') {
+    const m = val.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/)
+    if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+  }
   return null
 }
 
