@@ -771,26 +771,47 @@ export default function ManagerPage() {
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 }}>Σε εκκρεμότητα</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {mobilePending.length > 0 && (
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS.mobile, flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.8rem', fontWeight: 700, color: CATEGORY_COLORS.mobile }}>Mobile — Προέγκριση</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{mobilePending.length} σύνολο</span>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
-                          {mobilePending.map((e, idx) => (
-                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${CATEGORY_COLORS.mobile}0d`, border: `1px solid ${CATEGORY_COLORS.mobile}25` }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.subCategory ? <> · <span style={{ color: CATEGORY_COLORS.mobile }}>{e.subCategory}</span></> : null}</span>
-                              </div>
-                              {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                    {mobilePending.length > 0 && (() => {
+                      const label = 'Mobile — Προέγκριση'
+                      const color = CATEGORY_COLORS.mobile
+                      const isExpanded = expandedPending.has(label)
+                      const byUser = pendingByUser(mobilePending)
+                      return (
+                        <div>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}
+                            onClick={() => toggleExpandPending(label)}
+                          >
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{mobilePending.length} σύνολο</span>
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                          {isExpanded ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
+                              {mobilePending.map((e, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                    <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.subCategory ? <> · <span style={{ color }}>{e.subCategory}</span></> : null}</span>
+                                  </div>
+                                  {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
+                              {byUser.map(([user, count]) => (
+                                <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
+                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      )
+                    })()}
                     {([
                       { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home, expandable: true },
                       { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra, expandable: false },
