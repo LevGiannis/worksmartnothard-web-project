@@ -416,7 +416,13 @@ export default function ManagerPage() {
     })
     .map(e => ({ ...e, category: 'prepay' as Category }))
   const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
-  const homePending = viewEntries.filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+  const homePending = viewEntries
+    .filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
+    .sort((a, b) => {
+      const u = effectiveName(a.user).localeCompare(effectiveName(b.user))
+      if (u !== 0) return u
+      return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0)
+    })
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
@@ -836,7 +842,7 @@ export default function ManagerPage() {
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                                     <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span></> : null}</span>
                                   </div>
                                   {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                                 </div>
