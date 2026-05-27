@@ -221,6 +221,8 @@ export default function ManagerPage() {
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
   const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
+  const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
+  const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
   const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -790,26 +792,45 @@ export default function ManagerPage() {
                       </div>
                     )}
                     {([
-                      { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home },
-                      { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra },
-                    ] as const).map(({ label, entries: pe, color }) => {
+                      { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home, expandable: true },
+                      { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra, expandable: false },
+                    ] as const).map(({ label, entries: pe, color, expandable }) => {
                       if (!pe.length) return null
                       const byUser = pendingByUser(pe)
+                      const isExpanded = expandedPending.has(label)
                       return (
                         <div key={label}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <div
+                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: expandable ? 'pointer' : 'default' }}
+                            onClick={() => expandable && toggleExpandPending(label)}
+                          >
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                             <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
                             <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{pe.length} σύνολο</span>
+                            {expandable && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>}
                           </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
-                            {byUser.map(([user, count]) => (
-                              <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
-                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
-                              </div>
-                            ))}
-                          </div>
+                          {isExpanded ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
+                              {pe.map((e, idx) => (
+                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
+                                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                    <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}</span>
+                                  </div>
+                                  {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
+                              {byUser.map(([user, count]) => (
+                                <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                  <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
+                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )
                     })}
