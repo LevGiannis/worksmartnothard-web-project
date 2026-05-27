@@ -838,15 +838,24 @@ export default function ManagerPage() {
                           </div>
                           {isExpanded ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
-                              {pe.map((e, idx) => (
+                              {[...pe].sort((a, b) => {
+                                const u = effectiveName(a.user).localeCompare(effectiveName(b.user), 'el')
+                                if (u !== 0) return u
+                                const da = a.date?.getTime() ?? Infinity
+                                const db = b.date?.getTime() ?? Infinity
+                                return da - db
+                              }).map((e, idx) => {
+                                const displayDate = e.date || e.implDate
+                                return (
                                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                                     <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span></> : null}</span>
+                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{displayDate ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(displayDate)}</span></> : null}</span>
                                   </div>
                                   {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                                 </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           ) : (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
