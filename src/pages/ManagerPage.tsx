@@ -66,8 +66,8 @@ function computeAutoSuggestions(rawUsers: string[]): MatchSuggestion[] {
 }
 
 // Union-Find: group matched users, pick the most readable canonical name per group
-function buildAutoMap(rawUsers: string[]): Record<string, string> {
-  const suggestions = computeAutoSuggestions(rawUsers)
+function buildAutoMap(rawUsers: string[], dismissed: string[]): Record<string, string> {
+  const suggestions = computeAutoSuggestions(rawUsers).filter(s => !dismissed.includes(s.key))
   const parent = new Map<string, string>(rawUsers.map(u => [u, u]))
   const find = (x: string): string => {
     if (parent.get(x) === x) return x
@@ -345,7 +345,7 @@ export default function ManagerPage() {
 
   const allRawUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
   const autoSuggestions = computeAutoSuggestions(allRawUsers).filter(s => !dismissedPairs.includes(s.key))
-  const autoMap = buildAutoMap(allRawUsers)
+  const autoMap = buildAutoMap(allRawUsers, dismissedPairs)
   // Manual userMap overrides autoMap; autoMap applies automatically without user intervention
   const effectiveName = (raw: string) => userMap[raw] || autoMap[raw] || raw
 
@@ -1143,51 +1143,32 @@ export default function ManagerPage() {
                   <>
                     {autoSuggestions.length > 0 && (
                       <div style={{ marginBottom: 24 }}>
-                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#fbbf24', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
-                          Προτεινόμενες Ταυτίσεις
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#10b981', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                          Αυτόματες Ταυτίσεις — ήδη εφαρμοσμένες
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           {autoSuggestions.map(s => {
-                            const inputVal = suggestionInputs[s.key] ?? mapDraft[s.a] ?? mapDraft[s.b] ?? s.a
+                            const canon = autoMap[s.a] || autoMap[s.b] || s.a
                             return (
-                              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 9, background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)' }}>
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.a}</span>
-                                    <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.75rem' }}>=</span>
-                                    <span style={{ fontFamily: 'monospace', fontSize: '0.8rem', color: 'rgba(255,255,255,0.55)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.b}</span>
-                                    {s.score === 'exact'
-                                      ? <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 600 }}>ακριβής</span>
-                                      : <span style={{ fontSize: '0.68rem', color: '#fbbf24', fontWeight: 600 }}>παρόμοιο</span>}
-                                  </div>
-                                  <input
-                                    type="text"
-                                    placeholder="Εμφανιζόμενο όνομα…"
-                                    value={inputVal}
-                                    onChange={ev => setSuggestionInputs(prev => ({ ...prev, [s.key]: ev.target.value }))}
-                                    style={{ width: '100%', padding: '7px 12px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', fontSize: '0.83rem', outline: 'none', boxSizing: 'border-box' }}
-                                  />
+                              <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderRadius: 9, background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.18)' }}>
+                                <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.a}</span>
+                                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem' }}>+</span>
+                                  <span style={{ fontFamily: 'monospace', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.05)', padding: '2px 7px', borderRadius: 5 }}>{s.b}</span>
+                                  <span style={{ color: 'rgba(255,255,255,0.2)', fontSize: '0.72rem' }}>→</span>
+                                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#10b981' }}>{canon}</span>
+                                  {s.score === 'exact'
+                                    ? <span style={{ fontSize: '0.65rem', color: '#10b981', opacity: 0.7 }}>ακριβής</span>
+                                    : <span style={{ fontSize: '0.65rem', color: '#6ee7b7', opacity: 0.7 }}>παρόμοιο</span>}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flexShrink: 0 }}>
-                                  <button
-                                    onClick={() => {
-                                      const name = inputVal.trim() || s.a
-                                      setMapDraft(prev => ({ ...prev, [s.a]: name, [s.b]: name }))
-                                      const newDismissed = [...dismissedPairs, s.key]
-                                      setDismissedPairs(newDismissed)
-                                      localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify(newDismissed))
-                                    }}
-                                    style={{ padding: '5px 12px', borderRadius: 7, background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: '#10b981', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
-                                  >Αποδοχή</button>
-                                  <button
-                                    onClick={() => {
-                                      const newDismissed = [...dismissedPairs, s.key]
-                                      setDismissedPairs(newDismissed)
-                                      localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify(newDismissed))
-                                    }}
-                                    style={{ padding: '5px 12px', borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
-                                  >Απόρριψη</button>
-                                </div>
+                                <button
+                                  onClick={() => {
+                                    const newDismissed = [...dismissedPairs, s.key]
+                                    setDismissedPairs(newDismissed)
+                                    localStorage.setItem(DISMISSED_PAIRS_KEY, JSON.stringify(newDismissed))
+                                  }}
+                                  style={{ padding: '4px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.18)', color: '#f87171', fontWeight: 600, fontSize: '0.7rem', cursor: 'pointer', flexShrink: 0 }}
+                                >Αναίρεση</button>
                               </div>
                             )
                           })}
