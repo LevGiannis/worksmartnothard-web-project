@@ -77,14 +77,21 @@ function detectCategory(headers: string[]): Category | null {
 
 function toDate(val: unknown): Date | null {
   if (!val) return null
-  if (val instanceof Date) return val
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val
+  }
   if (typeof val === 'number') {
     const d = XLSX.SSF.parse_date_code(val)
     if (d) return new Date(d.y, d.m - 1, d.d, d.H, d.M, d.S)
   }
   if (typeof val === 'string') {
-    const m = val.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/)
-    if (m) return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+    const s = val.trim()
+    // DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY (with optional time)
+    const dmy = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4})/)
+    if (dmy) return new Date(Number(dmy[3]), Number(dmy[2]) - 1, Number(dmy[1]))
+    // YYYY-MM-DD
+    const ymd = s.match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (ymd) return new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]))
   }
   return null
 }
