@@ -488,6 +488,25 @@ export default function ManagerPage() {
     })
     .map(e => ({ ...e, category: 'prepay' as Category }))
   const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
+
+  const prevYear = mMonth === 1 ? mYear - 1 : mYear
+  const prevM = mMonth === 1 ? 12 : mMonth - 1
+  const prevDoneEntries = viewEntries.filter(e => {
+    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+    if (!d) return false
+    return d.getFullYear() === prevYear && d.getMonth() + 1 === prevM && isMobileCountable(e) && isDone(e)
+  })
+  const prevPortInPrepayDone = viewEntries
+    .filter(e => {
+      if (e.category !== 'mobile') return false
+      if (!(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')) return false
+      const d = e.implDate || e.date
+      if (!d || !(d.getFullYear() === prevYear && d.getMonth() + 1 === prevM)) return false
+      return isDone(e)
+    })
+    .map(e => ({ ...e, category: 'prepay' as Category }))
+  const effectivePrevDoneEntries = [...prevDoneEntries, ...prevPortInPrepayDone]
+
   const homePending = viewEntries
     .filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
     .sort((a, b) => {
@@ -780,64 +799,45 @@ export default function ManagerPage() {
 
             {tab === 'monthly' && !selectedUser && (
               <>
-              {/* Registrations vs target */}
+              {/* Category scoreboard strip */}
               <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Καταχωρήσεις — {monthLabel}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
-                  {cats.map(c => {
-                    const actual = countEntries(regMonthEntries.filter(e => e.category === c))
-                    const target = getRegTarget(c)
-                    const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
-                    const color = CATEGORY_COLORS[c]
-                    return (
-                      <div key={c} style={{ padding: '14px 16px', borderRadius: 12, background: `${color}10`, border: `1px solid ${color}30` }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{CATEGORY_LABELS[c]}</span>
-                          </div>
-                          {target > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pct >= 100 ? '#10b981' : pct >= 70 ? color : 'rgba(255,255,255,0.4)' }}>{pct}%</span>}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-                          <span style={{ fontSize: '1.6rem', fontWeight: 900, color, lineHeight: 1 }}>{actual}</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>/ στόχος</span>
-                          <input type="number" min={0} value={target || ''} placeholder="0" onChange={e => setRegTarget(c, Math.max(0, parseInt(e.target.value) || 0))} style={{ width: 54, padding: '3px 8px', borderRadius: 7, border: `1px solid ${color}40`, background: `${color}15`, color: '#fff', fontSize: '0.85rem', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
-                        </div>
-                        <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999, transition: 'width 400ms ease' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Ολοκληρωμένα — {monthLabel}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)' }}>Δ vs προηγούμενο μήνα</div>
                 </div>
-              </div>
-
-              {/* Completions vs target */}
-              <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Ολοκληρωμένα / Συνδεδεμένα — {monthLabel}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
                   {cats.map(c => {
-                    const actual = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
+                    const done = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
+                    const reg = countEntries(regMonthEntries.filter(e => e.category === c))
                     const target = getDoneTarget(c)
-                    const pct = target > 0 ? Math.min(100, Math.round((actual / target) * 100)) : 0
+                    const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0
+                    const prevDone = countEntries(effectivePrevDoneEntries.filter(e => e.category === c))
+                    const delta = done - prevDone
                     const color = CATEGORY_COLORS[c]
                     return (
-                      <div key={c} style={{ padding: '14px 16px', borderRadius: 12, background: `${color}10`, border: `1px solid ${color}30` }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{CATEGORY_LABELS[c]}</span>
+                      <div key={c} style={{ padding: '16px', borderRadius: 14, background: `${color}0d`, border: `1px solid ${color}22` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{CATEGORY_LABELS[c]}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '2.4rem', fontWeight: 900, color, lineHeight: 1 }}>{done}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)' }}>/{reg}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto' }}>
+                            {delta !== 0 ? (
+                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: delta > 0 ? '#10b981' : '#ef4444', background: delta > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${delta > 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 5, padding: '2px 6px' }}>
+                                {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                              </span>
+                            ) : prevDone > 0 ? (
+                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', padding: '2px 5px' }}>=</span>
+                            ) : null}
+                            <input type="number" min={0} value={target || ''} placeholder="—" onChange={e => setDoneTarget(c, Math.max(0, parseInt(e.target.value) || 0))} title="Στόχος" style={{ width: 40, padding: '2px 5px', borderRadius: 6, border: `1px solid ${color}30`, background: `${color}10`, color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, outline: 'none', textAlign: 'center' }} />
                           </div>
-                          {target > 0 && <span style={{ fontSize: '0.75rem', fontWeight: 800, color: pct >= 100 ? '#10b981' : pct >= 70 ? color : 'rgba(255,255,255,0.4)' }}>{pct}%</span>}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 10 }}>
-                          <span style={{ fontSize: '1.6rem', fontWeight: 900, color, lineHeight: 1 }}>{actual}</span>
-                          <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>/ στόχος</span>
-                          <input type="number" min={0} value={target || ''} placeholder="0" onChange={e => setDoneTarget(c, Math.max(0, parseInt(e.target.value) || 0))} style={{ width: 54, padding: '3px 8px', borderRadius: 7, border: `1px solid ${color}40`, background: `${color}15`, color: '#fff', fontSize: '0.85rem', fontWeight: 700, outline: 'none', textAlign: 'center' }} />
-                        </div>
-                        <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+                        <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden', marginBottom: 4 }}>
                           <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999, transition: 'width 400ms ease' }} />
                         </div>
+                        {target > 0 && <div style={{ fontSize: '0.62rem', color: pct >= 100 ? '#10b981' : 'rgba(255,255,255,0.2)', textAlign: 'right' }}>{pct}%</div>}
                       </div>
                     )
                   })}
@@ -969,110 +969,125 @@ export default function ManagerPage() {
                 </div>
               )}
 
-              <div className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-                        <th style={{ padding: '6px 12px', textAlign: 'left', color: 'rgba(255,255,255,0.3)', fontWeight: 600, whiteSpace: 'nowrap' }}>Χρήστης</th>
-                        {cats.map(c => (
-                          <th key={c} style={{ padding: '6px 10px', textAlign: 'center', color: CATEGORY_COLORS[c], fontWeight: 700, whiteSpace: 'nowrap' }}>{CATEGORY_LABELS[c]}</th>
-                        ))}
-                        <th style={{ padding: '6px 10px', textAlign: 'center', color: 'rgba(255,255,255,0.3)', fontWeight: 600 }}>Σύνολο</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allUsers.map(user => {
-                        const total = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user))
-                        const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || effectiveDoneMonthEntries.some(e => effectiveName(e.user) === user)
-                        if (!hasEntries) return null
+              {/* User leaderboard */}
+              {(() => {
+                const leaderboard = allUsers
+                  .map(user => {
+                    const done = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user))
+                    const hasEntries = regMonthEntries.some(e => effectiveName(e.user) === user) || effectiveDoneMonthEntries.some(e => effectiveName(e.user) === user)
+                    return { user, done, hasEntries }
+                  })
+                  .filter(r => r.hasEntries)
+                  .sort((a, b) => b.done - a.done)
+                const maxDone = leaderboard[0]?.done || 1
+                if (!leaderboard.length) return null
+                return (
+                  <div className="panel-card" style={{ padding: 20 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη — {monthLabel}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {leaderboard.map(({ user, done }, idx) => {
+                        const fillPct = maxDone > 0 ? (done / maxDone) * 100 : 0
+                        const prevUserDone = countEntries(effectivePrevDoneEntries.filter(e => effectiveName(e.user) === user))
+                        const delta = done - prevUserDone
+                        const catChips = cats.map(c => {
+                          const n = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c))
+                          return n > 0 ? { c, n } : null
+                        }).filter(Boolean) as { c: Category; n: number }[]
+                        const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
                         return (
-                          <tr key={user} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer' }} onClick={() => setSelectedUser(user)}>
-                            <td style={{ padding: '6px 12px', color: 'rgba(255,255,255,0.7)', whiteSpace: 'nowrap', fontWeight: 500 }}>{user}</td>
-                            {cats.map(c => {
-                              const catDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
-                              const catReg = regMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c)
-                              const done = countEntries(catDone)
-                              const reg = countEntries(catReg)
-                              return (
-                                <td key={c} style={{ padding: '6px 10px', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                                  {done > 0 || reg > 0 ? (
-                                    <span>
-                                      <span style={{ fontWeight: 800, color: CATEGORY_COLORS[c] }}>{done}</span>
-                                      <span style={{ color: 'rgba(255,255,255,0.18)', marginLeft: 3 }}>/{reg}</span>
+                          <div key={user} onClick={() => setSelectedUser(user)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center', flexShrink: 0 }}>#{idx + 1}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                  {catChips.map(({ c, n }) => (
+                                    <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
+                                  ))}
+                                  <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
+                                  {delta !== 0 && (
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444' }}>
+                                      {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
                                     </span>
-                                  ) : (
-                                    <span style={{ color: 'rgba(255,255,255,0.07)' }}>—</span>
                                   )}
-                                </td>
-                              )
-                            })}
-                            <td style={{ padding: '6px 10px', textAlign: 'center', fontWeight: 800, color: 'rgba(255,255,255,0.7)' }}>
-                              {total}
-                            </td>
-                          </tr>
+                                </div>
+                              </div>
+                              <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
+                              </div>
+                            </div>
+                          </div>
                         )
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Per-user entry breakdown */}
-              {allUsers.map(user => {
-                if (selectedUser && selectedUser !== user) return null
-                if (!selectedUser) return null
-                const userDone = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user)
-                const userReg = regMonthEntries.filter(e => effectiveName(e.user) === user)
-                if (!userDone.length && !userReg.length) return null
-                const regOnlyIds = new Set(userDone.map(e => e.requestId).filter(Boolean))
-                const regOnly = userReg.filter(e => !e.requestId || !regOnlyIds.has(e.requestId))
-                return (
-                  <div key={user} className="panel-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 4 }}>
-                    <div style={{ padding: '11px 20px', background: 'rgba(124,58,237,0.12)', borderBottom: '1px solid rgba(124,58,237,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#5b21b6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                          {user.charAt(0).toUpperCase()}
-                        </div>
-                        <span style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.9rem' }}>{user}</span>
-                      </div>
-                      <div style={{ display: 'flex', gap: 14 }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#a78bfa' }}>{countEntries(userDone)} ολοκλ.</span>
-                        <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.3)' }}>{countEntries(userReg)} σύνολο</span>
-                      </div>
-                    </div>
-                    <div style={{ padding: '6px 0' }}>
-                      {userDone.map((e, idx) => (
-                        <div key={`d-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10 }}>
-                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
-                          <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                          {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
-                          {e.subCategory && <span style={{ fontSize: '0.7rem', color: `${CATEGORY_COLORS[e.category]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
-                          {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
-                          {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
-                        </div>
-                      ))}
-                      {regOnly.map((e, idx) => (
-                        <div key={`r-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '7px 20px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 10, opacity: 0.45 }}>
-                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', minWidth: 90, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}</span>
-                          <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                          {e.subCategory && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)', flexShrink: 0 }}>{e.subCategory}</span>}
-                          {e.date && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
-                          {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
-                        </div>
-                      ))}
                     </div>
                   </div>
                 )
-              })}
+              })()}
+
+              {/* Per-user entry breakdown (inside !selectedUser guard — never shown) */}
               </>
             )}
 
             {/* ── Monthly view — single user detail ── */}
             {tab === 'monthly' && selectedUser && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {/* User header */}
+                <div className="panel-card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#7c3aed,#0891b2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 900, color: '#fff', flexShrink: 0 }}>
+                      {selectedUser.charAt(0).toUpperCase()}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 800, color: '#fff', fontSize: '1rem' }}>{selectedUser}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{monthLabel}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                    <span style={{ fontSize: '2rem', fontWeight: 900, color: '#a78bfa', lineHeight: 1 }}>{countEntries(effectiveDoneMonthEntries)}</span>
+                    {(() => {
+                      const delta = countEntries(effectiveDoneMonthEntries) - countEntries(effectivePrevDoneEntries)
+                      if (delta === 0) return null
+                      return (
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: delta > 0 ? '#10b981' : '#ef4444' }}>
+                          {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                        </span>
+                      )
+                    })()}
+                    <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.25)' }}>ολοκλ.</span>
+                  </div>
+                </div>
+
+                {/* Category summary rows */}
+                <div className="panel-card" style={{ padding: '8px 16px' }}>
+                  {cats.map(c => {
+                    const catDone = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
+                    const catReg = countEntries(regMonthEntries.filter(e => e.category === c))
+                    if (!catDone && !catReg) return null
+                    const target = getDoneTarget(c)
+                    const pct = target > 0 ? Math.min(100, Math.round((catDone / target) * 100)) : 0
+                    const prevCatDone = countEntries(effectivePrevDoneEntries.filter(e => e.category === c))
+                    const delta = catDone - prevCatDone
+                    const color = CATEGORY_COLORS[c]
+                    return (
+                      <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.73rem', fontWeight: 700, color, minWidth: 85, flexShrink: 0 }}>{CATEGORY_LABELS[c]}</span>
+                        <div style={{ flex: 1, height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden', maxWidth: 90 }}>
+                          {pct > 0 && <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999 }} />}
+                        </div>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 900, color }}>{catDone}</span>
+                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>/{catReg}</span>
+                        {delta !== 0 ? (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444', minWidth: 28 }}>
+                            {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                          </span>
+                        ) : <span style={{ minWidth: 28 }} />}
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Entry list per category */}
                 {cats.map(c => {
                   const catDoneEntries = effectiveDoneMonthEntries.filter(e => e.category === c)
                   const catRegEntries = regMonthEntries.filter(e => e.category === c)
