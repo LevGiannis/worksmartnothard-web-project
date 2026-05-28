@@ -524,6 +524,7 @@ export default function ManagerPage() {
       if (e.category === 'mobile') {
         if (s === 'ΝΕΑ' || s === 'ΚΑΤΑΧΩΡΗΜΕΝΗ') return true
         if (s === 'ΣΕ ΕΚΚΡΕΜΟΤΗΤΑ') return e.date != null && e.date >= thirtyDaysAgo
+        if (s.includes('ΑΠΟΡΡΙΦΘ')) return true
         return false
       }
       if (e.category === 'migra') return s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
