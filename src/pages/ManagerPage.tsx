@@ -956,16 +956,25 @@ export default function ManagerPage() {
                     <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{docIssues.length} σύνολο</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {docIssues.map((e, idx) => (
+                    {docIssues.map((e, idx) => {
+                      const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
+                      const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
+                      return (
                       <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, background: `${CATEGORY_COLORS[e.category]}0d`, border: `1px solid ${CATEGORY_COLORS[e.category]}25` }}>
                         <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
                           <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                           <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{effectiveName(e.user)} · <span style={{ color: CATEGORY_COLORS[e.category] }}>{CATEGORY_LABELS[e.category]}</span>{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span></> : null}</span>
                         </div>
+                        {ageDays != null && (
+                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ageColor, background: `${ageColor}18`, border: `1px solid ${ageColor}40`, borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {ageDays}d
+                          </span>
+                        )}
                         {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                         <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}
