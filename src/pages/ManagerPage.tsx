@@ -1776,8 +1776,8 @@ export default function ManagerPage() {
                   {(() => {
                     const storePendingData = stores.map(s => ({
                       s,
-                      mob: entries.filter(e => e.storeId === s.id && e.category === 'mobile' && e.status.toUpperCase().includes('ΠΡΟΕΓΚΡΙΣΗ')).length,
-                      home: entries.filter(e => e.storeId === s.id && e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')).length,
+                      mob: entries.filter(e => e.storeId === s.id && e.category === 'mobile' && e.status.toUpperCase().includes('ΠΡΟΕΓΚΡΙΣΗ') && shopPassFilter(e) && !appliedExcludedUsers.has(effectiveName(e.user))).length,
+                      home: entries.filter(e => e.storeId === s.id && e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ') && shopPassFilter(e) && !appliedExcludedUsers.has(effectiveName(e.user))).length,
                     })).filter(x => x.mob > 0 || x.home > 0)
                     if (!storePendingData.length) return null
                     return (
