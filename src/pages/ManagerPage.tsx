@@ -1271,31 +1271,57 @@ export default function ManagerPage() {
               {/* Doc issues panel */}
               {docIssues.length > 0 && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: 1.2 }}>Εκκρεμείς / Δικαιολογητικά</span>
                     <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{docIssues.length} σύνολο</span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {docIssues.map((e, idx) => {
-                      const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
-                      const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
-                      return (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, background: `${CATEGORY_COLORS[e.category]}0d`, border: `1px solid ${CATEGORY_COLORS[e.category]}25` }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                          <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                          <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}>{effectiveName(e.user)} · <span style={{ color: CATEGORY_COLORS[e.category] }}>{CATEGORY_LABELS[e.category]}</span>{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span></> : null}</span>
-                        </div>
-                        {ageDays != null && (
-                          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: ageColor, background: `${ageColor}18`, border: `1px solid ${ageColor}40`, borderRadius: 6, padding: '2px 7px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            {ageDays}d
-                          </span>
-                        )}
-                        {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
-                        <span style={{ fontSize: '0.7rem', padding: '2px 8px', borderRadius: 8, background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
-                      </div>
-                      )
-                    })}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {(() => {
+                      const byUser = new Map<string, typeof docIssues>()
+                      for (const e of docIssues) {
+                        const u = effectiveName(e.user)
+                        if (!byUser.has(u)) byUser.set(u, [])
+                        byUser.get(u)!.push(e)
+                      }
+                      return [...byUser.entries()].sort((a, b) => b[1].length - a[1].length).map(([user, ues]) => {
+                        const label = `doc-${user}`
+                        const isExpanded = expandedPending.has(label)
+                        return (
+                          <div key={user}>
+                            <div
+                              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', cursor: 'pointer' }}
+                              onClick={() => toggleExpandPending(label)}
+                            >
+                              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', flex: 1 }}>{user}</span>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fca5a5' }}>{ues.length}</span>
+                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)' }}>{isExpanded ? '▲' : '▼'}</span>
+                            </div>
+                            {isExpanded && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 12, marginTop: 5 }}>
+                                {ues.map((e, idx) => {
+                                  const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
+                                  const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
+                                  return (
+                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${CATEGORY_COLORS[e.category]}0d`, border: `1px solid ${CATEGORY_COLORS[e.category]}20` }}>
+                                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                        <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                        <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', marginTop: 1 }}><span style={{ color: CATEGORY_COLORS[e.category] }}>{CATEGORY_LABELS[e.category]}</span>{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.22)' }}>{formatDate(e.date)}</span></> : null}</span>
+                                      </div>
+                                      {ageDays != null && (
+                                        <span style={{ fontSize: '0.67rem', fontWeight: 700, color: ageColor, background: `${ageColor}18`, border: `1px solid ${ageColor}40`, borderRadius: 5, padding: '2px 6px', whiteSpace: 'nowrap', flexShrink: 0 }}>{ageDays}d</span>
+                                      )}
+                                      {e.requestId && <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                      <span style={{ fontSize: '0.68rem', padding: '2px 7px', borderRadius: 7, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#fca5a5', fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{e.status}</span>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })
+                    })()}
                   </div>
                 </div>
               )}
