@@ -6,6 +6,14 @@ const MANAGER_PASSWORD = 'manager123'
 const USER_MAP_KEY = 'ws_manager_user_map'
 const TARGETS_KEY = 'ws_manager_targets'
 const DISMISSED_PAIRS_KEY = 'ws_manager_dismissed_pairs'
+const STORES_KEY = 'ws_manager_stores'
+const STORE_TARGETS_KEY = 'ws_manager_store_targets'
+
+interface Store {
+  id: string
+  code: string
+  name: string
+}
 
 function normalizeForMatch(s: string): string {
   return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '')
@@ -126,6 +134,7 @@ interface ParsedEntry {
   implDate?: Date | null
   connections?: number
   shopCode?: string
+  storeId?: string
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -291,7 +300,7 @@ export default function ManagerPage() {
   const [pwInput, setPwInput] = useState('')
   const [pwError, setPwError] = useState(false)
   const [entries, setEntries] = useState<ParsedEntry[]>([])
-  const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
+  const [tab, setTab] = useState<'daily' | 'monthly' | 'compare' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
   const [selectedShop, setSelectedShop] = useState('')
@@ -312,6 +321,14 @@ export default function ManagerPage() {
   const [exportMode, setExportMode] = useState<'reg' | 'done'>('done')
   const [dismissedPairs, setDismissedPairs] = useState<string[]>([])
   const [suggestionInputs, setSuggestionInputs] = useState<Record<string, string>>({})
+  const [stores, setStores] = useState<Store[]>([])
+  const [newStoreCode, setNewStoreCode] = useState('')
+  const [newStoreName, setNewStoreName] = useState('')
+  const [editingStore, setEditingStore] = useState<string | null>(null)
+  const [editCode, setEditCode] = useState('')
+  const [editName, setEditName] = useState('')
+  const [storeTargets, setStoreTargets] = useState<Record<string, number>>({})
+  const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set())
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -325,6 +342,10 @@ export default function ManagerPage() {
     }
     const storedDismissed = localStorage.getItem(DISMISSED_PAIRS_KEY)
     if (storedDismissed) setDismissedPairs(JSON.parse(storedDismissed) as string[])
+    const storedStores = localStorage.getItem(STORES_KEY)
+    if (storedStores) setStores(JSON.parse(storedStores) as Store[])
+    const storedStoreTargets = localStorage.getItem(STORE_TARGETS_KEY)
+    if (storedStoreTargets) setStoreTargets(JSON.parse(storedStoreTargets) as Record<string, number>)
   }, [])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
@@ -346,6 +367,47 @@ export default function ManagerPage() {
     setMapSaved(true)
     setTimeout(() => setMapSaved(false), 2000)
   }
+
+  const addStore = () => {
+    const code = newStoreCode.trim()
+    if (!code) return
+    const store: Store = { id: Date.now().toString(), code, name: newStoreName.trim() || code }
+    const updated = [...stores, store]
+    setStores(updated)
+    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
+    setNewStoreCode('')
+    setNewStoreName('')
+  }
+
+  const removeStore = (id: string) => {
+    const updated = stores.filter(s => s.id !== id)
+    setStores(updated)
+    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
+    setEntries(prev => prev.filter(e => e.storeId !== id))
+  }
+
+  const startEditStore = (s: Store) => {
+    setEditingStore(s.id)
+    setEditCode(s.code)
+    setEditName(s.name)
+  }
+
+  const saveEditStore = () => {
+    if (!editingStore) return
+    const updated = stores.map(s => s.id === editingStore ? { ...s, code: editCode.trim() || s.code, name: editName.trim() || editCode.trim() || s.code } : s)
+    setStores(updated)
+    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
+    setEditingStore(null)
+  }
+
+  const getStoreTarget = (storeId: string) => storeTargets[`${storeId}-${selectedMonth}`] ?? 0
+  const setStoreTarget = (storeId: string, val: number) => {
+    const updated = { ...storeTargets, [`${storeId}-${selectedMonth}`]: val }
+    setStoreTargets(updated)
+    localStorage.setItem(STORE_TARGETS_KEY, JSON.stringify(updated))
+  }
+
+  const toggleExpandStore = (id: string) => setExpandedStores(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
 
   const allRawUsers = [...new Set(entries.map(e => e.user))].filter(Boolean).sort()
   const autoSuggestions = computeAutoSuggestions(allRawUsers).filter(s => !dismissedPairs.includes(s.key))
@@ -388,6 +450,42 @@ export default function ManagerPage() {
       if (newMobile.length) {
         setEntries(prev => {
           const existingIds = new Set(prev.filter(e => e.category === 'mobile').map(e => e.requestId).filter(Boolean))
+          const toAdd = newMobile.filter(e => !e.requestId || !existingIds.has(e.requestId))
+          return [...prev, ...toAdd]
+        })
+      }
+    } catch (err) {
+      console.error('Parse error:', err)
+    }
+    setUploading(false)
+  }, [])
+
+  const processStoreFiles = useCallback(async (storeId: string, files: FileList | File[]) => {
+    setUploading(true)
+    const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
+    try {
+      const results = await Promise.all(fileArr.map(parseFile))
+      const all = results.flat().map(e => ({ ...e, storeId }))
+      setEntries(prev => {
+        const uploadedCats = new Set(all.map(e => e.category))
+        const kept = prev.filter(e => !(e.storeId === storeId && uploadedCats.has(e.category)))
+        return [...kept, ...all]
+      })
+    } catch (err) {
+      console.error('Parse error:', err)
+    }
+    setUploading(false)
+  }, [])
+
+  const processStoreExtraMobile = useCallback(async (storeId: string, files: FileList | File[]) => {
+    setUploading(true)
+    const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
+    try {
+      const results = await Promise.all(fileArr.map(parseFile))
+      const newMobile = results.flat().filter(e => e.category === 'mobile').map(e => ({ ...e, storeId }))
+      if (newMobile.length) {
+        setEntries(prev => {
+          const existingIds = new Set(prev.filter(e => e.category === 'mobile' && e.storeId === storeId).map(e => e.requestId).filter(Boolean))
           const toAdd = newMobile.filter(e => !e.requestId || !existingIds.has(e.requestId))
           return [...prev, ...toAdd]
         })
@@ -573,54 +671,168 @@ export default function ManagerPage() {
     XLSX.writeFile(wb, `manager-${selectedMonth}${userSuffix}${modeSuffix}.xlsx`)
   }
 
+  const handleExportComparison = () => {
+    if (!stores.length) return
+    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, migra: 2, home: 3 }
+    const storeDoneEntries = (storeId: string) => {
+      const se = entries.filter(e => e.storeId === storeId)
+      const done = se.filter(e => {
+        const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+        if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+        return isMobileCountable(e) && isDone(e)
+      })
+      const pip = se.filter(e => {
+        if (e.category !== 'mobile') return false
+        if (!(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')) return false
+        const d = e.implDate || e.date
+        if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+        return isDone(e)
+      }).map(e => ({ ...e, category: 'prepay' as Category }))
+      return [...done, ...pip]
+    }
+    const summaryRows = stores.map(s => {
+      const done = storeDoneEntries(s.id)
+      const row: Record<string, string | number> = { 'Κατάστημα': s.code, 'Ονομασία': s.name }
+      cats.forEach(c => { row[CATEGORY_LABELS[c]] = countEntries(done.filter(e => e.category === c)) })
+      row['Σύνολο'] = countEntries(done)
+      return row
+    })
+    const sellerRows: Record<string, string | number>[] = []
+    stores.forEach(s => {
+      const done = storeDoneEntries(s.id)
+      const sellers = [...new Set(done.map(e => effectiveName(e.user)))]
+      sellers.forEach(u => {
+        const row: Record<string, string | number> = { 'Κατάστημα': s.code, 'Πωλητής': u }
+        cats.forEach(c => { row[CATEGORY_LABELS[c]] = countEntries(done.filter(e => effectiveName(e.user) === u && e.category === c)) })
+        row['Σύνολο'] = countEntries(done.filter(e => effectiveName(e.user) === u))
+        sellerRows.push(row)
+      })
+    })
+    sellerRows.sort((a, b) => (b['Σύνολο'] as number) - (a['Σύνολο'] as number))
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'Καταστήματα')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sellerRows), 'Πωλητές')
+    XLSX.writeFile(wb, `σύγκριση-καταστημάτων-${selectedMonth}.xlsx`)
+    void catOrder
+  }
+
   return (
     <div className="page-content">
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
       <div className="page-inner">
 
-        {/* Upload zone */}
-        <div
-          className="panel-card"
-          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={e => { e.preventDefault(); setDragOver(false); void processFiles(e.dataTransfer.files) }}
-          style={{ padding: 24, marginBottom: 20, border: `2px dashed ${dragOver ? '#0891b2' : 'rgba(255,255,255,0.1)'}`, background: dragOver ? 'rgba(8,145,178,0.08)' : undefined, transition: 'all 200ms', textAlign: 'center' }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0891b2,#0e7490)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                <polyline points="17 8 12 3 7 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                <line x1="12" y1="3" x2="12" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </div>
-            <div>
-              <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.95rem' }}>Ανέβασμα αρχείων Excel</div>
-              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Migration FTTH · Vodafone Home</div>
+        {/* Store configuration panel */}
+        <div className="panel-card" style={{ padding: 20, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: stores.length > 0 ? 14 : 0 }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Καταστήματα</div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              <input value={newStoreCode} onChange={e => setNewStoreCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStore()} placeholder="Κωδικός (πχ VF572)" style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.8rem', width: 150, outline: 'none' }} />
+              <input value={newStoreName} onChange={e => setNewStoreName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStore()} placeholder="Ονομασία (προαιρ.)" style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.8rem', width: 160, outline: 'none' }} />
+              <button onClick={addStore} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.15)', color: '#22d3ee', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>+ Προσθήκη</button>
             </div>
           </div>
-          <label style={{ cursor: 'pointer' }}>
-            <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processFiles(e.target.files)} />
-            <span style={{ display: 'inline-block', padding: '9px 22px', borderRadius: 8, background: 'rgba(8,145,178,0.2)', border: '1px solid rgba(8,145,178,0.4)', color: '#22d3ee', fontSize: '0.85rem', fontWeight: 600 }}>
-              {uploading ? 'Επεξεργασία...' : 'Επιλογή αρχείων'}
-            </span>
-          </label>
-          <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', marginTop: 10 }}>ή σύρε &amp; άφησε εδώ</div>
+          {stores.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {stores.map(s => (
+                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                  {editingStore === s.id ? (
+                    <>
+                      <input value={editCode} onChange={e => setEditCode(e.target.value)} style={{ padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.1)', color: '#fff', fontSize: '0.78rem', width: 80, outline: 'none' }} />
+                      <input value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.1)', color: '#fff', fontSize: '0.78rem', width: 110, outline: 'none' }} />
+                      <button onClick={saveEditStore} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.72rem', cursor: 'pointer' }}>✓</button>
+                      <button onClick={() => setEditingStore(null)} style={{ padding: '2px 6px', borderRadius: 5, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', cursor: 'pointer' }}>✕</button>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#22d3ee' }}>{s.code}</span>
+                      {s.name !== s.code && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>{s.name}</span>}
+                      <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>{entries.filter(e => e.storeId === s.id).length} εγγ.</span>
+                      <button onClick={() => startEditStore(s)} style={{ padding: '1px 5px', borderRadius: 4, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.25)', fontSize: '0.68rem', cursor: 'pointer' }}>✎</button>
+                      <button onClick={() => removeStore(s.id)} style={{ padding: '1px 5px', borderRadius: 4, border: 'none', background: 'transparent', color: 'rgba(239,68,68,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}>×</button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Extra mobile upload */}
-        <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>Επιπλέον Mobile</div>
-            <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Προσθήκη στο υπάρχον mobile — νέες εγγραφές μόνο (χωρίς αντικατάσταση)</div>
+        {/* Per-store upload zones (when stores are configured) */}
+        {stores.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+            {stores.map(s => {
+              const storeCount = entries.filter(e => e.storeId === s.id).length
+              const mobileCnt = entries.filter(e => e.storeId === s.id && e.category === 'mobile').length
+              const homeCnt = entries.filter(e => e.storeId === s.id && e.category === 'home').length
+              return (
+                <div key={s.id} style={{ padding: '14px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                  <div style={{ minWidth: 120 }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#22d3ee' }}>{s.code}</div>
+                    {s.name !== s.code && <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{s.name}</div>}
+                    {storeCount > 0 && <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginTop: 2 }}>{mobileCnt} mob · {homeCnt} home</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flex: 1, flexWrap: 'wrap' }}>
+                    <label style={{ cursor: 'pointer' }}>
+                      <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreFiles(s.id, e.target.files)} />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, background: 'rgba(8,145,178,0.15)', border: '1px solid rgba(8,145,178,0.35)', color: '#22d3ee', fontSize: '0.8rem', fontWeight: 600 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="17 8 12 3 7 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="3" x2="12" y2="15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                        {uploading ? 'Επεξ...' : 'Mobile + Home'}
+                      </span>
+                    </label>
+                    <label style={{ cursor: 'pointer' }}>
+                      <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreExtraMobile(s.id, e.target.files)} />
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '7px 14px', borderRadius: 8, background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.28)', color: '#a78bfa', fontSize: '0.8rem', fontWeight: 600 }}>+ Mobile</span>
+                    </label>
+                  </div>
+                </div>
+              )
+            })}
           </div>
-          <label style={{ cursor: 'pointer' }}>
-            <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processExtraMobile(e.target.files)} />
-            <span style={{ display: 'inline-block', padding: '7px 16px', borderRadius: 8, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa', fontSize: '0.82rem', fontWeight: 600 }}>
-              {uploading ? 'Επεξεργασία...' : '+ Mobile'}
-            </span>
-          </label>
-        </div>
+        ) : (
+          <>
+            {/* Classic upload zone (no stores configured) */}
+            <div
+              className="panel-card"
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={e => { e.preventDefault(); setDragOver(false); void processFiles(e.dataTransfer.files) }}
+              style={{ padding: 24, marginBottom: 20, border: `2px dashed ${dragOver ? '#0891b2' : 'rgba(255,255,255,0.1)'}`, background: dragOver ? 'rgba(8,145,178,0.08)' : undefined, transition: 'all 200ms', textAlign: 'center' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginBottom: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'linear-gradient(135deg,#0891b2,#0e7490)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    <polyline points="17 8 12 3 7 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <line x1="12" y1="3" x2="12" y2="15" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.95rem' }}>Ανέβασμα αρχείων Excel</div>
+                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Migration FTTH · Vodafone Home</div>
+                </div>
+              </div>
+              <label style={{ cursor: 'pointer' }}>
+                <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processFiles(e.target.files)} />
+                <span style={{ display: 'inline-block', padding: '9px 22px', borderRadius: 8, background: 'rgba(8,145,178,0.2)', border: '1px solid rgba(8,145,178,0.4)', color: '#22d3ee', fontSize: '0.85rem', fontWeight: 600 }}>
+                  {uploading ? 'Επεξεργασία...' : 'Επιλογή αρχείων'}
+                </span>
+              </label>
+              <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)', marginTop: 10 }}>ή σύρε &amp; άφησε εδώ</div>
+            </div>
+            <div style={{ marginBottom: 20, padding: '12px 18px', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.015)', display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>Επιπλέον Mobile</div>
+                <div style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.25)', marginTop: 2 }}>Προσθήκη στο υπάρχον mobile — νέες εγγραφές μόνο (χωρίς αντικατάσταση)</div>
+              </div>
+              <label style={{ cursor: 'pointer' }}>
+                <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processExtraMobile(e.target.files)} />
+                <span style={{ display: 'inline-block', padding: '7px 16px', borderRadius: 8, background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)', color: '#a78bfa', fontSize: '0.82rem', fontWeight: 600 }}>
+                  {uploading ? 'Επεξεργασία...' : '+ Mobile'}
+                </span>
+              </label>
+            </div>
+          </>
+        )}
 
         {entries.length === 0 ? (
           <div className="panel-card" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.9rem' }}>
@@ -692,13 +904,13 @@ export default function ManagerPage() {
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
-              {(['daily', 'monthly', 'users'] as const).map(t => (
+              {(['daily', 'monthly', 'compare', 'users'] as const).map(t => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
                   style={{ padding: '8px 20px', borderRadius: 8, border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', background: tab === t ? 'rgba(8,145,178,0.3)' : 'transparent', color: tab === t ? '#22d3ee' : 'rgba(255,255,255,0.4)', transition: 'all 150ms' }}
                 >
-                  {t === 'daily' ? 'Ημερήσια' : t === 'monthly' ? 'Μηνιαία' : 'Χρήστες'}
+                  {t === 'daily' ? 'Ημερήσια' : t === 'monthly' ? 'Μηνιαία' : t === 'compare' ? 'Σύγκριση' : 'Χρήστες'}
                 </button>
               ))}
             </div>
@@ -1172,6 +1384,253 @@ export default function ManagerPage() {
                 })}
               </div>
             )}
+            {/* ── Compare tab ── */}
+            {tab === 'compare' && (() => {
+              if (stores.length === 0) return (
+                <div className="panel-card" style={{ padding: 40, textAlign: 'center', color: 'rgba(255,255,255,0.25)', fontSize: '0.9rem' }}>
+                  Πρόσθεσε καταστήματα στο πάνελ "Καταστήματα" για να ενεργοποιηθεί η σύγκριση
+                </div>
+              )
+
+              // ── Helpers scoped to compare tab ──
+              const storeDoneMonth = (storeId: string): ParsedEntry[] => {
+                const se = entries.filter(e => e.storeId === storeId)
+                const done = se.filter(e => {
+                  const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+                  if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+                  return isMobileCountable(e) && isDone(e)
+                })
+                const pip = se.filter(e => {
+                  if (e.category !== 'mobile') return false
+                  if (!(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')) return false
+                  const d = e.implDate || e.date
+                  if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+                  return isDone(e)
+                }).map(e => ({ ...e, category: 'prepay' as Category }))
+                return [...done, ...pip]
+              }
+              const storeTotalDone = (storeId: string) => countEntries(storeDoneMonth(storeId))
+              const maxStoreDone = Math.max(1, ...stores.map(s => storeTotalDone(s.id)))
+
+              // All sellers across all stores
+              const allStoreSellers = stores.flatMap(s => {
+                const done = storeDoneMonth(s.id)
+                return [...new Set(done.map(e => effectiveName(e.user)))].map(u => ({ user: u, storeId: s.id, storeCode: s.code }))
+              })
+              const uniqueSellers = [...new Map(allStoreSellers.map(x => [x.user, x])).values()]
+              const sellerTotals = uniqueSellers.map(({ user, storeId, storeCode }) => {
+                const allDone = stores.flatMap(s => storeDoneMonth(s.id)).filter(e => effectiveName(e.user) === user)
+                return { user, storeId, storeCode, total: countEntries(allDone), cats: cats.map(c => ({ c, n: countEntries(allDone.filter(e => e.category === c)) })).filter(x => x.n > 0) }
+              }).sort((a, b) => b.total - a.total)
+              const maxSellerTotal = Math.max(1, sellerTotals[0]?.total ?? 1)
+
+              return (
+                <>
+                  {/* Month nav + export — Feature 3+10 */}
+                  <div className="panel-card" style={{ padding: '14px 20px', display: 'flex', alignItems: 'center', gap: 12, marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Μήνας</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <button onClick={() => shiftMonth(-1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>‹</button>
+                      <span style={{ fontWeight: 700, color: '#fff', fontSize: '0.95rem', minWidth: 180, textAlign: 'center', textTransform: 'capitalize' }}>{monthLabel}</span>
+                      <button onClick={() => shiftMonth(1)} style={{ width: 32, height: 32, borderRadius: 8, border: '1px solid rgba(255,255,255,0.12)', background: 'rgba(255,255,255,0.05)', color: '#fff', cursor: 'pointer', fontSize: '1.1rem' }}>›</button>
+                    </div>
+                    <button onClick={handleExportComparison} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                      Excel
+                    </button>
+                  </div>
+
+                  {/* Feature 3+4+9: Store summary table + ranking bars + targets */}
+                  <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σύνοψη Καταστημάτων — {monthLabel}</div>
+                      <div style={{ display: 'flex', gap: 16 }}>
+                        {cats.map(c => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: CATEGORY_COLORS[c] }}>{CATEGORY_LABELS[c].substring(0, 3)}</span>)}
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>Σύνολο</span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', minWidth: 50 }}>Στόχος</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {[...stores].sort((a, b) => storeTotalDone(b.id) - storeTotalDone(a.id)).map((s, idx) => {
+                        const done = storeDoneMonth(s.id)
+                        const total = countEntries(done)
+                        const target = getStoreTarget(s.id)
+                        const pct = target > 0 ? Math.min(100, Math.round((total / target) * 100)) : 0
+                        const fillPct = (total / maxStoreDone) * 100
+                        const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
+                        return (
+                          <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: rankColor, minWidth: 20, textAlign: 'center' }}>#{idx + 1}</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#22d3ee' }}>{s.code}</span>
+                                  {s.name !== s.code && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)' }}>{s.name}</span>}
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                  {cats.map(c => {
+                                    const n = countEntries(done.filter(e => e.category === c))
+                                    return <span key={c} style={{ fontSize: '0.78rem', fontWeight: 700, color: n > 0 ? CATEGORY_COLORS[c] : 'rgba(255,255,255,0.15)', minWidth: 22, textAlign: 'center' }}>{n}</span>
+                                  })}
+                                  <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#fff', minWidth: 30, textAlign: 'right' }}>{total}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 80 }}>
+                                    <input type="number" min={0} value={target || ''} placeholder="—" onChange={e => setStoreTarget(s.id, Math.max(0, parseInt(e.target.value) || 0))} title="Στόχος" style={{ width: 46, padding: '2px 5px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', outline: 'none', textAlign: 'center' }} />
+                                    {target > 0 && <span style={{ fontSize: '0.65rem', fontWeight: 700, color: pct >= 100 ? '#10b981' : 'rgba(255,255,255,0.3)' }}>{pct}%</span>}
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{ height: 5, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+                                <div style={{ height: '100%', width: `${fillPct}%`, background: target > 0 && pct >= 100 ? '#10b981' : idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Feature 7: Multi-store pending panel */}
+                  {(() => {
+                    const storePendingData = stores.map(s => ({
+                      s,
+                      mob: entries.filter(e => e.storeId === s.id && e.category === 'mobile' && e.status.toUpperCase().includes('ΠΡΟΕΓΚΡΙΣΗ')).length,
+                      home: entries.filter(e => e.storeId === s.id && e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')).length,
+                    })).filter(x => x.mob > 0 || x.home > 0)
+                    if (!storePendingData.length) return null
+                    return (
+                      <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Σε εκκρεμότητα ανά κατάστημα</div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                          {storePendingData.map(({ s, mob, home: h }) => (
+                            <div key={s.id} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', minWidth: 140 }}>
+                              <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#22d3ee', marginBottom: 8 }}>{s.code}</div>
+                              {mob > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: CATEGORY_COLORS.mobile }} />
+                                <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.5)' }}>Mobile</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: CATEGORY_COLORS.mobile, marginLeft: 'auto' }}>{mob}</span>
+                              </div>}
+                              {h > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: CATEGORY_COLORS.home }} />
+                                <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.5)' }}>Home</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: CATEGORY_COLORS.home, marginLeft: 'auto' }}>{h}</span>
+                              </div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Feature 5+8: Cross-store seller leaderboard + top seller badges */}
+                  {sellerTotals.length > 0 && (
+                    <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη Πωλητών — Όλα τα Καταστήματα</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {sellerTotals.map(({ user, storeCode, total, cats: cc }, idx) => {
+                          const fillPct = (total / maxSellerTotal) * 100
+                          const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
+                          return (
+                            <div key={user} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 9, background: 'rgba(255,255,255,0.03)', border: `1px solid ${idx === 0 ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.05)'}` }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center' }}>#{idx + 1}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user}</span>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#22d3ee', background: 'rgba(8,145,178,0.15)', border: '1px solid rgba(8,145,178,0.3)', borderRadius: 5, padding: '1px 6px', flexShrink: 0 }}>{storeCode}</span>
+                                  </div>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                    {cc.map(({ c, n }) => <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
+                                    <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{total}</span>
+                                  </div>
+                                </div>
+                                <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#fbbf24,#f59e0b)' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.15)', borderRadius: 999, transition: 'width 400ms ease' }} />
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Feature 6+8: Per-store seller breakdown with top seller highlight */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {stores.map(s => {
+                      const done = storeDoneMonth(s.id)
+                      const sellers = [...new Set(done.map(e => effectiveName(e.user)))].map(u => ({
+                        u,
+                        total: countEntries(done.filter(e => effectiveName(e.user) === u)),
+                        bycat: cats.map(c => ({ c, n: countEntries(done.filter(e => effectiveName(e.user) === u && e.category === c)) })),
+                      })).sort((a, b) => b.total - a.total)
+                      if (!sellers.length) return null
+                      const topMobile = cats.includes('mobile') ? sellers.filter(x => x.bycat.find(b => b.c === 'mobile')!.n > 0).sort((a, b) => b.bycat.find(bb => bb.c === 'mobile')!.n - a.bycat.find(bb => bb.c === 'mobile')!.n)[0]?.u : null
+                      const topHome = cats.includes('home') ? sellers.filter(x => x.bycat.find(b => b.c === 'home')!.n > 0).sort((a, b) => b.bycat.find(bb => bb.c === 'home')!.n - a.bycat.find(bb => bb.c === 'home')!.n)[0]?.u : null
+                      const isExpanded = expandedStores.has(s.id)
+                      const maxSel = sellers[0]?.total ?? 1
+                      return (
+                        <div key={s.id} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
+                          <div
+                            onClick={() => toggleExpandStore(s.id)}
+                            style={{ padding: '12px 18px', background: 'rgba(255,255,255,0.03)', borderBottom: isExpanded ? '1px solid rgba(255,255,255,0.06)' : 'none', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontWeight: 700, color: '#22d3ee', fontSize: '0.9rem' }}>{s.code}</span>
+                                {s.name !== s.code && <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.4)' }}>{s.name}</span>}
+                                <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', marginLeft: 'auto' }}>{sellers.length} πωλητές · {countEntries(done)} ολοκλ.</span>
+                              </div>
+                              {!isExpanded && (
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                                  {sellers.slice(0, 5).map(({ u, total }, i) => (
+                                    <span key={u} style={{ fontSize: '0.72rem', color: i === 0 ? '#fbbf24' : 'rgba(255,255,255,0.4)', fontWeight: i === 0 ? 700 : 400 }}>{u} {total}</span>
+                                  ))}
+                                  {sellers.length > 5 && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)' }}>+{sellers.length - 5}</span>}
+                                </div>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)' }}>{isExpanded ? '▲' : '▼'}</span>
+                          </div>
+                          {isExpanded && (
+                            <div style={{ padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                              {/* Top seller badges */}
+                              {(topMobile || topHome) && (
+                                <div style={{ display: 'flex', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                                  {topMobile && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 6, padding: '2px 8px' }}>★ Mobile: {topMobile}</span>}
+                                  {topHome && <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#fbbf24', background: 'rgba(251,191,36,0.1)', border: '1px solid rgba(251,191,36,0.25)', borderRadius: 6, padding: '2px 8px' }}>★ Home: {topHome}</span>}
+                                </div>
+                              )}
+                              {sellers.map(({ u, total, bycat }, idx) => {
+                                const fill = (total / maxSel) * 100
+                                const rc = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.18)'
+                                return (
+                                  <div key={u} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <span style={{ fontSize: '0.68rem', fontWeight: 900, color: rc, minWidth: 18, textAlign: 'center' }}>#{idx + 1}</span>
+                                    <div style={{ flex: 1 }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
+                                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{u}</span>
+                                        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                                          {bycat.filter(b => b.n > 0).map(({ c, n }) => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: CATEGORY_COLORS[c] }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
+                                          <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#fff' }}>{total}</span>
+                                        </div>
+                                      </div>
+                                      <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${fill}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.15)', borderRadius: 999 }} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              )
+            })()}
+
             {/* ── Users mapping tab ── */}
             {tab === 'users' && (
               <div className="panel-card" style={{ padding: 24 }}>
