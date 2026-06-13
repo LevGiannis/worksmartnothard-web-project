@@ -1377,7 +1377,7 @@ export default function ManagerPage() {
                           <tr>
                             <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140 }}>Υποκατηγορία</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '4px 12px', color: 'rgba(255,255,255,0.55)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '4px 12px', color: 'rgba(255,255,255,0.55)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0]}</th>
                             ))}
                             <th style={{ textAlign: 'center', padding: '4px 10px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}` }}>Σύν.</th>
                           </tr>
