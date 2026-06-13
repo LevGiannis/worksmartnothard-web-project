@@ -1343,7 +1343,6 @@ export default function ManagerPage() {
                     countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
                   const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
                   const subTotal = (sub: string) => countEntries(doneEntries.filter(e => (e.subCategory ?? '—') === sub))
-                  const shortUser = (u: string) => u.split(/\s+/).filter(Boolean).map(p => p[0]).join('').toUpperCase().slice(0, 3)
                   return (
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem' }}>
@@ -1351,7 +1350,7 @@ export default function ManagerPage() {
                           <tr>
                             <th style={{ textAlign: 'left', padding: '3px 8px 3px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 600, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap' }}>Υποκατηγορία</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '3px 6px', color, fontWeight: 700, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap' }} title={u}>{shortUser(u)}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '3px 8px', color, fontWeight: 700, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap', fontSize: '0.7rem' }}>{u}</th>
                             ))}
                             <th style={{ textAlign: 'center', padding: '3px 6px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, borderBottom: `1px solid ${color}25` }}>Σύν.</th>
                           </tr>
