@@ -8,12 +8,19 @@ const TARGETS_KEY = 'ws_manager_targets'
 const DISMISSED_PAIRS_KEY = 'ws_manager_dismissed_pairs'
 const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
+const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
 
 interface Store {
   id: string
   code: string
   name: string
 }
+
+const PRESET_STORES: Store[] = [
+  { id: 'vf572', code: 'VF572', name: 'VF572' },
+  { id: 'vf374', code: 'VF374', name: 'VF374' },
+  { id: 'vf372', code: 'VF372', name: 'VF372' },
+]
 
 function normalizeForMatch(s: string): string {
   return s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z0-9]/g, '')
@@ -299,12 +306,16 @@ export default function ManagerPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [pwInput, setPwInput] = useState('')
   const [pwError, setPwError] = useState(false)
+  const [phase, setPhase] = useState<'setup' | 'dashboard'>('setup')
   const [entries, setEntries] = useState<ParsedEntry[]>([])
   const [tab, setTab] = useState<'daily' | 'monthly' | 'compare' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
-  const [selectedShop, setSelectedShop] = useState('')
   const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
+  const [includedShops, setIncludedShops] = useState<Set<string>>(new Set())
+  const [excludedShops, setExcludedShops] = useState<Set<string>>(new Set())
+  const [activeStoreIds, setActiveStoreIds] = useState<string[]>([])
+  const [stores, setStores] = useState<Store[]>(PRESET_STORES)
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
   const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
@@ -321,12 +332,6 @@ export default function ManagerPage() {
   const [exportMode, setExportMode] = useState<'reg' | 'done'>('done')
   const [dismissedPairs, setDismissedPairs] = useState<string[]>([])
   const [suggestionInputs, setSuggestionInputs] = useState<Record<string, string>>({})
-  const [stores, setStores] = useState<Store[]>([])
-  const [newStoreCode, setNewStoreCode] = useState('')
-  const [newStoreName, setNewStoreName] = useState('')
-  const [editingStore, setEditingStore] = useState<string | null>(null)
-  const [editCode, setEditCode] = useState('')
-  const [editName, setEditName] = useState('')
   const [storeTargets, setStoreTargets] = useState<Record<string, number>>({})
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set())
   useEffect(() => {
@@ -343,9 +348,16 @@ export default function ManagerPage() {
     const storedDismissed = localStorage.getItem(DISMISSED_PAIRS_KEY)
     if (storedDismissed) setDismissedPairs(JSON.parse(storedDismissed) as string[])
     const storedStores = localStorage.getItem(STORES_KEY)
-    if (storedStores) setStores(JSON.parse(storedStores) as Store[])
+    if (storedStores) {
+      const saved = JSON.parse(storedStores) as Store[]
+      const presetIds = new Set(PRESET_STORES.map(s => s.id))
+      const custom = saved.filter(s => !presetIds.has(s.id))
+      setStores([...PRESET_STORES, ...custom])
+    }
     const storedStoreTargets = localStorage.getItem(STORE_TARGETS_KEY)
     if (storedStoreTargets) setStoreTargets(JSON.parse(storedStoreTargets) as Record<string, number>)
+    const storedActive = localStorage.getItem(ACTIVE_STORES_KEY)
+    if (storedActive) setActiveStoreIds(JSON.parse(storedActive) as string[])
   }, [])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
@@ -368,36 +380,20 @@ export default function ManagerPage() {
     setTimeout(() => setMapSaved(false), 2000)
   }
 
-  const addStore = () => {
-    const code = newStoreCode.trim()
-    if (!code) return
-    const store: Store = { id: Date.now().toString(), code, name: newStoreName.trim() || code }
-    const updated = [...stores, store]
-    setStores(updated)
-    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
-    setNewStoreCode('')
-    setNewStoreName('')
+  const toggleActiveStore = (id: string) => {
+    const updated = activeStoreIds.includes(id) ? activeStoreIds.filter(x => x !== id) : [...activeStoreIds, id]
+    setActiveStoreIds(updated)
+    localStorage.setItem(ACTIVE_STORES_KEY, JSON.stringify(updated))
   }
 
-  const removeStore = (id: string) => {
-    const updated = stores.filter(s => s.id !== id)
-    setStores(updated)
-    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
-    setEntries(prev => prev.filter(e => e.storeId !== id))
+  const toggleIncludeShop = (code: string) => {
+    setExcludedShops(prev => { const n = new Set(prev); n.delete(code); return n })
+    setIncludedShops(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n })
   }
 
-  const startEditStore = (s: Store) => {
-    setEditingStore(s.id)
-    setEditCode(s.code)
-    setEditName(s.name)
-  }
-
-  const saveEditStore = () => {
-    if (!editingStore) return
-    const updated = stores.map(s => s.id === editingStore ? { ...s, code: editCode.trim() || s.code, name: editName.trim() || editCode.trim() || s.code } : s)
-    setStores(updated)
-    localStorage.setItem(STORES_KEY, JSON.stringify(updated))
-    setEditingStore(null)
+  const toggleExcludeShop = (code: string) => {
+    setIncludedShops(prev => { const n = new Set(prev); n.delete(code); return n })
+    setExcludedShops(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n })
   }
 
   const getStoreTarget = (storeId: string) => storeTargets[`${storeId}-${selectedMonth}`] ?? 0
@@ -536,15 +532,110 @@ export default function ManagerPage() {
     )
   }
 
+  // ── Setup wizard (phase === 'setup') ──
+  if (phase === 'setup') {
+    return (
+      <div className="page-content">
+        <PageHeader title="Manager" subtitle="Ρύθμιση καταστήματος" backTo="/" />
+        <div className="page-inner" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
+          <div className="panel-card" style={{ padding: 32, width: '100%', maxWidth: 560 }}>
+            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff', marginBottom: 6 }}>Επιλογή καταστήματος</div>
+            <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>Επίλεξε 1–3 καταστήματα για να ξεκινήσεις</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+              {PRESET_STORES.map(s => {
+                const isActive = activeStoreIds.includes(s.id)
+                return (
+                  <div key={s.id} onClick={() => toggleActiveStore(s.id)} style={{ padding: '14px 18px', borderRadius: 12, border: `1px solid ${isActive ? 'rgba(8,145,178,0.5)' : 'rgba(255,255,255,0.08)'}`, background: isActive ? 'rgba(8,145,178,0.12)' : 'rgba(255,255,255,0.02)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 150ms' }}>
+                    <div style={{ width: 18, height: 18, borderRadius: 5, border: `2px solid ${isActive ? '#22d3ee' : 'rgba(255,255,255,0.2)'}`, background: isActive ? 'rgba(8,145,178,0.3)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {isActive && <svg width="10" height="10" viewBox="0 0 10 10"><path d="M1.5 5L4 7.5 8.5 2.5" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.9rem', color: isActive ? '#22d3ee' : 'rgba(255,255,255,0.7)' }}>{s.code}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{entries.filter(e => e.storeId === s.id).length} εγγρ.</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+            {activeStoreIds.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 28 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1 }}>Ανέβασμα αρχείων ανά κατάστημα</div>
+                {PRESET_STORES.filter(s => activeStoreIds.includes(s.id)).map(s => {
+                  const mobileCnt = entries.filter(e => e.storeId === s.id && e.category === 'mobile').length
+                  const homeCnt = entries.filter(e => e.storeId === s.id && e.category === 'home').length
+                  const prepayCnt = entries.filter(e => e.storeId === s.id && e.category === 'prepay').length
+                  return (
+                    <div key={s.id} style={{ padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
+                      <div style={{ fontWeight: 700, color: '#22d3ee', fontSize: '0.88rem', marginBottom: 10 }}>{s.code}</div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
+                          <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreFiles(s.id, e.target.files)} />
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: mobileCnt > 0 ? 'rgba(6,182,212,0.1)' : 'rgba(255,255,255,0.03)', border: `1px solid ${mobileCnt > 0 ? 'rgba(6,182,212,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: mobileCnt > 0 ? '#22d3ee' : 'rgba(255,255,255,0.4)' }}>Mobile</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: mobileCnt > 0 ? '#22d3ee' : 'rgba(255,255,255,0.2)' }}>{mobileCnt > 0 ? mobileCnt : '+'}</span>
+                          </span>
+                        </label>
+                        <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
+                          <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreFiles(s.id, e.target.files)} />
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: homeCnt > 0 ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.03)', border: `1px solid ${homeCnt > 0 ? 'rgba(245,158,11,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: homeCnt > 0 ? '#fbbf24' : 'rgba(255,255,255,0.4)' }}>Vod. Home</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: homeCnt > 0 ? '#fbbf24' : 'rgba(255,255,255,0.2)' }}>{homeCnt > 0 ? homeCnt : '+'}</span>
+                          </span>
+                        </label>
+                        <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
+                          <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreFiles(s.id, e.target.files)} />
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: prepayCnt > 0 ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)', border: `1px solid ${prepayCnt > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: prepayCnt > 0 ? '#93c5fd' : 'rgba(255,255,255,0.4)' }}>Prepay</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: prepayCnt > 0 ? '#93c5fd' : 'rgba(255,255,255,0.2)' }}>{prepayCnt > 0 ? prepayCnt : '+'}</span>
+                          </span>
+                        </label>
+                        <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
+                          <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreExtraMobile(s.id, e.target.files)} />
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(167,139,250,0.7)' }}>+ Mobile</span>
+                            <span style={{ fontSize: '0.7rem', color: 'rgba(167,139,250,0.4)' }}>extra</span>
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+            <button
+              onClick={() => setPhase('dashboard')}
+              disabled={activeStoreIds.length === 0}
+              style={{ width: '100%', padding: '13px', borderRadius: 10, background: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(90deg,#0891b2,#0e7490)', color: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.2)' : '#fff', fontWeight: 700, fontSize: '0.95rem', border: 'none', cursor: activeStoreIds.length === 0 ? 'default' : 'pointer', transition: 'all 150ms' }}
+            >
+              Προβολή Dashboard →
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // ── Compute views ──
   const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
-  const allShops = [...new Set(entries.filter(e => e.shopCode).map(e => e.shopCode!))].filter(Boolean).sort()
+  // shopCodeMap: code → set of categories it appears in
+  const shopCodeMap = new Map<string, Set<Category>>()
+  entries.forEach(e => { if (e.shopCode) { if (!shopCodeMap.has(e.shopCode)) shopCodeMap.set(e.shopCode, new Set()); shopCodeMap.get(e.shopCode)!.add(e.category) } })
+  const allShopCodes = [...shopCodeMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
+
+  const shopPassFilter = (e: ParsedEntry) => {
+    if (e.shopCode) {
+      if (excludedShops.has(e.shopCode)) return false
+      if (includedShops.size > 0 && !includedShops.has(e.shopCode)) return false
+    }
+    if (activeStoreIds.length > 0 && e.storeId && !activeStoreIds.includes(e.storeId)) return false
+    return true
+  }
 
   const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => {
       if (excludedUsers.has(effectiveName(e.user))) return false
-      if (selectedShop && e.shopCode !== selectedShop) return false
+      if (!shopPassFilter(e)) return false
       const s = e.status.toUpperCase()
       return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
     })
@@ -622,7 +713,7 @@ export default function ManagerPage() {
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !excludedUsers.has(effectiveName(e.user)))
-    .filter(e => !selectedShop || e.shopCode === selectedShop)
+    .filter(e => shopPassFilter(e))
     .filter(e => {
       const s = e.status.toUpperCase()
       if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ') || s === 'ΝΕΑ'
@@ -721,46 +812,56 @@ export default function ManagerPage() {
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
       <div className="page-inner">
 
-        {/* Store configuration panel */}
-        <div className="panel-card" style={{ padding: 20, marginBottom: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: stores.length > 0 ? 14 : 0 }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Καταστήματα</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input value={newStoreCode} onChange={e => setNewStoreCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStore()} placeholder="Κωδικός (πχ VF572)" style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.8rem', width: 150, outline: 'none' }} />
-              <input value={newStoreName} onChange={e => setNewStoreName(e.target.value)} onKeyDown={e => e.key === 'Enter' && addStore()} placeholder="Ονομασία (προαιρ.)" style={{ padding: '6px 10px', borderRadius: 7, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.8rem', width: 160, outline: 'none' }} />
-              <button onClick={addStore} style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.15)', color: '#22d3ee', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>+ Προσθήκη</button>
-            </div>
+        {/* Dashboard header: active store filter + dealer code filter + setup button */}
+        <div className="panel-card" style={{ padding: '14px 20px', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>Κατάστημα</span>
+            {PRESET_STORES.filter(s => activeStoreIds.includes(s.id)).map(s => (
+              <button
+                key={s.id}
+                onClick={() => toggleActiveStore(s.id)}
+                style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(8,145,178,0.5)', background: 'rgba(8,145,178,0.15)', color: '#22d3ee', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+              >{s.code} <span style={{ fontSize: '0.65rem', color: 'rgba(34,211,238,0.5)', marginLeft: 2 }}>{entries.filter(e => e.storeId === s.id).length}</span></button>
+            ))}
+            <button
+              onClick={() => setPhase('setup')}
+              style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'pointer' }}
+            >⚙ Ρύθμιση</button>
           </div>
-          {stores.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {stores.map(s => (
-                <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  {editingStore === s.id ? (
-                    <>
-                      <input value={editCode} onChange={e => setEditCode(e.target.value)} style={{ padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.1)', color: '#fff', fontSize: '0.78rem', width: 80, outline: 'none' }} />
-                      <input value={editName} onChange={e => setEditName(e.target.value)} style={{ padding: '2px 6px', borderRadius: 5, border: '1px solid rgba(8,145,178,0.4)', background: 'rgba(8,145,178,0.1)', color: '#fff', fontSize: '0.78rem', width: 110, outline: 'none' }} />
-                      <button onClick={saveEditStore} style={{ padding: '2px 8px', borderRadius: 5, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.72rem', cursor: 'pointer' }}>✓</button>
-                      <button onClick={() => setEditingStore(null)} style={{ padding: '2px 6px', borderRadius: 5, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.3)', fontSize: '0.72rem', cursor: 'pointer' }}>✕</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#22d3ee' }}>{s.code}</span>
-                      {s.name !== s.code && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.4)' }}>{s.name}</span>}
-                      <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.2)' }}>{entries.filter(e => e.storeId === s.id).length} εγγ.</span>
-                      <button onClick={() => startEditStore(s)} style={{ padding: '1px 5px', borderRadius: 4, border: 'none', background: 'transparent', color: 'rgba(255,255,255,0.25)', fontSize: '0.68rem', cursor: 'pointer' }}>✎</button>
-                      <button onClick={() => removeStore(s.id)} style={{ padding: '1px 5px', borderRadius: 4, border: 'none', background: 'transparent', color: 'rgba(239,68,68,0.4)', fontSize: '0.7rem', cursor: 'pointer' }}>×</button>
-                    </>
-                  )}
-                </div>
-              ))}
+          {allShopCodes.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 12, alignItems: 'center' }}>
+              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>Κωδ. dealer</span>
+              <button
+                onClick={() => { setIncludedShops(new Set()); setExcludedShops(new Set()) }}
+                style={{ padding: '2px 8px', borderRadius: 12, border: `1px solid ${includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`, background: includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.05)' : 'transparent', color: includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)', fontSize: '0.65rem', cursor: 'pointer' }}
+              >Όλοι</button>
+              {allShopCodes.map(([code, catSet]) => {
+                const isIncluded = includedShops.has(code)
+                const isExcluded = excludedShops.has(code)
+                const catHint = catSet.has('mobile') && catSet.has('home') ? '' : catSet.has('mobile') ? ' mob' : ' home'
+                return (
+                  <div key={code} style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${isIncluded ? 'rgba(34,211,238,0.4)' : isExcluded ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.07)'}`, background: isIncluded ? 'rgba(34,211,238,0.08)' : isExcluded ? 'rgba(239,68,68,0.06)' : 'transparent' }}>
+                    <button
+                      onClick={() => toggleIncludeShop(code)}
+                      title="Συμπερίληψη μόνο αυτού"
+                      style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: isIncluded ? '#22d3ee' : isExcluded ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.45)', fontSize: '0.65rem', fontWeight: isIncluded ? 700 : 400, cursor: 'pointer', textDecoration: isExcluded ? 'line-through' : 'none' }}
+                    >{code}{catHint}</button>
+                    <button
+                      onClick={() => toggleExcludeShop(code)}
+                      title={isExcluded ? 'Επαναφορά' : 'Αποκλεισμός'}
+                      style={{ padding: '2px 6px 2px 2px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.15)', fontSize: '0.65rem', cursor: 'pointer' }}
+                    >{isExcluded ? '+' : '×'}</button>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
 
         {/* Per-store upload zones (when stores are configured) */}
-        {stores.length > 0 ? (
+        {activeStoreIds.length > 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
-            {stores.map(s => {
+            {stores.filter(s => activeStoreIds.includes(s.id)).map(s => {
               const storeCount = entries.filter(e => e.storeId === s.id).length
               const mobileCnt = entries.filter(e => e.storeId === s.id && e.category === 'mobile').length
               const homeCnt = entries.filter(e => e.storeId === s.id && e.category === 'home').length
@@ -880,27 +981,6 @@ export default function ManagerPage() {
                 )
               })}
             </div>
-
-            {/* Shop selector */}
-            {allShops.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 20, alignItems: 'center', opacity: 0.7 }}>
-                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 4 }}>Κατάστημα</span>
-                <button
-                  onClick={() => setSelectedShop('')}
-                  style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${!selectedShop ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`, background: !selectedShop ? 'rgba(255,255,255,0.05)' : 'transparent', color: !selectedShop ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer' }}
-                >Όλα</button>
-                {allShops.map(shop => {
-                  const isSelected = selectedShop === shop
-                  return (
-                    <button
-                      key={shop}
-                      onClick={() => setSelectedShop(shop === selectedShop ? '' : shop)}
-                      style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${isSelected ? 'rgba(234,179,8,0.5)' : 'rgba(255,255,255,0.05)'}`, background: isSelected ? 'rgba(234,179,8,0.12)' : 'transparent', color: isSelected ? '#fde047' : 'rgba(255,255,255,0.38)', fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer' }}
-                    >{shop}</button>
-                  )
-                })}
-              </div>
-            )}
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
