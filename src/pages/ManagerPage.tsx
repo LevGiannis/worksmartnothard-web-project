@@ -1677,7 +1677,7 @@ export default function ManagerPage() {
 
               // ── Helpers scoped to compare tab ──
               const storeDoneMonth = (storeId: string): ParsedEntry[] => {
-                const se = entries.filter(e => e.storeId === storeId)
+                const se = entries.filter(e => e.storeId === storeId && shopPassFilter(e) && !appliedExcludedUsers.has(effectiveName(e.user)))
                 const done = se.filter(e => {
                   const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
                   if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
