@@ -1437,7 +1437,7 @@ export default function ManagerPage() {
                     {storeBreakdowns.map(({ s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }) => (
                       <div key={s.id} className="panel-card" style={{ padding: 16 }}>
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 14 }}>{s.code}</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: mobileDone.length > 0 && homeDone.length > 0 ? '1fr 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                           {mobileDone.length > 0 && (
                             <div>
                               <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
