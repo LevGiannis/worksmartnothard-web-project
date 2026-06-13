@@ -334,6 +334,7 @@ export default function ManagerPage() {
   const [suggestionInputs, setSuggestionInputs] = useState<Record<string, string>>({})
   const [storeTargets, setStoreTargets] = useState<Record<string, number>>({})
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set())
+  const [showLeaderboard, setShowLeaderboard] = useState(false)
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -1380,69 +1381,78 @@ export default function ManagerPage() {
                 }
 
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: storeBreakdowns.length > 0 ? '1fr 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
-                    {/* Left: overall leaderboard */}
-                    <div className="panel-card" style={{ padding: 20 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη — {monthLabel}</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        {leaderboard.map(({ user, done }, idx) => {
-                          const fillPct = maxDone > 0 ? (done / maxDone) * 100 : 0
-                          const prevUserDone = countEntries(effectivePrevDoneEntries.filter(e => effectiveName(e.user) === user))
-                          const delta = done - prevUserDone
-                          const catChips = cats.map(c => {
-                            const n = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c))
-                            return n > 0 ? { c, n } : null
-                          }).filter(Boolean) as { c: Category; n: number }[]
-                          const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
-                          return (
-                            <div key={user} onClick={() => setSelectedUser(user)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
-                              <span style={{ fontSize: '0.72rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center', flexShrink: 0 }}>#{idx + 1}</span>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                    {catChips.map(({ c, n }) => (
-                                      <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
-                                    ))}
-                                    <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
-                                    {delta !== 0 && (
-                                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444' }}>
-                                        {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-                                      </span>
-                                    )}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Leaderboard toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <button
+                        onClick={() => setShowLeaderboard(v => !v)}
+                        style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: showLeaderboard ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)', color: showLeaderboard ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
+                      >{showLeaderboard ? '▲ Απόκρυψη κατάταξης' : '▼ Εμφάνιση κατάταξης'}</button>
+                    </div>
+
+                    {/* Leaderboard (collapsible) */}
+                    {showLeaderboard && (
+                      <div className="panel-card" style={{ padding: 20 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη — {monthLabel}</div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                          {leaderboard.map(({ user, done }, idx) => {
+                            const fillPct = maxDone > 0 ? (done / maxDone) * 100 : 0
+                            const prevUserDone = countEntries(effectivePrevDoneEntries.filter(e => effectiveName(e.user) === user))
+                            const delta = done - prevUserDone
+                            const catChips = cats.map(c => {
+                              const n = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c))
+                              return n > 0 ? { c, n } : null
+                            }).filter(Boolean) as { c: Category; n: number }[]
+                            const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
+                            return (
+                              <div key={user} onClick={() => setSelectedUser(user)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
+                                <span style={{ fontSize: '0.72rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center', flexShrink: 0 }}>#{idx + 1}</span>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                                    <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                      {catChips.map(({ c, n }) => (
+                                        <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
+                                      ))}
+                                      <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
+                                      {delta !== 0 && (
+                                        <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444' }}>
+                                          {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
                                   </div>
                                 </div>
-                                <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
-                                  <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
-                                </div>
                               </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    {/* Right: per-store subcategory tables */}
-                    {storeBreakdowns.length > 0 && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {storeBreakdowns.map(({ s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }) => (
-                          <div key={s.id} className="panel-card" style={{ padding: 16 }}>
-                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 12 }}>{s.code}</div>
-                            {mobileDone.length > 0 && (
-                              <div style={{ marginBottom: homeDone.length > 0 ? 14 : 0 }}>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
-                                {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile)}
-                              </div>
-                            )}
-                            {homeDone.length > 0 && (
-                              <div>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Vodafone Home</div>
-                                {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home)}
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
+
+                    {/* Per-store subcategory tables */}
+                    {storeBreakdowns.map(({ s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }) => (
+                      <div key={s.id} className="panel-card" style={{ padding: 16 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 14 }}>{s.code}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: mobileDone.length > 0 && homeDone.length > 0 ? '1fr 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
+                          {mobileDone.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
+                              {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile)}
+                            </div>
+                          )}
+                          {homeDone.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Vodafone Home</div>
+                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )
               })()}
