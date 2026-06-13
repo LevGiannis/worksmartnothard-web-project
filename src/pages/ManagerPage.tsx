@@ -335,6 +335,8 @@ export default function ManagerPage() {
   const [storeTargets, setStoreTargets] = useState<Record<string, number>>({})
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set())
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [subcatChartMode, setSubcatChartMode] = useState<Set<string>>(new Set())
+  const toggleSubcatChart = (key: string) => setSubcatChartMode(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -1365,42 +1367,85 @@ export default function ManagerPage() {
                   doneEntries: ParsedEntry[],
                   users: string[],
                   subs: string[],
+                  color: string,
+                  chartMode: boolean
                 ) => {
                   if (!users.length || !subs.length) return null
                   const count = (user: string, sub: string) =>
                     countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
                   const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
                   const subTotal = (sub: string) => countEntries(doneEntries.filter(e => (e.subCategory ?? '—') === sub))
+
+                  if (chartMode) {
+                    const maxTotal = Math.max(1, ...users.map(u => userTotal(u)))
+                    const subsNonEmpty = subs.filter(sub => countEntries(doneEntries.filter(e => (e.subCategory ?? '—') === sub)) > 0)
+                    const opacities = subsNonEmpty.map((_, i) => Math.max(0.18, 1 - i * (0.72 / Math.max(subsNonEmpty.length - 1, 1))))
+                    return (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                          {subsNonEmpty.map((sub, i) => (
+                            <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: opacities[i], flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{sub}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {users.map(u => {
+                          const total = userTotal(u)
+                          if (!total) return null
+                          const barMax = (total / maxTotal) * 100
+                          let filled = 0
+                          return (
+                            <div key={u} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', minWidth: 72, flexShrink: 0, textAlign: 'right' }}>{u.split(/\s+/)[0]}</span>
+                              <div style={{ flex: 1, height: 20, background: 'rgba(255,255,255,0.05)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
+                                {subsNonEmpty.map((sub, i) => {
+                                  const n = count(u, sub)
+                                  if (!n) return null
+                                  const segPct = (n / total) * barMax
+                                  const el = <div key={sub} style={{ position: 'absolute', left: `${filled}%`, width: `${segPct}%`, height: '100%', background: color, opacity: opacities[i], transition: 'width 300ms ease' }} title={`${sub}: ${n}`} />
+                                  filled += segPct
+                                  return el
+                                })}
+                              </div>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'rgba(255,255,255,0.75)', minWidth: 22, textAlign: 'right', fontFamily: 'monospace' }}>{total}</span>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )
+                  }
+
                   const sep = 'rgba(255,255,255,0.07)'
                   return (
                     <div style={{ overflowX: 'auto' }}>
                       <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: 'max-content', minWidth: '100%' }}>
                         <thead>
-                          <tr>
-                            <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140 }}>Υποκατηγορία</th>
+                          <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                            <th style={{ textAlign: 'left', padding: '6px 16px 6px 8px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140, borderRadius: '6px 0 0 0' }}>Υποκατηγορία</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '4px 12px', color: 'rgba(255,255,255,0.55)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0]}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0]}</th>
                             ))}
-                            <th style={{ textAlign: 'center', padding: '4px 10px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}` }}>Σύν.</th>
+                            <th style={{ textAlign: 'center', padding: '6px 12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, borderRadius: '0 6px 0 0' }}>Σύν.</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {subs.map(sub => (
-                            <tr key={sub} style={{ borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
-                              <td style={{ padding: '4px 16px 4px 0', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>{sub}</td>
+                          {subs.map((sub, i) => (
+                            <tr key={sub} style={{ background: i % 2 === 1 ? 'rgba(255,255,255,0.018)' : 'transparent' }}>
+                              <td style={{ padding: '5px 16px 5px 8px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{sub}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
-                                return <td key={u} style={{ textAlign: 'center', padding: '4px 12px', color: n > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.12)', fontWeight: n > 0 ? 600 : 400 }}>{n > 0 ? n : '—'}</td>
+                                return <td key={u} style={{ textAlign: 'center', padding: '5px 14px', color: n > 0 ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.1)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{n > 0 ? n : '—'}</td>
                               })}
-                              <td style={{ textAlign: 'center', padding: '4px 10px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{subTotal(sub)}</td>
+                              <td style={{ textAlign: 'center', padding: '5px 12px', color: 'rgba(255,255,255,0.45)', fontWeight: 600, fontFamily: 'monospace', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{subTotal(sub)}</td>
                             </tr>
                           ))}
-                          <tr style={{ borderTop: `1px solid ${sep}` }}>
-                            <td style={{ padding: '5px 16px 5px 0', color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>Σύνολο</td>
+                          <tr style={{ background: 'rgba(255,255,255,0.04)', borderTop: `1px solid ${sep}` }}>
+                            <td style={{ padding: '6px 16px 6px 8px', color: 'rgba(255,255,255,0.65)', fontWeight: 700 }}>Σύνολο</td>
                             {users.map(u => (
-                              <td key={u} style={{ textAlign: 'center', padding: '5px 12px', color: 'rgba(255,255,255,0.85)', fontWeight: 700 }}>{userTotal(u) || '—'}</td>
+                              <td key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.92)', fontWeight: 800, fontFamily: 'monospace' }}>{userTotal(u) || '—'}</td>
                             ))}
-                            <td style={{ textAlign: 'center', padding: '5px 10px', fontWeight: 800, color: '#fff' }}>{countEntries(doneEntries)}</td>
+                            <td style={{ textAlign: 'center', padding: '6px 12px', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>{countEntries(doneEntries)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1468,14 +1513,26 @@ export default function ManagerPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                           {mobileDone.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
-                              {renderSubTable(mobileDone, mobileUsers, mobileSubs)}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
+                                <button
+                                  onClick={() => toggleSubcatChart(`${s.id}-mobile`)}
+                                  style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-mobile`) ? CATEGORY_COLORS.mobile : 'transparent', color: subcatChartMode.has(`${s.id}-mobile`) ? '#fff' : CATEGORY_COLORS.mobile, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                >{subcatChartMode.has(`${s.id}-mobile`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                              </div>
+                              {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile, subcatChartMode.has(`${s.id}-mobile`))}
                             </div>
                           )}
                           {homeDone.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Vodafone Home</div>
-                              {renderSubTable(homeDone, homeUsers, homeSubs)}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
+                                <button
+                                  onClick={() => toggleSubcatChart(`${s.id}-home`)}
+                                  style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-home`) ? CATEGORY_COLORS.home : 'transparent', color: subcatChartMode.has(`${s.id}-home`) ? '#fff' : CATEGORY_COLORS.home, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                >{subcatChartMode.has(`${s.id}-home`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                              </div>
+                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home, subcatChartMode.has(`${s.id}-home`))}
                             </div>
                           )}
                         </div>
