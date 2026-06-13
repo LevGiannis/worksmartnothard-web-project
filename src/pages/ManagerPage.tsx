@@ -1340,6 +1340,8 @@ export default function ManagerPage() {
 
                 const storeMonthDone = (storeId: string) => entries.filter(e => {
                   if (e.storeId !== storeId) return false
+                  if (!shopPassFilter(e)) return false
+                  if (excludedUsers.has(effectiveName(e.user))) return false
                   const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
                   if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
                   return isMobileCountable(e) && isDone(e)
