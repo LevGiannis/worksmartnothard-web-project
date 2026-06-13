@@ -1337,42 +1337,42 @@ export default function ManagerPage() {
                   doneEntries: ParsedEntry[],
                   users: string[],
                   subs: string[],
-                  color: string
                 ) => {
                   if (!users.length || !subs.length) return null
                   const count = (user: string, sub: string) =>
                     countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
                   const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
                   const subTotal = (sub: string) => countEntries(doneEntries.filter(e => (e.subCategory ?? '—') === sub))
+                  const sep = 'rgba(255,255,255,0.07)'
                   return (
                     <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem' }}>
+                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: 'max-content', minWidth: '100%' }}>
                         <thead>
                           <tr>
-                            <th style={{ textAlign: 'left', padding: '3px 8px 3px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 600, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap' }}>Υποκατηγορία</th>
+                            <th style={{ textAlign: 'left', padding: '4px 16px 4px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140 }}>Υποκατηγορία</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '3px 8px', color, fontWeight: 700, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap', fontSize: '0.7rem' }}>{u}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '4px 12px', color: 'rgba(255,255,255,0.55)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u}</th>
                             ))}
-                            <th style={{ textAlign: 'center', padding: '3px 6px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, borderBottom: `1px solid ${color}25` }}>Σύν.</th>
+                            <th style={{ textAlign: 'center', padding: '4px 10px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}` }}>Σύν.</th>
                           </tr>
                         </thead>
                         <tbody>
                           {subs.map(sub => (
-                            <tr key={sub}>
-                              <td style={{ padding: '3px 8px 3px 0', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>{sub}</td>
+                            <tr key={sub} style={{ borderBottom: `1px solid rgba(255,255,255,0.03)` }}>
+                              <td style={{ padding: '4px 16px 4px 0', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap' }}>{sub}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
-                                return <td key={u} style={{ textAlign: 'center', padding: '3px 6px', color: n > 0 ? color : 'rgba(255,255,255,0.1)', fontWeight: n > 0 ? 700 : 400 }}>{n > 0 ? n : '—'}</td>
+                                return <td key={u} style={{ textAlign: 'center', padding: '4px 12px', color: n > 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.12)', fontWeight: n > 0 ? 600 : 400 }}>{n > 0 ? n : '—'}</td>
                               })}
-                              <td style={{ textAlign: 'center', padding: '3px 6px', fontWeight: 800, color: 'rgba(255,255,255,0.65)' }}>{subTotal(sub)}</td>
+                              <td style={{ textAlign: 'center', padding: '4px 10px', color: 'rgba(255,255,255,0.5)', fontWeight: 600 }}>{subTotal(sub)}</td>
                             </tr>
                           ))}
-                          <tr style={{ borderTop: `1px solid ${color}30` }}>
-                            <td style={{ padding: '4px 8px 4px 0', color, fontWeight: 700 }}>Σύνολο</td>
+                          <tr style={{ borderTop: `1px solid ${sep}` }}>
+                            <td style={{ padding: '5px 16px 5px 0', color: 'rgba(255,255,255,0.55)', fontWeight: 600 }}>Σύνολο</td>
                             {users.map(u => (
-                              <td key={u} style={{ textAlign: 'center', padding: '4px 6px', color, fontWeight: 900 }}>{userTotal(u) || '—'}</td>
+                              <td key={u} style={{ textAlign: 'center', padding: '5px 12px', color: 'rgba(255,255,255,0.85)', fontWeight: 700 }}>{userTotal(u) || '—'}</td>
                             ))}
-                            <td style={{ textAlign: 'center', padding: '4px 6px', fontWeight: 900, color: '#fff' }}>{countEntries(doneEntries)}</td>
+                            <td style={{ textAlign: 'center', padding: '5px 10px', fontWeight: 800, color: '#fff' }}>{countEntries(doneEntries)}</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1441,13 +1441,13 @@ export default function ManagerPage() {
                           {mobileDone.length > 0 && (
                             <div>
                               <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
-                              {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile)}
+                              {renderSubTable(mobileDone, mobileUsers, mobileSubs)}
                             </div>
                           )}
                           {homeDone.length > 0 && (
                             <div>
                               <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Vodafone Home</div>
-                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home)}
+                              {renderSubTable(homeDone, homeUsers, homeSubs)}
                             </div>
                           )}
                         </div>
