@@ -1299,7 +1299,7 @@ export default function ManagerPage() {
                 </div>
               )}
 
-              {/* User leaderboard */}
+              {/* Leaderboard + per-store subcategory breakdown */}
               {(() => {
                 const leaderboard = allUsers
                   .map(user => {
@@ -1310,46 +1310,140 @@ export default function ManagerPage() {
                   .filter(r => r.hasEntries)
                   .sort((a, b) => b.done - a.done)
                 const maxDone = leaderboard[0]?.done || 1
+
+                const storeMonthDone = (storeId: string) => entries.filter(e => {
+                  if (e.storeId !== storeId) return false
+                  const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+                  if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+                  return isMobileCountable(e) && isDone(e)
+                })
+
+                const activeStores = stores.filter(s => activeStoreIds.includes(s.id))
+                const storeBreakdowns = activeStores.map(s => {
+                  const done = storeMonthDone(s.id)
+                  const mobileDone = done.filter(e => e.category === 'mobile' && !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY'))
+                  const homeDone = done.filter(e => e.category === 'home')
+                  const mobileUsers = [...new Set(mobileDone.map(e => effectiveName(e.user)))].sort()
+                  const mobileSubs = [...new Set(mobileDone.map(e => e.subCategory ?? '—'))].sort()
+                  const homeUsers = [...new Set(homeDone.map(e => effectiveName(e.user)))].sort()
+                  const homeSubs = [...new Set(homeDone.map(e => e.subCategory ?? '—'))].sort()
+                  return { s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }
+                }).filter(x => x.mobileDone.length > 0 || x.homeDone.length > 0)
+
                 if (!leaderboard.length) return null
+
+                const renderSubTable = (
+                  doneEntries: ParsedEntry[],
+                  users: string[],
+                  subs: string[],
+                  color: string
+                ) => {
+                  if (!users.length || !subs.length) return null
+                  const count = (user: string, sub: string) =>
+                    countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
+                  const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
+                  const subTotal = (sub: string) => countEntries(doneEntries.filter(e => (e.subCategory ?? '—') === sub))
+                  const shortUser = (u: string) => u.split(/\s+/).filter(Boolean).map(p => p[0]).join('').toUpperCase().slice(0, 3)
+                  return (
+                    <div style={{ overflowX: 'auto' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.68rem' }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: 'left', padding: '3px 8px 3px 0', color: 'rgba(255,255,255,0.3)', fontWeight: 600, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap' }}>Υποκατηγορία</th>
+                            {users.map(u => (
+                              <th key={u} style={{ textAlign: 'center', padding: '3px 6px', color, fontWeight: 700, borderBottom: `1px solid ${color}25`, whiteSpace: 'nowrap' }} title={u}>{shortUser(u)}</th>
+                            ))}
+                            <th style={{ textAlign: 'center', padding: '3px 6px', color: 'rgba(255,255,255,0.4)', fontWeight: 700, borderBottom: `1px solid ${color}25` }}>Σύν.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {subs.map(sub => (
+                            <tr key={sub}>
+                              <td style={{ padding: '3px 8px 3px 0', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 170 }}>{sub}</td>
+                              {users.map(u => {
+                                const n = count(u, sub)
+                                return <td key={u} style={{ textAlign: 'center', padding: '3px 6px', color: n > 0 ? color : 'rgba(255,255,255,0.1)', fontWeight: n > 0 ? 700 : 400 }}>{n > 0 ? n : '—'}</td>
+                              })}
+                              <td style={{ textAlign: 'center', padding: '3px 6px', fontWeight: 800, color: 'rgba(255,255,255,0.65)' }}>{subTotal(sub)}</td>
+                            </tr>
+                          ))}
+                          <tr style={{ borderTop: `1px solid ${color}30` }}>
+                            <td style={{ padding: '4px 8px 4px 0', color, fontWeight: 700 }}>Σύνολο</td>
+                            {users.map(u => (
+                              <td key={u} style={{ textAlign: 'center', padding: '4px 6px', color, fontWeight: 900 }}>{userTotal(u) || '—'}</td>
+                            ))}
+                            <td style={{ textAlign: 'center', padding: '4px 6px', fontWeight: 900, color: '#fff' }}>{countEntries(doneEntries)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  )
+                }
+
                 return (
-                  <div className="panel-card" style={{ padding: 20 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη — {monthLabel}</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {leaderboard.map(({ user, done }, idx) => {
-                        const fillPct = maxDone > 0 ? (done / maxDone) * 100 : 0
-                        const prevUserDone = countEntries(effectivePrevDoneEntries.filter(e => effectiveName(e.user) === user))
-                        const delta = done - prevUserDone
-                        const catChips = cats.map(c => {
-                          const n = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c))
-                          return n > 0 ? { c, n } : null
-                        }).filter(Boolean) as { c: Category; n: number }[]
-                        const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
-                        return (
-                          <div key={user} onClick={() => setSelectedUser(user)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center', flexShrink: 0 }}>#{idx + 1}</span>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                  {catChips.map(({ c, n }) => (
-                                    <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
-                                  ))}
-                                  <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
-                                  {delta !== 0 && (
-                                    <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444' }}>
-                                      {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-                                    </span>
-                                  )}
+                  <div style={{ display: 'grid', gridTemplateColumns: storeBreakdowns.length > 0 ? '1fr 1fr' : '1fr', gap: 16, alignItems: 'start' }}>
+                    {/* Left: overall leaderboard */}
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 14 }}>Κατάταξη — {monthLabel}</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        {leaderboard.map(({ user, done }, idx) => {
+                          const fillPct = maxDone > 0 ? (done / maxDone) * 100 : 0
+                          const prevUserDone = countEntries(effectivePrevDoneEntries.filter(e => effectiveName(e.user) === user))
+                          const delta = done - prevUserDone
+                          const catChips = cats.map(c => {
+                            const n = countEntries(effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && e.category === c))
+                            return n > 0 ? { c, n } : null
+                          }).filter(Boolean) as { c: Category; n: number }[]
+                          const rankColor = idx === 0 ? '#fbbf24' : idx === 1 ? '#94a3b8' : idx === 2 ? '#cd7f32' : 'rgba(255,255,255,0.2)'
+                          return (
+                            <div key={user} onClick={() => setSelectedUser(user)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer' }}>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 900, color: rankColor, minWidth: 22, textAlign: 'center', flexShrink: 0 }}>#{idx + 1}</span>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+                                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                    {catChips.map(({ c, n }) => (
+                                      <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
+                                    ))}
+                                    <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
+                                    {delta !== 0 && (
+                                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta > 0 ? '#10b981' : '#ef4444' }}>
+                                        {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
+                                  <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
                                 </div>
                               </div>
-                              <div style={{ height: 3, background: 'rgba(255,255,255,0.07)', borderRadius: 999, overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${fillPct}%`, background: idx === 0 ? 'linear-gradient(90deg,#7c3aed,#0891b2)' : 'rgba(255,255,255,0.2)', borderRadius: 999, transition: 'width 400ms ease' }} />
-                              </div>
                             </div>
-                          </div>
-                        )
-                      })}
+                          )
+                        })}
+                      </div>
                     </div>
+                    {/* Right: per-store subcategory tables */}
+                    {storeBreakdowns.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {storeBreakdowns.map(({ s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }) => (
+                          <div key={s.id} className="panel-card" style={{ padding: 16 }}>
+                            <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 12 }}>{s.code}</div>
+                            {mobileDone.length > 0 && (
+                              <div style={{ marginBottom: homeDone.length > 0 ? 14 : 0 }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Mobile</div>
+                                {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile)}
+                              </div>
+                            )}
+                            {homeDone.length > 0 && (
+                              <div>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>Vodafone Home</div>
+                                {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home)}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })()}
