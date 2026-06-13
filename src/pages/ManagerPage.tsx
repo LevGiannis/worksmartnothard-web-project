@@ -125,6 +125,7 @@ interface ParsedEntry {
   subCategory?: string
   implDate?: Date | null
   connections?: number
+  shopCode?: string
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -181,7 +182,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1, shopCode = ''
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -193,6 +194,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             implDate = toDate(get(row, 'Ημ/νία Σύνδεσης'))
             const connVal = get(row, 'Αριθμός Συνδέσεων')
             connections = typeof connVal === 'number' ? Math.max(1, connVal) : 1
+            shopCode = String(get(row, 'Συνεργάτης') ?? '').trim()
           } else if (cat === 'prepay') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
             date = toDate(get(row, 'Ημερομηνία Δημιουργίας'))
@@ -221,6 +223,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             const speed = String(get(row, 'Ταχύτητα') ?? '').trim()
             subCategory = [prog, speed].filter(Boolean).join(' · ')
             implDate = toDate(get(row, 'Ημ/νια Ολοκλήρωσης (Κ5)'))
+            shopCode = String(get(row, 'Dealer Code') ?? '').trim()
           }
 
           user = user.trim()
@@ -230,7 +233,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (cat === 'mobile' && String(get(row, 'Περιγραφή Προγράμματος Χρήσης') ?? '').toUpperCase().trim() === 'GPDAT') continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined })
           }
         }
 
@@ -291,6 +294,7 @@ export default function ManagerPage() {
   const [tab, setTab] = useState<'daily' | 'monthly' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
+  const [selectedShop, setSelectedShop] = useState('')
   const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
@@ -436,11 +440,13 @@ export default function ManagerPage() {
 
   // ── Compute views ──
   const allUsers = [...new Set(entries.map(e => effectiveName(e.user)))].filter(Boolean).sort()
+  const allShops = [...new Set(entries.filter(e => e.shopCode).map(e => e.shopCode!))].filter(Boolean).sort()
   const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
 
   const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => {
       if (excludedUsers.has(effectiveName(e.user))) return false
+      if (selectedShop && e.shopCode !== selectedShop) return false
       const s = e.status.toUpperCase()
       return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
     })
@@ -518,6 +524,7 @@ export default function ManagerPage() {
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !excludedUsers.has(effectiveName(e.user)))
+    .filter(e => !selectedShop || e.shopCode === selectedShop)
     .filter(e => {
       const s = e.status.toUpperCase()
       if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ') || s === 'ΝΕΑ'
@@ -661,6 +668,27 @@ export default function ManagerPage() {
                 )
               })}
             </div>
+
+            {/* Shop selector */}
+            {allShops.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 20, alignItems: 'center', opacity: 0.7 }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: 0.8, marginRight: 4 }}>Κατάστημα</span>
+                <button
+                  onClick={() => setSelectedShop('')}
+                  style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${!selectedShop ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`, background: !selectedShop ? 'rgba(255,255,255,0.05)' : 'transparent', color: !selectedShop ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.3)', fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer' }}
+                >Όλα</button>
+                {allShops.map(shop => {
+                  const isSelected = selectedShop === shop
+                  return (
+                    <button
+                      key={shop}
+                      onClick={() => setSelectedShop(shop === selectedShop ? '' : shop)}
+                      style={{ padding: '3px 10px', borderRadius: 20, border: `1px solid ${isSelected ? 'rgba(234,179,8,0.5)' : 'rgba(255,255,255,0.05)'}`, background: isSelected ? 'rgba(234,179,8,0.12)' : 'transparent', color: isSelected ? '#fde047' : 'rgba(255,255,255,0.38)', fontSize: '0.73rem', fontWeight: 500, cursor: 'pointer' }}
+                    >{shop}</button>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
