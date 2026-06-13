@@ -314,6 +314,9 @@ export default function ManagerPage() {
   const [excludedUsers, setExcludedUsers] = useState<Set<string>>(new Set())
   const [includedShops, setIncludedShops] = useState<Set<string>>(new Set())
   const [excludedShops, setExcludedShops] = useState<Set<string>>(new Set())
+  const [appliedExcludedUsers, setAppliedExcludedUsers] = useState<Set<string>>(new Set())
+  const [appliedIncludedShops, setAppliedIncludedShops] = useState<Set<string>>(new Set())
+  const [appliedExcludedShops, setAppliedExcludedShops] = useState<Set<string>>(new Set())
   const [activeStoreIds, setActiveStoreIds] = useState<string[]>([])
   const [stores, setStores] = useState<Store[]>(PRESET_STORES)
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
@@ -628,16 +631,20 @@ export default function ManagerPage() {
 
   const shopPassFilter = (e: ParsedEntry) => {
     if (e.shopCode) {
-      if (excludedShops.has(e.shopCode)) return false
-      if (includedShops.size > 0 && !includedShops.has(e.shopCode)) return false
+      if (appliedExcludedShops.has(e.shopCode)) return false
+      if (appliedIncludedShops.size > 0 && !appliedIncludedShops.has(e.shopCode)) return false
     }
     if (activeStoreIds.length > 0 && e.storeId && !activeStoreIds.includes(e.storeId)) return false
     return true
   }
 
+  const setsEqual = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every(v => b.has(v))
+  const filtersAreDirty = !setsEqual(excludedUsers, appliedExcludedUsers) || !setsEqual(includedShops, appliedIncludedShops) || !setsEqual(excludedShops, appliedExcludedShops)
+  const applyFilters = () => { setAppliedExcludedUsers(new Set(excludedUsers)); setAppliedIncludedShops(new Set(includedShops)); setAppliedExcludedShops(new Set(excludedShops)) }
+
   const viewEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => {
-      if (excludedUsers.has(effectiveName(e.user))) return false
+      if (appliedExcludedUsers.has(effectiveName(e.user))) return false
       if (!shopPassFilter(e)) return false
       const s = e.status.toUpperCase()
       return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
@@ -715,7 +722,7 @@ export default function ManagerPage() {
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
-    .filter(e => !excludedUsers.has(effectiveName(e.user)))
+    .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)))
     .filter(e => shopPassFilter(e))
     .filter(e => {
       const s = e.status.toUpperCase()
@@ -857,6 +864,11 @@ export default function ManagerPage() {
                   </div>
                 )
               })}
+              <button
+                onClick={applyFilters}
+                disabled={!filtersAreDirty}
+                style={{ marginLeft: 'auto', padding: '3px 14px', borderRadius: 12, border: `1px solid ${filtersAreDirty ? 'rgba(34,211,238,0.5)' : 'rgba(255,255,255,0.06)'}`, background: filtersAreDirty ? 'rgba(34,211,238,0.12)' : 'transparent', color: filtersAreDirty ? '#22d3ee' : 'rgba(255,255,255,0.2)', fontSize: '0.65rem', fontWeight: filtersAreDirty ? 700 : 400, cursor: filtersAreDirty ? 'pointer' : 'default', transition: 'all 0.15s' }}
+              >{filtersAreDirty ? '⚡ Εφαρμογή' : 'Εφαρμόστηκε'}</button>
             </div>
           )}
         </div>
@@ -983,9 +995,12 @@ export default function ManagerPage() {
                   </div>
                 )
               })}
+              <button
+                onClick={applyFilters}
+                disabled={!filtersAreDirty}
+                style={{ marginLeft: 'auto', padding: '3px 14px', borderRadius: 20, border: `1px solid ${filtersAreDirty ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.06)'}`, background: filtersAreDirty ? 'rgba(239,68,68,0.08)' : 'transparent', color: filtersAreDirty ? 'rgba(239,68,68,0.8)' : 'rgba(255,255,255,0.2)', fontSize: '0.68rem', fontWeight: filtersAreDirty ? 700 : 400, cursor: filtersAreDirty ? 'pointer' : 'default', transition: 'all 0.15s' }}
+              >{filtersAreDirty ? '⚡ Εφαρμογή' : 'Εφαρμόστηκε'}</button>
             </div>
-
-            {/* Tabs */}
             <div style={{ display: 'flex', gap: 4, marginBottom: 18, background: 'rgba(255,255,255,0.04)', borderRadius: 10, padding: 4, width: 'fit-content' }}>
               {(['daily', 'monthly', 'compare', 'users'] as const).map(t => (
                 <button
@@ -1343,7 +1358,7 @@ export default function ManagerPage() {
                 const storeMonthDone = (storeId: string) => entries.filter(e => {
                   if (e.storeId !== storeId) return false
                   if (!shopPassFilter(e)) return false
-                  if (excludedUsers.has(effectiveName(e.user))) return false
+                  if (appliedExcludedUsers.has(effectiveName(e.user))) return false
                   const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
                   if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
                   return isMobileCountable(e) && isDone(e)
