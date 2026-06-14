@@ -9,6 +9,7 @@ const DISMISSED_PAIRS_KEY = 'ws_manager_dismissed_pairs'
 const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
 const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
+const ENTRIES_KEY = 'ws_manager_entries'
 
 interface Store {
   id: string
@@ -302,12 +303,36 @@ function dateKey(d: Date): string {
 
 type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
 
+const serializeEntries = (entries: ParsedEntry[]): string => {
+  return JSON.stringify(entries.map(e => ({
+    ...e,
+    date: e.date ? e.date.toISOString() : null,
+    implDate: e.implDate ? e.implDate.toISOString() : null,
+  })))
+}
+
+const deserializeEntries = (json: string): ParsedEntry[] => {
+  const parsed = JSON.parse(json) as Array<any>
+  return parsed.map(e => ({
+    ...e,
+    date: e.date ? new Date(e.date) : null,
+    implDate: e.implDate ? new Date(e.implDate) : null,
+  }))
+}
+
 export default function ManagerPage() {
   const [authenticated, setAuthenticated] = useState(false)
   const [pwInput, setPwInput] = useState('')
   const [pwError, setPwError] = useState(false)
   const [phase, setPhase] = useState<'setup' | 'dashboard'>('setup')
-  const [entries, setEntries] = useState<ParsedEntry[]>([])
+  const [entries, setEntries] = useState<ParsedEntry[]>(() => {
+    try {
+      const stored = localStorage.getItem(ENTRIES_KEY)
+      return stored ? deserializeEntries(stored) : []
+    } catch {
+      return []
+    }
+  })
   const [tab, setTab] = useState<'daily' | 'monthly' | 'compare' | 'users'>('daily')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedUser, setSelectedUser] = useState('')
@@ -365,6 +390,10 @@ export default function ManagerPage() {
     const storedActive = localStorage.getItem(ACTIVE_STORES_KEY)
     if (storedActive) setActiveStoreIds(JSON.parse(storedActive) as string[])
   }, [])
+
+  useEffect(() => {
+    localStorage.setItem(ENTRIES_KEY, serializeEntries(entries))
+  }, [entries])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
   const getDoneTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.done?.[cat] ?? 0
