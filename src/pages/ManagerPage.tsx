@@ -1441,7 +1441,7 @@ export default function ManagerPage() {
                           let filled = 0
                           return (
                             <div key={u} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', minWidth: 72, flexShrink: 0, textAlign: 'right' }}>{u.split(/\s+/)[0]}</span>
+                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.55)', minWidth: 72, flexShrink: 0, textAlign: 'right' }}>{u.split(/\s+/)[0].toUpperCase()}</span>
                               <div style={{ flex: 1, height: 20, background: 'rgba(255,255,255,0.05)', borderRadius: 5, position: 'relative', overflow: 'hidden' }}>
                                 {subsNonEmpty.map((sub, i) => {
                                   const n = count(u, sub)
@@ -1468,7 +1468,7 @@ export default function ManagerPage() {
                           <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
                             <th style={{ textAlign: 'left', padding: '6px 16px 6px 8px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140, borderRadius: '6px 0 0 0' }}>Υποκατηγορία</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0]}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0].toUpperCase()}</th>
                             ))}
                             <th style={{ textAlign: 'center', padding: '6px 12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, borderRadius: '0 6px 0 0' }}>Σύν.</th>
                           </tr>
