@@ -846,12 +846,13 @@ export default function ManagerPage() {
     void catOrder
   }
 
-  const exportAllData = () => {
-    const allUsers = [...new Set(effectiveDoneMonthEntries.map(e => effectiveName(e.user)))].sort()
+  const exportByCategory = (categories: Category[]) => {
+    const allUsers = [...new Set(effectiveDoneMonthEntries.filter(e => categories.includes(e.category)).map(e => effectiveName(e.user)))].sort()
     const wb = XLSX.utils.book_new()
+    const categoryLabel = categories.length === 1 ? CATEGORY_LABELS[categories[0]] : 'Όλα'
 
     allUsers.forEach(user => {
-      const userEntries = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user)
+      const userEntries = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && categories.includes(e.category))
       const rows = userEntries.map(e => ({
         'Κατηγορία': CATEGORY_LABELS[e.category],
         'Request ID': e.requestId || '—',
@@ -884,7 +885,7 @@ export default function ManagerPage() {
       XLSX.utils.book_append_sheet(wb, ws, user.substring(0, 31))
     })
 
-    XLSX.writeFile(wb, `όλες-κατηγορίες-${selectedMonth}.xlsx`)
+    XLSX.writeFile(wb, `${categoryLabel}-${selectedMonth}.xlsx`)
   }
 
   return (
@@ -1085,11 +1086,25 @@ export default function ManagerPage() {
                 <>
                   <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
                   <button
-                    onClick={exportAllData}
+                    onClick={() => exportByCategory(['home'])}
                     style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
-                    Excel - Όλα
+                    Vodafone Home
+                  </button>
+                  <button
+                    onClick={() => exportByCategory(['mobile', 'prepay'])}
+                    style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                    Mobile
+                  </button>
+                  <button
+                    onClick={() => exportByCategory(['home', 'mobile', 'prepay', 'migra'])}
+                    style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                    All
                   </button>
                 </>
               )}
