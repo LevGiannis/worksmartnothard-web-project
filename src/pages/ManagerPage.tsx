@@ -721,7 +721,16 @@ export default function ManagerPage() {
       return isDone(e)
     })
     .map(e => ({ ...e, category: 'prepay' as Category }))
-  const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone]
+  const mobileFixedActivationDone = viewEntries
+    .filter(e => {
+      if (e.category !== 'mobile') return false
+      if (!(e.subCategory ?? '').toUpperCase().includes('FIXED ACTIVATION')) return false
+      const d = e.implDate || e.date
+      if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+      return isDone(e)
+    })
+    .map(e => ({ ...e, category: 'home' as Category }))
+  const effectiveDoneMonthEntries = [...doneMonthEntries, ...portInPrepayDone, ...mobileFixedActivationDone]
 
   const prevYear = mMonth === 1 ? mYear - 1 : mYear
   const prevM = mMonth === 1 ? 12 : mMonth - 1
@@ -739,7 +748,16 @@ export default function ManagerPage() {
       return isDone(e)
     })
     .map(e => ({ ...e, category: 'prepay' as Category }))
-  const effectivePrevDoneEntries = [...prevDoneEntries, ...prevPortInPrepayDone]
+  const prevMobileFixedActivationDone = viewEntries
+    .filter(e => {
+      if (e.category !== 'mobile') return false
+      if (!(e.subCategory ?? '').toUpperCase().includes('FIXED ACTIVATION')) return false
+      const d = e.implDate || e.date
+      if (!d || !(d.getFullYear() === prevYear && d.getMonth() + 1 === prevM)) return false
+      return isDone(e)
+    })
+    .map(e => ({ ...e, category: 'home' as Category }))
+  const effectivePrevDoneEntries = [...prevDoneEntries, ...prevPortInPrepayDone, ...prevMobileFixedActivationDone]
 
   const homePending = viewEntries
     .filter(e => e.category === 'home' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
