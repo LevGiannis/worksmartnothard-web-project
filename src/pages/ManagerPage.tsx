@@ -1470,14 +1470,27 @@ export default function ManagerPage() {
                   .sort((a, b) => b.done - a.done)
                 const maxDone = leaderboard[0]?.done || 1
 
-                const storeMonthDone = (storeId: string) => entries.filter(e => {
-                  if (e.storeId !== storeId) return false
-                  if (!shopPassFilter(e)) return false
-                  if (appliedExcludedUsers.has(effectiveName(e.user))) return false
-                  const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
-                  if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
-                  return isMobileCountable(e) && isDone(e)
-                })
+                const storeMonthDone = (storeId: string) => {
+                  const done = entries.filter(e => {
+                    if (e.storeId !== storeId) return false
+                    if (!shopPassFilter(e)) return false
+                    if (appliedExcludedUsers.has(effectiveName(e.user))) return false
+                    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+                    if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+                    return isMobileCountable(e) && isDone(e)
+                  })
+                  const fixedActivation = entries.filter(e => {
+                    if (e.storeId !== storeId) return false
+                    if (e.category !== 'mobile') return false
+                    if (!(e.subCategory ?? '').toUpperCase().includes('FIXED ACTIVATION')) return false
+                    if (!shopPassFilter(e)) return false
+                    if (appliedExcludedUsers.has(effectiveName(e.user))) return false
+                    const d = e.implDate || e.date
+                    if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
+                    return isDone(e)
+                  }).map(e => ({ ...e, category: 'home' as Category }))
+                  return [...done, ...fixedActivation]
+                }
 
                 const activeStores = stores.filter(s => activeStoreIds.includes(s.id))
                 const storeBreakdowns = activeStores.map(s => {
@@ -1547,36 +1560,36 @@ export default function ManagerPage() {
                     )
                   }
 
-                  const sep = 'rgba(255,255,255,0.07)'
+                  const sep = 'rgba(255,255,255,0.1)'
                   return (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.72rem', width: 'max-content', minWidth: '100%' }}>
+                    <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid rgba(255,255,255,0.08)` }}>
+                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: 'max-content', minWidth: '100%', background: 'rgba(255,255,255,0.01)' }}>
                         <thead>
-                          <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                            <th style={{ textAlign: 'left', padding: '6px 16px 6px 8px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap', minWidth: 140, borderRadius: '6px 0 0 0' }}>Υποκατηγορία</th>
+                          <tr style={{ background: 'rgba(255,255,255,0.08)', borderBottom: `2px solid ${sep}` }}>
+                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, whiteSpace: 'nowrap', minWidth: 130, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>Προϊόν</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, borderBottom: `1px solid ${sep}`, whiteSpace: 'nowrap' }}>{u.split(/\s+/)[0].toUpperCase()}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
                             ))}
-                            <th style={{ textAlign: 'center', padding: '6px 12px', color: 'rgba(255,255,255,0.3)', fontWeight: 500, borderBottom: `1px solid ${sep}`, borderRadius: '0 6px 0 0' }}>Σύν.</th>
+                            <th style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>Σύν.</th>
                           </tr>
                         </thead>
                         <tbody>
                           {subs.map((sub, i) => (
-                            <tr key={sub} style={{ background: i % 2 === 1 ? 'rgba(255,255,255,0.018)' : 'transparent' }}>
-                              <td style={{ padding: '5px 16px 5px 8px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{cleanSubName(sub)}</td>
+                            <tr key={sub} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)', borderBottom: `1px solid rgba(255,255,255,0.06)`, transition: 'background 150ms' }}>
+                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', fontWeight: 500 }}>{cleanSubName(sub)}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
-                                return <td key={u} style={{ textAlign: 'center', padding: '5px 14px', color: n > 0 ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.1)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{n > 0 ? n : '—'}</td>
+                                return <td key={u} style={{ textAlign: 'center', padding: '7px 10px', color: n > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', fontSize: '0.8rem' }}>{n > 0 ? n : '—'}</td>
                               })}
-                              <td style={{ textAlign: 'center', padding: '5px 12px', color: 'rgba(255,255,255,0.45)', fontWeight: 600, fontFamily: 'monospace', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{subTotal(sub)}</td>
+                              <td style={{ textAlign: 'center', padding: '7px 10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8rem' }}>{subTotal(sub)}</td>
                             </tr>
                           ))}
-                          <tr style={{ background: 'rgba(255,255,255,0.04)', borderTop: `1px solid ${sep}` }}>
-                            <td style={{ padding: '6px 16px 6px 8px', color: 'rgba(255,255,255,0.65)', fontWeight: 700 }}>Σύνολο</td>
+                          <tr style={{ background: 'rgba(255,255,255,0.08)', borderTop: `2px solid ${sep}` }}>
+                            <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.68rem' }}>Σύνολο</td>
                             {users.map(u => (
-                              <td key={u} style={{ textAlign: 'center', padding: '6px 14px', color: 'rgba(255,255,255,0.92)', fontWeight: 800, fontFamily: 'monospace' }}>{userTotal(u) || '—'}</td>
+                              <td key={u} style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontFamily: 'monospace', fontSize: '0.82rem' }}>{userTotal(u) || '—'}</td>
                             ))}
-                            <td style={{ textAlign: 'center', padding: '6px 12px', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>{countEntries(doneEntries)}</td>
+                            <td style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 900, color: '#fff', fontFamily: 'monospace', fontSize: '0.82rem' }}>{countEntries(doneEntries)}</td>
                           </tr>
                         </tbody>
                       </table>
