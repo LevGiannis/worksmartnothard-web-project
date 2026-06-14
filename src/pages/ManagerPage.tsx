@@ -1501,6 +1501,7 @@ export default function ManagerPage() {
                   chartMode: boolean
                 ) => {
                   if (!users.length || !subs.length) return null
+                  const cleanSubName = (sub: string) => sub.replace(/^Vodafone Home\s+/i, '').trim()
                   const count = (user: string, sub: string) =>
                     countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
                   const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
@@ -1516,7 +1517,7 @@ export default function ManagerPage() {
                           {subsNonEmpty.map((sub, i) => (
                             <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                               <div style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: opacities[i], flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{sub}</span>
+                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{cleanSubName(sub)}</span>
                             </div>
                           ))}
                         </div>
@@ -1562,7 +1563,7 @@ export default function ManagerPage() {
                         <tbody>
                           {subs.map((sub, i) => (
                             <tr key={sub} style={{ background: i % 2 === 1 ? 'rgba(255,255,255,0.018)' : 'transparent' }}>
-                              <td style={{ padding: '5px 16px 5px 8px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{sub}</td>
+                              <td style={{ padding: '5px 16px 5px 8px', color: 'rgba(255,255,255,0.45)', whiteSpace: 'nowrap', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{cleanSubName(sub)}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
                                 return <td key={u} style={{ textAlign: 'center', padding: '5px 14px', color: n > 0 ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.1)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', borderBottom: `1px solid rgba(255,255,255,0.025)` }}>{n > 0 ? n : '—'}</td>
