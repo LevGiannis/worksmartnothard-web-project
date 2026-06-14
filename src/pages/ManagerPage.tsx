@@ -1516,7 +1516,6 @@ export default function ManagerPage() {
                   chartMode: boolean
                 ) => {
                   if (!users.length || !subs.length) return null
-                  const cleanSubName = (sub: string) => sub.replace(/^Vodafone Home\s+/i, '').trim()
                   const count = (user: string, sub: string) =>
                     countEntries(doneEntries.filter(e => effectiveName(e.user) === user && (e.subCategory ?? '—') === sub))
                   const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
@@ -1532,7 +1531,7 @@ export default function ManagerPage() {
                           {subsNonEmpty.map((sub, i) => (
                             <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                               <div style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: opacities[i], flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{cleanSubName(sub)}</span>
+                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{sub}</span>
                             </div>
                           ))}
                         </div>
@@ -1563,35 +1562,37 @@ export default function ManagerPage() {
                   }
 
                   const sep = 'rgba(255,255,255,0.1)'
+                  const maxSubLength = Math.max(...subs.map(s => s.length))
+                  const subColWidth = Math.min(280, Math.max(150, maxSubLength * 6))
                   return (
-                    <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid rgba(255,255,255,0.08)` }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: 'max-content', minWidth: '100%', background: 'rgba(255,255,255,0.01)' }}>
+                    <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid rgba(255,255,255,0.08)`, marginTop: 4 }}>
+                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: 'auto', background: 'rgba(255,255,255,0.01)', tableLayout: 'auto' }}>
                         <thead>
                           <tr style={{ background: 'rgba(255,255,255,0.08)', borderBottom: `2px solid ${sep}` }}>
-                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, whiteSpace: 'nowrap', minWidth: 130, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>Προϊόν</th>
+                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, width: subColWidth }}>Προϊόν</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 50 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
                             ))}
-                            <th style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5 }}>Σύν.</th>
+                            <th style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 45 }}>Σύν.</th>
                           </tr>
                         </thead>
                         <tbody>
                           {subs.map((sub, i) => (
                             <tr key={sub} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)', borderBottom: `1px solid rgba(255,255,255,0.06)`, transition: 'background 150ms' }}>
-                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', whiteSpace: 'nowrap', fontWeight: 500 }}>{cleanSubName(sub)}</td>
+                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', fontWeight: 500, wordBreak: 'break-word', width: subColWidth }}>{sub}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
-                                return <td key={u} style={{ textAlign: 'center', padding: '7px 10px', color: n > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', fontSize: '0.8rem' }}>{n > 0 ? n : '—'}</td>
+                                return <td key={u} style={{ textAlign: 'center', padding: '7px 8px', color: n > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 50 }}>{n > 0 ? n : '—'}</td>
                               })}
-                              <td style={{ textAlign: 'center', padding: '7px 10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8rem' }}>{subTotal(sub)}</td>
+                              <td style={{ textAlign: 'center', padding: '7px 8px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 45 }}>{subTotal(sub)}</td>
                             </tr>
                           ))}
                           <tr style={{ background: 'rgba(255,255,255,0.08)', borderTop: `2px solid ${sep}` }}>
-                            <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.68rem' }}>Σύνολο</td>
+                            <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.68rem', width: subColWidth }}>Σύνολο</td>
                             {users.map(u => (
-                              <td key={u} style={{ textAlign: 'center', padding: '8px 10px', color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontFamily: 'monospace', fontSize: '0.82rem' }}>{userTotal(u) || '—'}</td>
+                              <td key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontFamily: 'monospace', fontSize: '0.82rem', minWidth: 50 }}>{userTotal(u) || '—'}</td>
                             ))}
-                            <td style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 900, color: '#fff', fontFamily: 'monospace', fontSize: '0.82rem' }}>{countEntries(doneEntries)}</td>
+                            <td style={{ textAlign: 'center', padding: '8px 8px', fontWeight: 900, color: '#fff', fontFamily: 'monospace', fontSize: '0.82rem', minWidth: 45 }}>{countEntries(doneEntries)}</td>
                           </tr>
                         </tbody>
                       </table>
