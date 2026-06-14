@@ -846,6 +846,27 @@ export default function ManagerPage() {
     void catOrder
   }
 
+  const exportSubTable = (entries: ParsedEntry[], storeCode: string, category: Category) => {
+    const users = [...new Set(entries.map(e => effectiveName(e.user)))].sort()
+    const wb = XLSX.utils.book_new()
+
+    users.forEach(user => {
+      const userEntries = entries.filter(e => effectiveName(e.user) === user)
+      const rows = userEntries.map(e => ({
+        'Request ID': e.requestId || '—',
+        'Ημερομηνία': e.date ? dateKey(e.date) : '—',
+        'Ημερομηνία Υλοποίησης': e.implDate ? dateKey(e.implDate) : '—',
+        'Κατάσταση': e.status,
+        'Υποκατηγορία': e.subCategory || '—',
+        'Πελάτης': e.customer || '—',
+        'Κωδικός Dealer': e.shopCode || '—',
+      }))
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), user.substring(0, 31))
+    })
+
+    XLSX.writeFile(wb, `${storeCode}-${CATEGORY_LABELS[category]}-${selectedMonth}.xlsx`)
+  }
+
   return (
     <div className="page-content">
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
@@ -1559,10 +1580,16 @@ export default function ManagerPage() {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
-                                <button
-                                  onClick={() => toggleSubcatChart(`${s.id}-mobile`)}
-                                  style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-mobile`) ? CATEGORY_COLORS.mobile : 'transparent', color: subcatChartMode.has(`${s.id}-mobile`) ? '#fff' : CATEGORY_COLORS.mobile, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
-                                >{subcatChartMode.has(`${s.id}-mobile`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  <button
+                                    onClick={() => toggleSubcatChart(`${s.id}-mobile`)}
+                                    style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-mobile`) ? CATEGORY_COLORS.mobile : 'transparent', color: subcatChartMode.has(`${s.id}-mobile`) ? '#fff' : CATEGORY_COLORS.mobile, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                  >{subcatChartMode.has(`${s.id}-mobile`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                                  <button
+                                    onClick={() => exportSubTable(mobileDone, s.code, 'mobile')}
+                                    style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: 'rgba(16,185,129,0.1)', color: '#10b981', cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                  >📥 Excel</button>
+                                </div>
                               </div>
                               {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile, subcatChartMode.has(`${s.id}-mobile`))}
                             </div>
@@ -1571,10 +1598,16 @@ export default function ManagerPage() {
                             <div>
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
-                                <button
-                                  onClick={() => toggleSubcatChart(`${s.id}-home`)}
-                                  style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-home`) ? CATEGORY_COLORS.home : 'transparent', color: subcatChartMode.has(`${s.id}-home`) ? '#fff' : CATEGORY_COLORS.home, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
-                                >{subcatChartMode.has(`${s.id}-home`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                                <div style={{ display: 'flex', gap: 4 }}>
+                                  <button
+                                    onClick={() => toggleSubcatChart(`${s.id}-home`)}
+                                    style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-home`) ? CATEGORY_COLORS.home : 'transparent', color: subcatChartMode.has(`${s.id}-home`) ? '#fff' : CATEGORY_COLORS.home, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                  >{subcatChartMode.has(`${s.id}-home`) ? 'Πίνακας' : 'Γράφημα'}</button>
+                                  <button
+                                    onClick={() => exportSubTable(homeDone, s.code, 'home')}
+                                    style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: 'rgba(16,185,129,0.1)', color: '#10b981', cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
+                                  >📥 Excel</button>
+                                </div>
                               </div>
                               {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home, subcatChartMode.has(`${s.id}-home`))}
                             </div>
