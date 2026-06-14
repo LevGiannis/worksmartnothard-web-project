@@ -1497,9 +1497,11 @@ export default function ManagerPage() {
                   const done = storeMonthDone(s.id)
                   const mobileDone = done.filter(e => e.category === 'mobile' && !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY'))
                   const homeDone = done.filter(e => e.category === 'home')
-                  const mobileUsers = [...new Set(mobileDone.map(e => effectiveName(e.user)))].sort()
+                  const mobileUsers = [...new Set(mobileDone.map(e => effectiveName(e.user)))]
+                    .sort((a, b) => countEntries(mobileDone.filter(e => effectiveName(e.user) === b)) - countEntries(mobileDone.filter(e => effectiveName(e.user) === a)))
                   const mobileSubs = [...new Set(mobileDone.map(e => e.subCategory ?? '—'))].sort()
-                  const homeUsers = [...new Set(homeDone.map(e => effectiveName(e.user)))].sort()
+                  const homeUsers = [...new Set(homeDone.map(e => effectiveName(e.user)))]
+                    .sort((a, b) => countEntries(homeDone.filter(e => effectiveName(e.user) === b)) - countEntries(homeDone.filter(e => effectiveName(e.user) === a)))
                   const homeSubs = [...new Set(homeDone.map(e => e.subCategory ?? '—'))].sort()
                   return { s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }
                 }).filter(x => x.mobileDone.length > 0 || x.homeDone.length > 0)
