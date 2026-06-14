@@ -637,13 +637,23 @@ export default function ManagerPage() {
                 })}
               </div>
             )}
-            <button
-              onClick={() => setPhase('dashboard')}
-              disabled={activeStoreIds.length === 0}
-              style={{ width: '100%', padding: '13px', borderRadius: 10, background: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(90deg,#0891b2,#0e7490)', color: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.2)' : '#fff', fontWeight: 700, fontSize: '0.95rem', border: 'none', cursor: activeStoreIds.length === 0 ? 'default' : 'pointer', transition: 'all 150ms' }}
-            >
-              Προβολή Dashboard →
-            </button>
+            <div style={{ display: 'flex', gap: 10, flexDirection: 'column' }}>
+              <button
+                onClick={() => setPhase('dashboard')}
+                disabled={activeStoreIds.length === 0}
+                style={{ width: '100%', padding: '13px', borderRadius: 10, background: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.05)' : 'linear-gradient(90deg,#0891b2,#0e7490)', color: activeStoreIds.length === 0 ? 'rgba(255,255,255,0.2)' : '#fff', fontWeight: 700, fontSize: '0.95rem', border: 'none', cursor: activeStoreIds.length === 0 ? 'default' : 'pointer', transition: 'all 150ms' }}
+              >
+                Προβολή Dashboard →
+              </button>
+              {entries.length > 0 && (
+                <button
+                  onClick={() => { setEntries([]); localStorage.removeItem(ENTRIES_KEY) }}
+                  style={{ width: '100%', padding: '10px', borderRadius: 10, background: 'rgba(239,68,68,0.1)', color: '#ef4444', fontWeight: 600, fontSize: '0.9rem', border: '1px solid rgba(239,68,68,0.3)', cursor: 'pointer', transition: 'all 150ms' }}
+                >
+                  🗑 Διαγραφή όλων των αρχείων ({entries.length})
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
