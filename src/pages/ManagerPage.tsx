@@ -10,6 +10,7 @@ const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
 const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
 const ENTRIES_KEY = 'ws_manager_entries'
+const DEFAULT_EXCLUDED_PATTERNS = ['FA', 'TLM', 'BC']
 
 interface Store {
   id: string
@@ -393,6 +394,22 @@ export default function ManagerPage() {
 
   useEffect(() => {
     localStorage.setItem(ENTRIES_KEY, serializeEntries(entries))
+  }, [entries])
+
+  useEffect(() => {
+    if (entries.length > 0 && appliedExcludedShops.size === 0 && appliedIncludedShops.size === 0) {
+      const allCodes = new Set<string>()
+      entries.forEach(e => { if (e.shopCode) allCodes.add(e.shopCode) })
+      const defaultExcluded = new Set<string>()
+      allCodes.forEach(code => {
+        if (DEFAULT_EXCLUDED_PATTERNS.some(pattern => code.includes(pattern))) {
+          defaultExcluded.add(code)
+        }
+      })
+      if (defaultExcluded.size > 0) {
+        setAppliedExcludedShops(defaultExcluded)
+      }
+    }
   }, [entries])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
