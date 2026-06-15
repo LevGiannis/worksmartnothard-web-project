@@ -955,36 +955,82 @@ export default function ManagerPage() {
             >⚙ Ρύθμιση</button>
           </div>
           {allShopCodes.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 12, alignItems: 'center' }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 600, color: 'rgba(255,255,255,0.2)', textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 0 }}>Κωδ. dealer</span>
-              <button
-                onClick={() => { setIncludedShops(new Set()); setExcludedShops(new Set()) }}
-                style={{ padding: '2px 8px', borderRadius: 12, border: `1px solid ${includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'}`, background: includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.05)' : 'transparent', color: includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.25)', fontSize: '0.65rem', cursor: 'pointer' }}
-              >Όλοι</button>
-              {allShopCodes.map(([code, catSet]) => {
-                const isIncluded = includedShops.has(code)
-                const isExcluded = excludedShops.has(code)
-                const catHint = catSet.has('mobile') && catSet.has('home') ? '' : catSet.has('mobile') ? ' mob' : ' home'
-                return (
-                  <div key={code} style={{ display: 'flex', borderRadius: 12, overflow: 'hidden', border: `1px solid ${isIncluded ? 'rgba(34,211,238,0.4)' : isExcluded ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.07)'}`, background: isIncluded ? 'rgba(34,211,238,0.08)' : isExcluded ? 'rgba(239,68,68,0.06)' : 'transparent' }}>
-                    <button
-                      onClick={() => toggleIncludeShop(code)}
-                      title="Συμπερίληψη μόνο αυτού"
-                      style={{ padding: '2px 8px', background: 'transparent', border: 'none', color: isIncluded ? '#22d3ee' : isExcluded ? 'rgba(239,68,68,0.4)' : 'rgba(255,255,255,0.45)', fontSize: '0.65rem', fontWeight: isIncluded ? 700 : 400, cursor: 'pointer', textDecoration: isExcluded ? 'line-through' : 'none' }}
-                    >{code}{catHint}</button>
-                    <button
-                      onClick={() => toggleExcludeShop(code)}
-                      title={isExcluded ? 'Επαναφορά' : 'Αποκλεισμός'}
-                      style={{ padding: '2px 6px 2px 2px', background: 'transparent', border: 'none', color: isExcluded ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.15)', fontSize: '0.65rem', cursor: 'pointer' }}
-                    >{isExcluded ? '+' : '×'}</button>
-                  </div>
-                )
-              })}
-              <button
-                onClick={applyFilters}
-                disabled={!filtersAreDirty}
-                style={{ marginLeft: 'auto', padding: '3px 14px', borderRadius: 12, border: `1px solid ${filtersAreDirty ? 'rgba(34,211,238,0.5)' : 'rgba(255,255,255,0.06)'}`, background: filtersAreDirty ? 'rgba(34,211,238,0.12)' : 'transparent', color: filtersAreDirty ? '#22d3ee' : 'rgba(255,255,255,0.2)', fontSize: '0.65rem', fontWeight: filtersAreDirty ? 700 : 400, cursor: filtersAreDirty ? 'pointer' : 'default', transition: 'all 0.15s' }}
-              >{filtersAreDirty ? '⚡ Εφαρμογή' : 'Εφαρμόστηκε'}</button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1 }}>Κωδικοί Dealer</span>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => { setIncludedShops(new Set()); setExcludedShops(new Set()) }}
+                    style={{ padding: '3px 10px', borderRadius: 6, border: `1px solid ${includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(34,211,238,0.4)' : 'rgba(255,255,255,0.1)'}`, background: includedShops.size === 0 && excludedShops.size === 0 ? 'rgba(34,211,238,0.1)' : 'transparent', color: includedShops.size === 0 && excludedShops.size === 0 ? '#22d3ee' : 'rgba(255,255,255,0.35)', fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
+                  >Όλοι</button>
+                  <button
+                    onClick={() => {
+                      const defaultExcluded = new Set<string>()
+                      allShopCodes.forEach(([code]) => {
+                        if (DEFAULT_EXCLUDED_PATTERNS.some(pattern => code.includes(pattern))) {
+                          defaultExcluded.add(code)
+                        }
+                      })
+                      setExcludedShops(defaultExcluded)
+                      setIncludedShops(new Set())
+                    }}
+                    style={{ padding: '3px 10px', borderRadius: 6, border: `1px solid rgba(245,158,11,0.3)`, background: 'rgba(245,158,11,0.08)', color: '#fbbf24', fontSize: '0.65rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
+                  >↶ Defaults</button>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {allShopCodes.map(([code, catSet]) => {
+                  const isIncluded = includedShops.has(code)
+                  const isExcluded = excludedShops.has(code)
+                  const isDefaultExcluded = DEFAULT_EXCLUDED_PATTERNS.some(pattern => code.includes(pattern))
+                  const catHint = catSet.has('mobile') && catSet.has('home') ? '' : catSet.has('mobile') ? ' 📱' : ' 🏠'
+
+                  let bgColor = 'rgba(255,255,255,0.03)'
+                  let borderColor = 'rgba(255,255,255,0.08)'
+                  let textColor = 'rgba(255,255,255,0.6)'
+
+                  if (isIncluded) {
+                    bgColor = 'rgba(34,211,238,0.12)'
+                    borderColor = 'rgba(34,211,238,0.5)'
+                    textColor = '#22d3ee'
+                  } else if (isExcluded) {
+                    bgColor = 'rgba(239,68,68,0.08)'
+                    borderColor = 'rgba(239,68,68,0.4)'
+                    textColor = '#ef4444'
+                  } else if (isDefaultExcluded && appliedExcludedShops.has(code)) {
+                    bgColor = 'rgba(245,158,11,0.08)'
+                    borderColor = 'rgba(245,158,11,0.3)'
+                    textColor = '#fbbf24'
+                  }
+
+                  return (
+                    <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 0, borderRadius: 8, overflow: 'hidden', border: `1px solid ${borderColor}`, background: bgColor, transition: 'all 150ms' }}>
+                      <button
+                        onClick={() => toggleIncludeShop(code)}
+                        title="Συμπερίληψη"
+                        style={{ padding: '5px 10px', background: 'transparent', border: 'none', color: textColor, fontSize: '0.7rem', fontWeight: isIncluded ? 700 : 500, cursor: 'pointer', textDecoration: isExcluded ? 'line-through' : 'none', flex: 1 }}
+                      >{code}{catHint}{isDefaultExcluded && !isIncluded && !isExcluded ? ' ⚙️' : ''}</button>
+                      <button
+                        onClick={() => toggleExcludeShop(code)}
+                        title={isExcluded ? 'Επαναφορά' : 'Αποκλεισμός'}
+                        style={{ padding: '5px 8px', background: 'transparent', border: 'none', color: isExcluded ? textColor : 'rgba(255,255,255,0.2)', fontSize: '0.7rem', cursor: 'pointer', fontWeight: 600, transition: 'all 150ms' }}
+                      >{isExcluded ? '✓' : '✕'}</button>
+                    </div>
+                  )
+                })}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)' }}>
+                  ⚙️ = Αποκλείεται by default (FA, TLM, BC) ·
+                  <span style={{ color: '#22d3ee', marginLeft: 4 }}>Συμπ.:</span> {includedShops.size > 0 ? includedShops.size : '—'} ·
+                  <span style={{ color: '#ef4444', marginLeft: 4 }}>Αποκλ.:</span> {excludedShops.size > 0 ? excludedShops.size : '—'}
+                </div>
+                <button
+                  onClick={applyFilters}
+                  disabled={!filtersAreDirty}
+                  style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${filtersAreDirty ? 'rgba(34,211,238,0.5)' : 'rgba(255,255,255,0.06)'}`, background: filtersAreDirty ? 'rgba(34,211,238,0.12)' : 'transparent', color: filtersAreDirty ? '#22d3ee' : 'rgba(255,255,255,0.2)', fontSize: '0.65rem', fontWeight: filtersAreDirty ? 700 : 400, cursor: filtersAreDirty ? 'pointer' : 'default', transition: 'all 0.15s' }}
+                >{filtersAreDirty ? '⚡ Εφαρμογή' : 'Εφαρμόστηκε'}</button>
+              </div>
             </div>
           )}
         </div>
