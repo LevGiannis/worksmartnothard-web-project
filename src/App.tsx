@@ -30,10 +30,10 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     panelBorder: 'rgba(186,85,255,0.12)',
   },
   emerald: {
-    bg: '#eff2f7',
-    text: '#1a2332',
-    panelBg: 'linear-gradient(180deg, rgba(255,255,255,0.88), rgba(240,245,252,0.85))',
-    panelBorder: 'rgba(59,130,246,0.35)',
+    bg: '#2a2a2a',
+    text: '#e8e8e8',
+    panelBg: 'linear-gradient(180deg, rgba(50,50,50,0.85), rgba(40,40,40,0.8))',
+    panelBorder: 'rgba(200,200,200,0.25)',
   },
   slate: {
     bg: '#111820',
@@ -54,10 +54,10 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     panelBorder: 'rgba(251,146,60,0.15)',
   },
   forest: {
-    bg: '#0d1f15',
-    text: '#d4f4e0',
-    panelBg: 'linear-gradient(180deg, rgba(15,60,40,0.6), rgba(10,45,30,0.5))',
-    panelBorder: 'rgba(52,211,153,0.15)',
+    bg: '#1a0a0a',
+    text: '#fff0f0',
+    panelBg: 'linear-gradient(180deg, rgba(200,0,0,0.15), rgba(150,0,0,0.12))',
+    panelBorder: 'rgba(230,0,0,0.3)',
   },
   coral: {
     bg: '#1f0f18',
