@@ -59,12 +59,12 @@ export default function Modal({ isOpen, title, onClose, children, size = 'lg', h
         ref={panelRef}
         tabIndex={-1}
         className={`${sizeClass} ${heightClass} w-full mx-4 p-6 outline-none flex flex-col`}
-        style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)', color: '#fff' }}
+        style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, boxShadow: '0 24px 60px rgba(0,0,0,0.7)', backdropFilter: 'blur(16px)' }}
         onMouseDown={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-4" style={{ paddingBottom: 14, borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
           <div className="pr-4">
-            {title ? <h3 className="text-lg font-semibold" style={{ color: '#fff', fontSize: '1rem', fontWeight: 700 }}>{title}</h3> : null}
+            {title ? <h3 className="text-lg font-semibold" style={{ fontSize: '1rem', fontWeight: 700 }}>{title}</h3> : null}
           </div>
 
           <button
