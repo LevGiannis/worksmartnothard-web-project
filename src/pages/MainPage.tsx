@@ -11,14 +11,14 @@ type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
 const THEME_NAMES: Record<ThemeKey, string> = {
   midnight: 'Midnight Navy',
   amethyst: 'Deep Amethyst',
-  emerald: 'Forest Emerald',
+  emerald: 'Light Grey',
   slate: 'Slate Charcoal',
 }
 
 const THEME_ICONS: Record<ThemeKey, string> = {
   midnight: '🌙',
   amethyst: '💜',
-  emerald: '🌿',
+  emerald: '☁️',
   slate: '🩶',
 }
 
