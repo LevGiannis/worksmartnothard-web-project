@@ -1,6 +1,7 @@
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useState, useCallback, useEffect, useContext } from 'react'
 import * as XLSX from 'xlsx'
 import PageHeader from '../components/PageHeader'
+import { ThemeContext } from '../App'
 
 const MANAGER_PASSWORD = 'manager123'
 const USER_MAP_KEY = 'ws_manager_user_map'
@@ -364,6 +365,7 @@ const deserializeEntries = (json: string): ParsedEntry[] => {
 }
 
 export default function ManagerPage() {
+  const { theme, setTheme } = useContext(ThemeContext)
   const [authenticated, setAuthenticated] = useState(false)
   const [pwInput, setPwInput] = useState('')
   const [pwError, setPwError] = useState(false)
@@ -408,14 +410,6 @@ export default function ManagerPage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [subcatChartMode, setSubcatChartMode] = useState<Set<string>>(new Set())
   const toggleSubcatChart = (key: string) => setSubcatChartMode(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
-  const [theme, setTheme] = useState<ThemeKey>(() => {
-    try {
-      const stored = localStorage.getItem(THEME_KEY)
-      return (stored as ThemeKey) || 'midnight'
-    } catch {
-      return 'midnight'
-    }
-  })
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -461,22 +455,6 @@ export default function ManagerPage() {
       }
     }
   }, [entries])
-
-  useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme)
-    const cfg = THEME_CONFIGS[theme]
-    const style = document.createElement('style')
-    style.id = 'ws-manager-theme'
-    style.textContent = `
-      body { background: ${cfg.bg} !important; color: ${cfg.text} !important; }
-      .page-content { background: ${cfg.bg} !important; color: ${cfg.text} !important; }
-      .panel-card { background: ${cfg.panelBg} !important; border-color: ${cfg.panelBorder} !important; box-shadow: 0 6px 22px rgba(0,0,0,0.3) !important; }
-      .panel-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.4) !important; }
-    `
-    const existing = document.getElementById('ws-manager-theme')
-    if (existing) existing.remove()
-    document.head.appendChild(style)
-  }, [theme])
 
   const getRegTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.reg?.[cat] ?? 0
   const getDoneTarget = (cat: Category): number => monthlyTargets[selectedMonth]?.done?.[cat] ?? 0
