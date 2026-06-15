@@ -1,9 +1,26 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import useProgress from '../hooks/useProgress'
 import PageHeader from '../components/PageHeader'
 import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 import { formatNumber } from '../utils/formatNumber'
+import { ThemeContext } from '../App'
+
+type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
+
+const THEME_NAMES: Record<ThemeKey, string> = {
+  midnight: 'Midnight Navy',
+  amethyst: 'Deep Amethyst',
+  emerald: 'Forest Emerald',
+  slate: 'Slate Charcoal',
+}
+
+const THEME_ICONS: Record<ThemeKey, string> = {
+  midnight: '🌙',
+  amethyst: '💜',
+  emerald: '🌿',
+  slate: '🩶',
+}
 
 const MONTH_NAMES_GR = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
 const ACCENT_COLORS = ['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1']
@@ -67,6 +84,8 @@ const quickLinks = [
 
 export default function MainPage() {
   const { progress: stats, loading, month: currentMonth, year: currentYear } = useProgress()
+  const { theme, setTheme } = useContext(ThemeContext)
+  const [showThemeMenu, setShowThemeMenu] = useState(false)
 
   const totalPct = (() => {
     const items = stats || []
@@ -101,6 +120,87 @@ export default function MainPage() {
       />
 
       <div className="page-inner">
+
+        {/* Theme Selector */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16, position: 'relative' }}>
+          <button
+            onClick={() => setShowThemeMenu(!showThemeMenu)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 12px',
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
+              color: 'rgba(255,255,255,0.7)',
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.08)'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
+          >
+            <span>{THEME_ICONS[theme]}</span>
+            <span>{THEME_NAMES[theme]}</span>
+          </button>
+          {showThemeMenu && (
+            <div style={{
+              position: 'absolute',
+              top: '100%',
+              right: 0,
+              marginTop: 6,
+              background: 'rgba(15, 17, 32, 0.95)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: 12,
+              padding: '8px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 4,
+              zIndex: 100,
+              backdropFilter: 'blur(8px)',
+              minWidth: 180,
+            }}>
+              {(Object.entries(THEME_NAMES) as [ThemeKey, string][]).map(([tKey, tName]) => (
+                <button
+                  key={tKey}
+                  onClick={() => {
+                    setTheme(tKey)
+                    setShowThemeMenu(false)
+                  }}
+                  style={{
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    border: theme === tKey ? '1px solid rgba(124,58,237,0.4)' : '1px solid transparent',
+                    background: theme === tKey ? 'rgba(124,58,237,0.15)' : 'transparent',
+                    color: theme === tKey ? '#fff' : 'rgba(255,255,255,0.6)',
+                    fontWeight: theme === tKey ? 600 : 500,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'all 150ms',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.color = '#fff'
+                  }}
+                  onMouseLeave={(e) => {
+                    if (theme === tKey) {
+                      e.currentTarget.style.background = 'rgba(124,58,237,0.15)'
+                      e.currentTarget.style.color = '#fff'
+                    } else {
+                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+                    }
+                  }}
+                >
+                  <span>{THEME_ICONS[tKey]} {tName}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* ── Hero banner ── */}
         <div className="panel-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 20, background: 'linear-gradient(135deg, #0b0520 0%, #1a0a38 50%, #0d1a3a 100%)' }}>
