@@ -10,25 +10,7 @@ const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
 const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
 const ENTRIES_KEY = 'ws_manager_entries'
-const THEME_KEY = 'ws_manager_theme'
 const DEFAULT_EXCLUDED_PATTERNS = ['FA', 'TLM', 'BC']
-
-type Theme = 'dark' | 'light'
-
-const THEMES: Record<Theme, { bg: string; text: string; card: string; border: string }> = {
-  dark: {
-    bg: '#0f172a',
-    text: '#fff',
-    card: 'rgba(255,255,255,0.03)',
-    border: 'rgba(255,255,255,0.08)',
-  },
-  light: {
-    bg: '#f8f9fa',
-    text: '#1a1a1a',
-    card: '#ffffff',
-    border: '#e5e7eb',
-  },
-}
 
 interface Store {
   id: string
@@ -384,14 +366,6 @@ export default function ManagerPage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [subcatChartMode, setSubcatChartMode] = useState<Set<string>>(new Set())
   const toggleSubcatChart = (key: string) => setSubcatChartMode(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n })
-  const [theme, setTheme] = useState<Theme>(() => {
-    try {
-      const stored = localStorage.getItem(THEME_KEY)
-      return (stored as Theme) || 'dark'
-    } catch {
-      return 'dark'
-    }
-  })
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -417,30 +391,6 @@ export default function ManagerPage() {
     const storedActive = localStorage.getItem(ACTIVE_STORES_KEY)
     if (storedActive) setActiveStoreIds(JSON.parse(storedActive) as string[])
   }, [])
-
-  useEffect(() => {
-    localStorage.setItem(THEME_KEY, theme)
-    const style = document.createElement('style')
-    if (theme === 'light') {
-      style.textContent = `
-        .panel-card { background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.92)) !important; border-color: #e5e7eb !important; box-shadow: 0 6px 22px rgba(0,0,0,0.08) !important; }
-        .panel-card:hover { box-shadow: 0 18px 40px rgba(0,0,0,0.12) !important; }
-        .page-content { background: #f8f9fa !important; color: #1a1a1a !important; }
-      `
-    } else {
-      style.textContent = `
-        .panel-card { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)) !important; border-color: rgba(255,255,255,0.04) !important; box-shadow: 0 6px 22px rgba(2,6,23,0.6) !important; }
-        .panel-card:hover { box-shadow: 0 18px 40px rgba(2,6,23,0.7) !important; }
-        .page-content { background: #0f172a !important; color: #fff !important; }
-      `
-    }
-    style.id = 'ws-manager-theme-styles'
-    document.head.appendChild(style)
-    return () => {
-      const existingStyle = document.getElementById('ws-manager-theme-styles')
-      if (existingStyle) existingStyle.remove()
-    }
-  }, [theme])
 
   useEffect(() => {
     localStorage.setItem(ENTRIES_KEY, serializeEntries(entries))
@@ -597,7 +547,7 @@ export default function ManagerPage() {
   // ── Password gate ──
   if (!authenticated) {
     return (
-      <div className="page-content" style={{ background: THEMES[theme].bg, color: THEMES[theme].text }}>
+      <div className="page-content">
         <PageHeader title="Manager" subtitle="Είσοδος διαχειριστή" backTo="/" />
         <div className="page-inner" style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
           <div className="panel-card" style={{ padding: 36, width: '100%', maxWidth: 360 }}>
@@ -637,7 +587,7 @@ export default function ManagerPage() {
   // ── Setup wizard (phase === 'setup') ──
   if (phase === 'setup') {
     return (
-      <div className="page-content" style={{ background: THEMES[theme].bg, color: THEMES[theme].text }}>
+      <div className="page-content">
         <PageHeader title="Manager" subtitle="Ρύθμιση καταστήματος" backTo="/" />
         <div className="page-inner" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
           <div className="panel-card" style={{ padding: 32, width: '100%', maxWidth: 560 }}>
@@ -720,20 +670,6 @@ export default function ManagerPage() {
                   🗑 Διαγραφή όλων των αρχείων ({entries.length})
                 </button>
               )}
-              <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: 16, marginTop: 4 }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Θέμα</div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  {(['dark', 'light'] as Theme[]).map(t => (
-                    <button
-                      key={t}
-                      onClick={() => setTheme(t)}
-                      style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: `2px solid ${theme === t ? 'rgba(34,211,238,0.6)' : 'rgba(255,255,255,0.1)'}`, background: theme === t ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.03)', color: theme === t ? '#22d3ee' : 'rgba(255,255,255,0.5)', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer', transition: 'all 150ms', textTransform: 'capitalize' }}
-                    >
-                      {t === 'dark' ? '🌙 Dark' : '☀️ Light'}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -998,7 +934,7 @@ export default function ManagerPage() {
   }
 
   return (
-    <div className="page-content" style={{ background: THEMES[theme].bg, color: THEMES[theme].text }}>
+    <div className="page-content">
       <PageHeader title="Manager" subtitle="Αναλυτικές αναφορές ανά χρήστη" backTo="/" />
       <div className="page-inner">
 
