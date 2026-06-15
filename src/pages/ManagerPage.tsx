@@ -657,6 +657,30 @@ export default function ManagerPage() {
         <PageHeader title="Manager" subtitle="Ρύθμιση καταστήματος" backTo="/" />
         <div className="page-inner" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
           <div className="panel-card" style={{ padding: 32, width: '100%', maxWidth: 560 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${THEME_CONFIGS[theme].panelBorder}` }}>
+              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1 }}>Θέμα</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                {(Object.entries(THEME_CONFIGS) as [ThemeKey, typeof THEME_CONFIGS[ThemeKey]][]).map(([tKey, tCfg]) => (
+                  <button
+                    key={tKey}
+                    onClick={() => setTheme(tKey)}
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 8,
+                      border: `2px solid ${theme === tKey ? tCfg.accent : tCfg.panelBorder}`,
+                      background: theme === tKey ? tCfg.accentLight : 'rgba(255,255,255,0.02)',
+                      color: theme === tKey ? tCfg.accent : 'rgba(255,255,255,0.5)',
+                      fontWeight: 600,
+                      fontSize: '0.76rem',
+                      cursor: 'pointer',
+                      transition: 'all 150ms',
+                    }}
+                  >
+                    {tCfg.name}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff', marginBottom: 6 }}>Επιλογή καταστήματος</div>
             <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>Επίλεξε 1–3 καταστήματα για να ξεκινήσεις</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
@@ -736,30 +760,6 @@ export default function ManagerPage() {
                   🗑 Διαγραφή όλων των αρχείων ({entries.length})
                 </button>
               )}
-              <div style={{ borderTop: `1px solid ${THEME_CONFIGS[theme].panelBorder}`, paddingTop: 16, marginTop: 4 }}>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Θέμα</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                  {(Object.entries(THEME_CONFIGS) as [ThemeKey, typeof THEME_CONFIGS[ThemeKey]][]).map(([tKey, tCfg]) => (
-                    <button
-                      key={tKey}
-                      onClick={() => setTheme(tKey)}
-                      style={{
-                        padding: '10px 12px',
-                        borderRadius: 8,
-                        border: `2px solid ${theme === tKey ? tCfg.accent : tCfg.panelBorder}`,
-                        background: theme === tKey ? tCfg.accentLight : 'rgba(255,255,255,0.02)',
-                        color: theme === tKey ? tCfg.accent : 'rgba(255,255,255,0.5)',
-                        fontWeight: 600,
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                        transition: 'all 150ms',
-                      }}
-                    >
-                      {tCfg.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
