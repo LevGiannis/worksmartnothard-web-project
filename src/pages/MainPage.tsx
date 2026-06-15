@@ -6,13 +6,17 @@ import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 import { formatNumber } from '../utils/formatNumber'
 import { ThemeContext } from '../App'
 
-type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
+type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral'
 
 const THEME_NAMES: Record<ThemeKey, string> = {
   midnight: 'Midnight Navy',
   amethyst: 'Deep Amethyst',
   emerald: 'Light Grey',
   slate: 'Slate Charcoal',
+  ocean: 'Ocean Blue',
+  sunset: 'Sunset Orange',
+  forest: 'Forest Green',
+  coral: 'Coral Pink',
 }
 
 const THEME_ICONS: Record<ThemeKey, string> = {
@@ -20,6 +24,10 @@ const THEME_ICONS: Record<ThemeKey, string> = {
   amethyst: '💜',
   emerald: '☁️',
   slate: '🩶',
+  ocean: '🌊',
+  sunset: '🌅',
+  forest: '🌲',
+  coral: '🪸',
 }
 
 const MONTH_NAMES_GR = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
@@ -154,13 +162,13 @@ export default function MainPage() {
               background: 'rgba(15, 17, 32, 0.95)',
               border: '1px solid rgba(255,255,255,0.12)',
               borderRadius: 12,
-              padding: '8px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 4,
+              padding: '12px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
+              gap: 6,
               zIndex: 100,
               backdropFilter: 'blur(8px)',
-              minWidth: 180,
+              width: 280,
             }}>
               {(Object.entries(THEME_NAMES) as [ThemeKey, string][]).map(([tKey, tName]) => (
                 <button
@@ -172,17 +180,21 @@ export default function MainPage() {
                   style={{
                     padding: '10px 12px',
                     borderRadius: 8,
-                    border: theme === tKey ? '1px solid rgba(124,58,237,0.4)' : '1px solid transparent',
-                    background: theme === tKey ? 'rgba(124,58,237,0.15)' : 'transparent',
+                    border: theme === tKey ? '1px solid rgba(124,58,237,0.4)' : '1px solid rgba(255,255,255,0.08)',
+                    background: theme === tKey ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.03)',
                     color: theme === tKey ? '#fff' : 'rgba(255,255,255,0.6)',
                     fontWeight: theme === tKey ? 600 : 500,
-                    fontSize: '0.85rem',
+                    fontSize: '0.78rem',
                     cursor: 'pointer',
-                    textAlign: 'left',
+                    textAlign: 'center',
                     transition: 'all 150ms',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)'
+                    e.currentTarget.style.background = 'rgba(255,255,255,0.08)'
                     e.currentTarget.style.color = '#fff'
                   }}
                   onMouseLeave={(e) => {
@@ -190,12 +202,13 @@ export default function MainPage() {
                       e.currentTarget.style.background = 'rgba(124,58,237,0.15)'
                       e.currentTarget.style.color = '#fff'
                     } else {
-                      e.currentTarget.style.background = 'transparent'
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.03)'
                       e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
                     }
                   }}
                 >
-                  <span>{THEME_ICONS[tKey]} {tName}</span>
+                  <span style={{ fontSize: '1.2rem' }}>{THEME_ICONS[tKey]}</span>
+                  <span>{tName}</span>
                 </button>
               ))}
             </div>

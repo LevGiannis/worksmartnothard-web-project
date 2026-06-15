@@ -14,7 +14,7 @@ import { useScheduledBackup } from './hooks/useScheduledBackup'
 import BackupCountdown from './components/BackupCountdown'
 
 const THEME_KEY = 'ws_app_theme'
-type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
+type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral'
 
 const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: string; panelBorder: string }> = {
   midnight: {
@@ -40,6 +40,30 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     text: '#e5e7eb',
     panelBg: 'linear-gradient(180deg, rgba(30,40,55,0.6), rgba(20,30,45,0.5))',
     panelBorder: 'rgba(156,163,175,0.12)',
+  },
+  ocean: {
+    bg: '#0a1628',
+    text: '#e0f2ff',
+    panelBg: 'linear-gradient(180deg, rgba(10,35,70,0.6), rgba(5,25,50,0.5))',
+    panelBorder: 'rgba(34,211,238,0.15)',
+  },
+  sunset: {
+    bg: '#1f1410',
+    text: '#ffefd5',
+    panelBg: 'linear-gradient(180deg, rgba(80,35,10,0.5), rgba(60,25,5,0.4))',
+    panelBorder: 'rgba(251,146,60,0.15)',
+  },
+  forest: {
+    bg: '#0d1f15',
+    text: '#d4f4e0',
+    panelBg: 'linear-gradient(180deg, rgba(15,60,40,0.6), rgba(10,45,30,0.5))',
+    panelBorder: 'rgba(52,211,153,0.15)',
+  },
+  coral: {
+    bg: '#1f0f18',
+    text: '#fdd7e4',
+    panelBg: 'linear-gradient(180deg, rgba(80,20,40,0.5), rgba(60,10,30,0.4))',
+    panelBorder: 'rgba(244,114,182,0.15)',
   },
 }
 
