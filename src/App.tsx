@@ -16,6 +16,33 @@ import BackupCountdown from './components/BackupCountdown'
 const THEME_KEY = 'ws_app_theme'
 type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
 
+const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: string; panelBorder: string }> = {
+  midnight: {
+    bg: '#0f1419',
+    text: '#e8eef7',
+    panelBg: 'linear-gradient(180deg, rgba(15,30,60,0.6), rgba(10,20,40,0.5))',
+    panelBorder: 'rgba(100,200,255,0.1)',
+  },
+  amethyst: {
+    bg: '#1a0f2e',
+    text: '#f0e8ff',
+    panelBg: 'linear-gradient(180deg, rgba(55,20,100,0.5), rgba(40,10,80,0.4))',
+    panelBorder: 'rgba(186,85,255,0.12)',
+  },
+  emerald: {
+    bg: '#0f1f19',
+    text: '#e8f5f0',
+    panelBg: 'linear-gradient(180deg, rgba(20,60,45,0.5), rgba(15,45,35,0.4))',
+    panelBorder: 'rgba(52,211,153,0.12)',
+  },
+  slate: {
+    bg: '#111820',
+    text: '#e5e7eb',
+    panelBg: 'linear-gradient(180deg, rgba(30,40,55,0.6), rgba(20,30,45,0.5))',
+    panelBorder: 'rgba(156,163,175,0.12)',
+  },
+}
+
 export const ThemeContext = React.createContext<{
   theme: ThemeKey
   setTheme: (t: ThemeKey) => void
@@ -38,13 +65,25 @@ export default function App() {
   }
 
   useEffect(() => {
-    const THEME_CONFIGS: Record<ThemeKey, { bg: string }> = {
-      midnight: { bg: '#0f1419' },
-      amethyst: { bg: '#1a0f2e' },
-      emerald: { bg: '#0f1f19' },
-      slate: { bg: '#111820' },
+    const cfg = THEME_CONFIGS[theme]
+    document.documentElement.style.background = cfg.bg
+    document.documentElement.style.color = cfg.text
+
+    const styleId = 'ws-global-theme'
+    let style = document.getElementById(styleId) as HTMLStyleElement
+    if (!style) {
+      style = document.createElement('style')
+      style.id = styleId
+      document.head.appendChild(style)
     }
-    document.documentElement.style.background = THEME_CONFIGS[theme].bg
+
+    style.textContent = `
+      body { background: ${cfg.bg} !important; color: ${cfg.text} !important; }
+      .page-content { background: ${cfg.bg} !important; color: ${cfg.text} !important; }
+      .page-shell { background: ${cfg.bg} !important; }
+      .panel-card { background: ${cfg.panelBg} !important; border-color: ${cfg.panelBorder} !important; }
+      .panel-card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.4) !important; }
+    `
   }, [theme])
 
   return (
