@@ -11,49 +11,7 @@ const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
 const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
 const ENTRIES_KEY = 'ws_manager_entries'
-const THEME_KEY = 'ws_manager_theme'
 const DEFAULT_EXCLUDED_PATTERNS = ['FA', 'TLM', 'BC']
-
-type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate'
-
-const THEME_CONFIGS: Record<ThemeKey, { name: string; bg: string; text: string; panelBg: string; panelBorder: string; accent: string; accentLight: string }> = {
-  midnight: {
-    name: 'Midnight Navy',
-    bg: '#0f1419',
-    text: '#e8eef7',
-    panelBg: 'linear-gradient(180deg, rgba(15,30,60,0.6), rgba(10,20,40,0.5))',
-    panelBorder: 'rgba(100,200,255,0.1)',
-    accent: '#64c8ff',
-    accentLight: 'rgba(100,200,255,0.15)',
-  },
-  amethyst: {
-    name: 'Deep Amethyst',
-    bg: '#1a0f2e',
-    text: '#f0e8ff',
-    panelBg: 'linear-gradient(180deg, rgba(55,20,100,0.5), rgba(40,10,80,0.4))',
-    panelBorder: 'rgba(186,85,255,0.12)',
-    accent: '#ba55ff',
-    accentLight: 'rgba(186,85,255,0.18)',
-  },
-  emerald: {
-    name: 'Forest Emerald',
-    bg: '#0f1f19',
-    text: '#e8f5f0',
-    panelBg: 'linear-gradient(180deg, rgba(20,60,45,0.5), rgba(15,45,35,0.4))',
-    panelBorder: 'rgba(52,211,153,0.12)',
-    accent: '#34d399',
-    accentLight: 'rgba(52,211,153,0.18)',
-  },
-  slate: {
-    name: 'Slate Charcoal',
-    bg: '#111820',
-    text: '#e5e7eb',
-    panelBg: 'linear-gradient(180deg, rgba(30,40,55,0.6), rgba(20,30,45,0.5))',
-    panelBorder: 'rgba(156,163,175,0.12)',
-    accent: '#9ca3af',
-    accentLight: 'rgba(156,163,175,0.18)',
-  },
-}
 
 interface Store {
   id: string
@@ -635,30 +593,6 @@ export default function ManagerPage() {
         <PageHeader title="Manager" subtitle="Ρύθμιση καταστήματος" backTo="/" />
         <div className="page-inner" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 32 }}>
           <div className="panel-card" style={{ padding: 32, width: '100%', maxWidth: 560 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${THEME_CONFIGS[theme].panelBorder}` }}>
-              <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 1 }}>Θέμα</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                {(Object.entries(THEME_CONFIGS) as [ThemeKey, typeof THEME_CONFIGS[ThemeKey]][]).map(([tKey, tCfg]) => (
-                  <button
-                    key={tKey}
-                    onClick={() => setTheme(tKey)}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      border: `2px solid ${theme === tKey ? tCfg.accent : tCfg.panelBorder}`,
-                      background: theme === tKey ? tCfg.accentLight : 'rgba(255,255,255,0.02)',
-                      color: theme === tKey ? tCfg.accent : 'rgba(255,255,255,0.5)',
-                      fontWeight: 600,
-                      fontSize: '0.76rem',
-                      cursor: 'pointer',
-                      transition: 'all 150ms',
-                    }}
-                  >
-                    {tCfg.name}
-                  </button>
-                ))}
-              </div>
-            </div>
             <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#fff', marginBottom: 6 }}>Επιλογή καταστήματος</div>
             <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginBottom: 24 }}>Επίλεξε 1–3 καταστήματα για να ξεκινήσεις</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>

@@ -30,10 +30,10 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     panelBorder: 'rgba(186,85,255,0.12)',
   },
   emerald: {
-    bg: '#e8eef5',
-    text: '#2d3e50',
-    panelBg: 'linear-gradient(180deg, rgba(255,255,255,0.7), rgba(240,245,250,0.6))',
-    panelBorder: 'rgba(100,120,140,0.15)',
+    bg: '#f5f7fa',
+    text: '#1a2332',
+    panelBg: 'linear-gradient(180deg, rgba(255,255,255,0.95), rgba(248,250,255,0.9))',
+    panelBorder: 'rgba(59,130,246,0.2)',
   },
   slate: {
     bg: '#111820',
