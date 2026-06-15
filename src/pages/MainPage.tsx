@@ -216,7 +216,7 @@ export default function MainPage() {
         </div>
 
         {/* ── Hero banner ── */}
-        <div className="panel-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 20, background: 'linear-gradient(135deg, #0b0520 0%, #1a0a38 50%, #0d1a3a 100%)' }}>
+        <div className="panel-card" style={{ padding: 0, overflow: 'hidden', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 160, position: 'relative' }}>
             {/* Decorative blob */}
             <div style={{ position: 'absolute', top: -40, right: 80, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(124,58,237,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} aria-hidden />
