@@ -110,7 +110,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
                     transform="rotate(-90 18 18)"
                     style={{ transition: 'stroke-dasharray 600ms ease' }}
                   />
-                  <text x="18" y="21" textAnchor="middle" fontSize="6" fill={color} fontWeight="bold">{pctClamped}%</text>
+                  <text x="18" y="21" textAnchor="middle" fontSize="6" fill={color} fontWeight="bold">{pct}%</text>
                 </svg>
 
                 {/* Details */}
@@ -145,7 +145,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
                   </div>
                 </div>
 
-                <div style={{ fontSize: '1.1rem', fontWeight: 900, color, flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{pctClamped}%</div>
+                <div style={{ fontSize: '1.1rem', fontWeight: 900, color, flexShrink: 0, minWidth: 40, textAlign: 'right' }}>{pct}%</div>
               </div>
             )
           })}
@@ -174,7 +174,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
                     <td style={{ padding: '10px 12px', fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{row.category}</td>
                     <td style={{ padding: '10px 12px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>{formatNumber(row.target, 2)}</td>
                     <td style={{ padding: '10px 12px', fontSize: '0.82rem', color: 'rgba(255,255,255,0.55)' }}>{formatNumber(row.achieved, 2)}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '0.9rem', fontWeight: 700, color }}>{pctClamped}%</td>
+                    <td style={{ padding: '10px 12px', fontSize: '0.9rem', fontWeight: 700, color }}>{pct}%</td>
                   </tr>
                 )
               })}

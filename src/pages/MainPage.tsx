@@ -304,7 +304,7 @@ export default function MainPage() {
                       <circle cx="18" cy="18" r="15.9155" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
                       <circle cx="18" cy="18" r="15.9155" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round"
                         strokeDasharray={`${pctClamped} ${100 - pctClamped}`} transform="rotate(-90 18 18)" />
-                      <text x="18" y="21" textAnchor="middle" fontSize="6" fill={color} fontWeight="bold">{pctClamped}%</text>
+                      <text x="18" y="21" textAnchor="middle" fontSize="6" fill={color} fontWeight="bold">{pct}%</text>
                     </svg>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
@@ -330,7 +330,7 @@ export default function MainPage() {
                         <div style={{ height: '100%', width: `${pctClamped}%`, background: color, borderRadius: 999, transition: 'width 500ms ease' }} />
                       </div>
                     </div>
-                    <div style={{ fontWeight: 900, fontSize: '0.95rem', color, flexShrink: 0, minWidth: 38, textAlign: 'right' }}>{pctClamped}%</div>
+                    <div style={{ fontWeight: 900, fontSize: '0.95rem', color, flexShrink: 0, minWidth: 38, textAlign: 'right' }}>{pct}%</div>
                   </div>
                 )
               })}
