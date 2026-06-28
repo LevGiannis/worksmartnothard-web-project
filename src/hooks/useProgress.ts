@@ -9,17 +9,24 @@ export default function useProgress(year?:number, month?:number){
   const [progress, setProgress] = useState<CategoryProgress[]>([])
   // monthBonus removed — bonus calculation has been deleted
   const [loading, setLoading] = useState(true)
+  const [tick, setTick] = useState(0)
+
+  useEffect(()=>{
+    const handler = () => setTick(t => t + 1)
+    window.addEventListener('ws:entries-updated', handler)
+    return () => window.removeEventListener('ws:entries-updated', handler)
+  }, [])
 
   useEffect(()=>{
     let mounted = true
     setLoading(true)
     Promise.all([getProgressForMonth(y,m), loadEntriesForMonth(y,m)])
-      .then(([p, entries]) => {
+      .then(([p, _entries]) => {
         if(!mounted) return
         setProgress(p)
       }).finally(()=>{ if(mounted) setLoading(false) })
     return ()=>{ mounted = false }
-  }, [y,m])
+  }, [y, m, tick])
 
   return { progress, loading, year: y, month: m }
 }

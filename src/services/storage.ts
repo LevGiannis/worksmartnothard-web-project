@@ -278,6 +278,24 @@ export async function saveGoal(payload:Partial<Goal>){
   await write(GOALS_KEY, goals)
 }
 
+export async function updateGoal(id: string, patch: Partial<Goal>): Promise<Goal | null> {
+  const goals = await read<Goal>(GOALS_KEY)
+  const idx = goals.findIndex(g => g.id === id)
+  if (idx === -1) return null
+  goals[idx] = { ...goals[idx], ...patch, id }
+  await write(GOALS_KEY, goals)
+  return goals[idx]
+}
+
+export async function deleteGoal(id: string): Promise<boolean> {
+  const goals = await read<Goal>(GOALS_KEY)
+  const idx = goals.findIndex(g => g.id === id)
+  if (idx === -1) return false
+  goals.splice(idx, 1)
+  await write(GOALS_KEY, goals)
+  return true
+}
+
 export async function loadAllTasks(): Promise<Task[]>{
   return read<Task>(TASKS_KEY)
 }

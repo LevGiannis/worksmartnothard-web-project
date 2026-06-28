@@ -2,9 +2,11 @@ import React, { useEffect, useState, useContext, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import useProgress from '../hooks/useProgress'
 import PageHeader from '../components/PageHeader'
+import Modal from '../components/Modal'
 import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 import { formatNumber } from '../utils/formatNumber'
 import { ThemeContext } from '../App'
+import { loadGoalsForMonth, updateGoal, deleteGoal, Goal } from '../services/storage'
 
 type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral'
 
@@ -104,6 +106,19 @@ export default function MainPage() {
   const { theme, setTheme } = useContext(ThemeContext)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
   const [categoryColors, setCategoryColors] = useState<Record<string, string>>(loadCategoryColors)
+
+  // Goals for edit/delete
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [editGoal, setEditGoal] = useState<Goal | null>(null)
+  const [editTarget, setEditTarget] = useState<number | ''>('')
+  const [editNotes, setEditNotes] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [deleteGoalItem, setDeleteGoalItem] = useState<Goal | null>(null)
+  const [deleteConfirming, setDeleteConfirming] = useState(false)
+
+  const reloadGoals = () => loadGoalsForMonth(currentYear, currentMonth).then(setGoals)
+
+  useEffect(() => { reloadGoals() }, [currentYear, currentMonth])
 
   const totalPct = (() => {
     const items = stats || []
@@ -297,6 +312,7 @@ export default function MainPage() {
                 const pct = s.target > 0 ? Math.round((s.achieved / s.target) * 100) : 0
                 const pctClamped = Math.max(0, Math.min(100, pct))
                 const color = categoryColors[s.category] || s.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                const goal = goals.find(g => (g.category || '').toUpperCase() === s.category.toUpperCase())
                 return (
                   <div key={s.category} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {/* Donut */}
@@ -324,7 +340,23 @@ export default function MainPage() {
                           </label>
                           <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '55%' }}>{s.category}</div>
                         </div>
-                        <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>{formatNumber(s.achieved, 2)} / {formatNumber(s.target, 2)}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>{formatNumber(s.achieved, 2)} / {formatNumber(s.target, 2)}</div>
+                          {goal && (
+                            <>
+                              <button
+                                title="Επεξεργασία στόχου"
+                                onClick={() => { setEditGoal(goal); setEditTarget(goal.target); setEditNotes(goal.notes || '') }}
+                                style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.72rem', lineHeight: 1 }}
+                              >✏️</button>
+                              <button
+                                title="Διαγραφή στόχου"
+                                onClick={() => setDeleteGoalItem(goal)}
+                                style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.2)', background: 'rgba(239,68,68,0.06)', color: 'rgba(239,68,68,0.6)', cursor: 'pointer', fontSize: '0.72rem', lineHeight: 1 }}
+                              >🗑️</button>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
                         <div style={{ height: '100%', width: `${pctClamped}%`, background: color, borderRadius: 999, transition: 'width 500ms ease' }} />
@@ -368,6 +400,95 @@ export default function MainPage() {
         </div>
 
       </div>
+
+      {/* ── Edit goal modal ── */}
+      {editGoal && (
+        <Modal isOpen={!!editGoal} onClose={() => setEditGoal(null)}>
+          <div style={{ minWidth: 320, maxWidth: 420 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'rgba(255,255,255,0.9)', marginBottom: 20 }}>
+              Επεξεργασία στόχου — {editGoal.category}
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Στόχος (μονάδες)</label>
+              <input
+                className="panel-input"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min={0}
+                value={editTarget}
+                onChange={e => setEditTarget(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                style={{ width: '100%' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 6 }}>Σημειώσεις</label>
+              <textarea
+                className="panel-input"
+                rows={3}
+                value={editNotes}
+                onChange={e => setEditNotes(e.target.value)}
+                style={{ width: '100%', resize: 'vertical' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn"
+                disabled={editSaving || !editTarget || Number(editTarget) <= 0}
+                onClick={async () => {
+                  if (!editGoal || !editTarget || Number(editTarget) <= 0) return
+                  setEditSaving(true)
+                  await updateGoal(editGoal.id, { target: Number(editTarget), notes: editNotes })
+                  await reloadGoals()
+                  setEditGoal(null)
+                  setEditSaving(false)
+                  // trigger progress refresh
+                  window.dispatchEvent(new CustomEvent('ws:entries-updated'))
+                }}
+                style={{ flex: 1, padding: '10px 0', fontWeight: 700, background: 'linear-gradient(90deg,#7c3aed,#5b21b6)', border: 'none' }}
+              >
+                {editSaving ? 'Αποθήκευση...' : 'Αποθήκευση'}
+              </button>
+              <button className="btn-ghost" onClick={() => setEditGoal(null)} style={{ padding: '10px 18px' }}>Ακύρωση</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── Delete confirmation modal ── */}
+      {deleteGoalItem && (
+        <Modal isOpen={!!deleteGoalItem} onClose={() => { setDeleteGoalItem(null); setDeleteConfirming(false) }}>
+          <div style={{ minWidth: 300, maxWidth: 380 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'rgba(255,255,255,0.9)', marginBottom: 10 }}>
+              Διαγραφή στόχου;
+            </div>
+            <div style={{ fontSize: '0.87rem', color: 'rgba(255,255,255,0.55)', marginBottom: 20, lineHeight: 1.6 }}>
+              Ο στόχος <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{deleteGoalItem.category}</strong> θα διαγραφεί. Το ιστορικό καταχωρήσεων δεν επηρεάζεται.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                disabled={deleteConfirming}
+                onClick={async () => {
+                  setDeleteConfirming(true)
+                  await deleteGoal(deleteGoalItem.id)
+                  await reloadGoals()
+                  setDeleteGoalItem(null)
+                  setDeleteConfirming(false)
+                  window.dispatchEvent(new CustomEvent('ws:entries-updated'))
+                }}
+                style={{ flex: 1, padding: '10px 0', fontWeight: 700, borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#dc2626,#b91c1c)', color: '#fff', cursor: deleteConfirming ? 'not-allowed' : 'pointer', opacity: deleteConfirming ? 0.6 : 1 }}
+              >
+                {deleteConfirming ? 'Διαγραφή...' : 'Διαγραφή στόχου'}
+              </button>
+              <button className="btn-ghost" onClick={() => { setDeleteGoalItem(null); setDeleteConfirming(false) }} style={{ padding: '10px 18px' }}>Ακύρωση</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
