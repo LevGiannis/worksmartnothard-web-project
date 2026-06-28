@@ -230,6 +230,21 @@ export async function updateEntry(id: string, patch: Partial<DailyEntry>): Promi
 
   return updated
 }
+
+export async function deleteEntry(id: string): Promise<boolean> {
+  const entries = await read<DailyEntry>(ENTRIES_KEY)
+  const idx = entries.findIndex(e => e.id === id)
+  if (idx === -1) return false
+  entries.splice(idx, 1)
+  await write(ENTRIES_KEY, entries)
+  try {
+    if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+      window.dispatchEvent(new CustomEvent('ws:entries-updated', { detail: { action: 'delete', id } }))
+    }
+  } catch { /* ignore */ }
+  return true
+}
+
 export async function saveEntry(payload:Partial<DailyEntry>){
   const entries = await read<DailyEntry>(ENTRIES_KEY)
   const entry:DailyEntry = {

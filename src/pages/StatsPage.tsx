@@ -1,6 +1,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react'
-import { loadAllEntries, DailyEntry, getProgressForMonth } from '../services/storage'
+import { loadAllEntries, DailyEntry, getProgressForMonth, deleteEntry } from '../services/storage'
+import Modal from '../components/Modal'
 import { exportEcoFriendlyExcel } from '../utils/exportExcel'
 import { roundNumber } from '../utils/formatNumber'
 import PageHeader from '../components/PageHeader'
@@ -25,6 +26,8 @@ export default function StatsPage() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [customerFilter, setCustomerFilter] = useState('')
   const [showEntries, setShowEntries] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<DailyEntry | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const reload = async () => {
     const all = await loadAllEntries()
@@ -199,6 +202,7 @@ export default function StatsPage() {
           visible={visible}
           showEntries={showEntries}
           onEdit={openEdit}
+          onDelete={setPendingDelete}
         />
 
         <EntryEditModal
@@ -227,6 +231,37 @@ export default function StatsPage() {
           submitEdit={submitEdit}
         />
       </div>
+
+      {pendingDelete && (
+        <Modal isOpen={!!pendingDelete} onClose={() => { if (!deleting) setPendingDelete(null) }}>
+          <div style={{ minWidth: 300, maxWidth: 380 }}>
+            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'rgba(255,255,255,0.9)', marginBottom: 10 }}>Διαγραφή εγγραφής;</div>
+            <div style={{ fontSize: '0.87rem', color: 'rgba(255,255,255,0.55)', marginBottom: 6, lineHeight: 1.6 }}>
+              <strong style={{ color: 'rgba(255,255,255,0.8)' }}>{pendingDelete.category}</strong>
+              {pendingDelete.customerName ? ` · ${pendingDelete.customerName}` : ''}
+              {' · '}{new Date(pendingDelete.date).toLocaleDateString('el-GR', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.38)', marginBottom: 20 }}>
+              Η ενέργεια δεν αναιρείται. Τα στατιστικά θα ενημερωθούν αυτόματα.
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true)
+                  await deleteEntry(pendingDelete.id)
+                  setPendingDelete(null)
+                  setDeleting(false)
+                }}
+                style={{ flex: 1, padding: '10px 0', fontWeight: 700, borderRadius: 8, border: 'none', background: 'linear-gradient(90deg,#dc2626,#b91c1c)', color: '#fff', cursor: deleting ? 'not-allowed' : 'pointer', opacity: deleting ? 0.6 : 1 }}
+              >
+                {deleting ? 'Διαγραφή...' : 'Διαγραφή εγγραφής'}
+              </button>
+              <button className="btn-ghost" onClick={() => setPendingDelete(null)} disabled={deleting} style={{ padding: '10px 18px' }}>Ακύρωση</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }

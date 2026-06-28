@@ -11,6 +11,7 @@ interface Props {
   visible: DailyEntry[]
   showEntries: boolean
   onEdit: (entry: DailyEntry) => void
+  onDelete: (entry: DailyEntry) => void
 }
 
 interface KpiProps { title: string; value: number; decimals: number; accent: string; icon: React.ReactNode }
@@ -27,7 +28,7 @@ function KpiCard({ title, value, decimals, accent, icon }: KpiProps) {
   )
 }
 
-export default function StatsResults({ totalPoints, totalEntries, avgPerPeriod, totalRantevou, visible, showEntries, onEdit }: Props) {
+export default function StatsResults({ totalPoints, totalEntries, avgPerPeriod, totalRantevou, visible, showEntries, onEdit, onDelete }: Props) {
   return (
     <section className="panel-card" style={{ width: '100%', padding: 24, marginBottom: 16 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
@@ -95,8 +96,12 @@ export default function StatsResults({ totalPoints, totalEntries, avgPerPeriod, 
                     <td style={{ padding: '8px 10px', fontSize: '0.8rem', color: 'rgba(255,255,255,0.6)' }}>{e.customerName || '—'}</td>
                     <td style={{ padding: '8px 10px', fontSize: '0.78rem', color: 'rgba(255,255,255,0.45)' }}>{e.afm || '—'}</td>
                     <td style={{ padding: '8px 10px', fontSize: '0.88rem', fontWeight: 700, color: '#c4b5fd', textAlign: 'right' }}>{formatNumber(e.points || 0, 2)}</td>
-                    <td style={{ padding: '8px 10px', textAlign: 'right' }}>
+                    <td style={{ padding: '8px 10px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                       <button className="btn-ghost" onClick={() => onEdit(e)} style={{ fontSize: '0.75rem', padding: '4px 10px' }}>Επεξεργασία</button>
+                      <button
+                        onClick={() => onDelete(e)}
+                        style={{ marginLeft: 6, fontSize: '0.75rem', padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.25)', background: 'rgba(239,68,68,0.07)', color: 'rgba(239,68,68,0.7)', cursor: 'pointer' }}
+                      >Διαγραφή</button>
                     </td>
                   </tr>
                 ))}
