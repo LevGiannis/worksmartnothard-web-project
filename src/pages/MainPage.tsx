@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react'
+import React, { useEffect, useState, useContext, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import useProgress from '../hooks/useProgress'
 import PageHeader from '../components/PageHeader'
@@ -32,6 +32,15 @@ const THEME_ICONS: Record<ThemeKey, string> = {
 
 const MONTH_NAMES_GR = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']
 const ACCENT_COLORS = ['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1']
+
+const CAT_COLORS_KEY = 'ws_category_colors'
+
+function loadCategoryColors(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(CAT_COLORS_KEY) || '{}') } catch { return {} }
+}
+function saveCategoryColors(map: Record<string, string>) {
+  try { localStorage.setItem(CAT_COLORS_KEY, JSON.stringify(map)) } catch {}
+}
 
 const quickLinks = [
   {
@@ -94,6 +103,7 @@ export default function MainPage() {
   const { progress: stats, loading, month: currentMonth, year: currentYear } = useProgress()
   const { theme, setTheme } = useContext(ThemeContext)
   const [showThemeMenu, setShowThemeMenu] = useState(false)
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(loadCategoryColors)
 
   const totalPct = (() => {
     const items = stats || []
@@ -286,7 +296,7 @@ export default function MainPage() {
               {(stats || []).map((s, idx) => {
                 const pct = s.target > 0 ? Math.round((s.achieved / s.target) * 100) : 0
                 const pctClamped = Math.max(0, Math.min(100, pct))
-                const color = s.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                const color = categoryColors[s.category] || s.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
                 return (
                   <div key={s.category} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     {/* Donut */}
@@ -298,7 +308,22 @@ export default function MainPage() {
                     </svg>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '60%' }}>{s.category}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <label title="Αλλαγή χρώματος" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                            <div style={{ width: 14, height: 14, borderRadius: 4, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }} />
+                            <input
+                              type="color"
+                              value={color}
+                              style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                              onChange={e => {
+                                const next = { ...categoryColors, [s.category]: e.target.value }
+                                setCategoryColors(next)
+                                saveCategoryColors(next)
+                              }}
+                            />
+                          </label>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '55%' }}>{s.category}</div>
+                        </div>
                         <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>{formatNumber(s.achieved, 2)} / {formatNumber(s.target, 2)}</div>
                       </div>
                       <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>

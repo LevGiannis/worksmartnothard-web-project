@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo, useState, useEffect } from 'react'
 import { DailyEntry } from '../services/storage'
 import Modal from './Modal'
 import { formatNumber } from '../utils/formatNumber'
@@ -17,9 +17,19 @@ const MONTH_NAMES = ['Ιανουάριος','Φεβρουάριος','Μάρτι
 
 const ACCENT_COLORS = ['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#f97316','#6366f1']
 
+const CAT_COLORS_KEY = 'ws_category_colors'
+
+function loadCategoryColors(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(CAT_COLORS_KEY) || '{}') } catch { return {} }
+}
+function saveCategoryColors(map: Record<string, string>) {
+  try { localStorage.setItem(CAT_COLORS_KEY, JSON.stringify(map)) } catch {}
+}
+
 export default function MonthProgress({ progress, month, year, entries, mode }: Props) {
   const [monthView, setMonthView] = useState<'percent' | 'table'>('percent')
   const [drillCategory, setDrillCategory] = useState<string | null>(null)
+  const [categoryColors, setCategoryColors] = useState<Record<string, string>>(loadCategoryColors)
 
   const drillEntries = useMemo(() => {
     if (!drillCategory || mode !== 'month') return []
@@ -78,7 +88,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
           {progress.map((row, idx) => {
             const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
             const pctClamped = Math.max(0, Math.min(100, pct))
-            const color = row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
+            const color = categoryColors[row.category] || row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
             return (
               <div
                 key={row.category}
@@ -105,7 +115,28 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
 
                 {/* Details */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', marginBottom: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.category}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <label
+                      title="Αλλαγή χρώματος"
+                      onClick={e => e.stopPropagation()}
+                      style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}
+                    >
+                      <div style={{ width: 12, height: 12, borderRadius: 3, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }} />
+                      <input
+                        type="color"
+                        value={color}
+                        style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+                        onClick={e => e.stopPropagation()}
+                        onChange={e => {
+                          e.stopPropagation()
+                          const next = { ...categoryColors, [row.category]: e.target.value }
+                          setCategoryColors(next)
+                          saveCategoryColors(next)
+                        }}
+                      />
+                    </label>
+                    <div style={{ fontSize: '0.88rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.category}</div>
+                  </div>
                   <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${pctClamped}%`, background: color, borderRadius: 999, transition: 'width 600ms ease' }} />
                   </div>
@@ -134,7 +165,7 @@ export default function MonthProgress({ progress, month, year, entries, mode }: 
               {progress.map((row, idx) => {
                 const pct = row.target > 0 ? Math.round((row.achieved / row.target) * 100) : 0
                 const pctClamped = Math.max(0, Math.min(100, pct))
-                const color = row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
+                const color = categoryColors[row.category] || row.color || ACCENT_COLORS[idx % ACCENT_COLORS.length]
                 return (
                   <tr key={row.category} onClick={() => setDrillCategory(row.category)} style={{ cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
                     onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.03)')}
