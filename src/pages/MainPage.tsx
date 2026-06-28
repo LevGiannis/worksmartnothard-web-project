@@ -328,7 +328,7 @@ export default function MainPage() {
                     </svg>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, flex: 1 }}>
                           <label title="Αλλαγή χρώματος" style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flexShrink: 0 }}>
                             <div style={{ width: 14, height: 14, borderRadius: 4, background: color, border: '2px solid rgba(255,255,255,0.25)', flexShrink: 0 }} />
                             <input
@@ -342,9 +342,9 @@ export default function MainPage() {
                               }}
                             />
                           </label>
-                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '55%' }}>{s.category}</div>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'rgba(255,255,255,0.82)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.category}</div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                           <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.4)' }}>{formatNumber(s.achieved, 2)} / {formatNumber(s.target, 2)}</div>
                           {goal && (
                             <>
