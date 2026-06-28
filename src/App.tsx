@@ -66,10 +66,10 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     panelBorder: 'rgba(244,114,182,0.15)',
   },
   lightgrey: {
-    bg: '#9ca3af',
-    text: '#1f2937',
-    panelBg: 'linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.3))',
-    panelBorder: 'rgba(0,0,0,0.1)',
+    bg: '#374151',
+    text: '#f3f4f6',
+    panelBg: 'linear-gradient(180deg, rgba(75,85,99,0.7), rgba(55,65,81,0.6))',
+    panelBorder: 'rgba(156,163,175,0.15)',
   },
   rosegold: {
     bg: '#2d1a1e',
