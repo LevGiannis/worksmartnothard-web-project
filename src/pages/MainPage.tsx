@@ -8,7 +8,7 @@ import { formatNumber } from '../utils/formatNumber'
 import { ThemeContext } from '../App'
 import { loadGoalsForMonth, updateGoal, deleteGoal, Goal } from '../services/storage'
 
-type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral'
+type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral' | 'lightgrey' | 'rosegold'
 
 const THEME_NAMES: Record<ThemeKey, string> = {
   midnight: 'Midnight Navy',
@@ -19,6 +19,8 @@ const THEME_NAMES: Record<ThemeKey, string> = {
   sunset: 'Sunset Orange',
   forest: 'Vodafone Red',
   coral: 'Coral Pink',
+  lightgrey: 'Light Grey',
+  rosegold: 'Rose Gold',
 }
 
 const THEME_ICONS: Record<ThemeKey, string> = {
@@ -30,6 +32,8 @@ const THEME_ICONS: Record<ThemeKey, string> = {
   sunset: '🌅',
   forest: '❤️',
   coral: '🪸',
+  lightgrey: '🌫️',
+  rosegold: '🌸',
 }
 
 const MONTH_NAMES_GR = ['Ιανουάριος','Φεβρουάριος','Μάρτιος','Απρίλιος','Μάιος','Ιούνιος','Ιούλιος','Αύγουστος','Σεπτέμβριος','Οκτώβριος','Νοέμβριος','Δεκέμβριος']

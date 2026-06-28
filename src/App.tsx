@@ -14,7 +14,7 @@ import { useScheduledBackup } from './hooks/useScheduledBackup'
 import BackupCountdown from './components/BackupCountdown'
 
 const THEME_KEY = 'ws_app_theme'
-type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral'
+type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral' | 'lightgrey' | 'rosegold'
 
 const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: string; panelBorder: string }> = {
   midnight: {
@@ -64,6 +64,18 @@ const THEME_CONFIGS: Record<ThemeKey, { bg: string; text: string; panelBg: strin
     text: '#fdd7e4',
     panelBg: 'linear-gradient(180deg, rgba(80,20,40,0.5), rgba(60,10,30,0.4))',
     panelBorder: 'rgba(244,114,182,0.15)',
+  },
+  lightgrey: {
+    bg: '#9ca3af',
+    text: '#1f2937',
+    panelBg: 'linear-gradient(180deg, rgba(255,255,255,0.45), rgba(255,255,255,0.3))',
+    panelBorder: 'rgba(0,0,0,0.1)',
+  },
+  rosegold: {
+    bg: '#2d1a1e',
+    text: '#fce8ec',
+    panelBg: 'linear-gradient(180deg, rgba(181,131,141,0.2), rgba(140,90,100,0.15))',
+    panelBorder: 'rgba(181,131,141,0.25)',
   },
 }
 
