@@ -363,6 +363,7 @@ export default function ManagerPage() {
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
   const [pendingModal, setPendingModal] = useState<{ user: string; entries: ParsedEntry[]; color: string } | null>(null)
+  const [docFromDate, setDocFromDate] = useState<string>('')
   const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -1521,10 +1522,25 @@ export default function ManagerPage() {
               {/* Doc issues panel */}
               {docIssues.length > 0 && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  {(() => {
+                    const filteredDocIssues = docFromDate
+                      ? docIssues.filter(e => e.date != null && e.date >= new Date(docFromDate))
+                      : docIssues
+                    return (
+                  <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: 1.2 }}>Εκκρεμείς / Δικαιολογητικά</span>
-                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{docIssues.length} σύνολο</span>
+                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filteredDocIssues.length} σύνολο</span>
+                    <input
+                      type="date"
+                      value={docFromDate}
+                      onChange={ev => setDocFromDate(ev.target.value)}
+                      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
+                    />
+                    {docFromDate && (
+                      <button onClick={() => setDocFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, lineHeight: 1 }}>✕</button>
+                    )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {(() => {
@@ -1548,8 +1564,8 @@ export default function ManagerPage() {
                           </div>
                         ))
                       }
-                      const docHome = docIssues.filter(e => e.category === 'home')
-                      const docMobile = docIssues.filter(e => e.category !== 'home')
+                      const docHome = filteredDocIssues.filter(e => e.category === 'home')
+                      const docMobile = filteredDocIssues.filter(e => e.category !== 'home')
                       return (
                         <>
                           {docHome.length > 0 && (
@@ -1572,6 +1588,9 @@ export default function ManagerPage() {
                       )
                     })()}
                   </div>
+                  </>
+                    )
+                  })()}
                 </div>
               )}
 
