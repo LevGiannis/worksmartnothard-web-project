@@ -364,6 +364,7 @@ export default function ManagerPage() {
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
   const [pendingModal, setPendingModal] = useState<{ user: string; entries: ParsedEntry[]; color: string } | null>(null)
   const [docFromDate, setDocFromDate] = useState<string>('')
+  const [pendingFromDate, setPendingFromDate] = useState<string>('')
   const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
   const [selectedMonth, setSelectedMonth] = useState(() => {
     const now = new Date()
@@ -1431,12 +1432,26 @@ export default function ManagerPage() {
               {/* Pending / Under implementation panel */}
               {(mobilePending.length > 0 || homePending.length > 0 || migraPending.length > 0) && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 }}>Σε εκκρεμότητα</div>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σε εκκρεμότητα</div>
+                    <input
+                      type="date"
+                      value={pendingFromDate}
+                      onChange={ev => setPendingFromDate(ev.target.value)}
+                      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
+                    />
+                    {pendingFromDate && (
+                      <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
+                    )}
+                  </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {mobilePending.length > 0 && (() => {
                       const color = CATEGORY_COLORS.mobile
+                      const filtered = pendingFromDate
+                        ? mobilePending.filter(e => e.date != null && e.date >= new Date(pendingFromDate))
+                        : mobilePending
                       const byUser = new Map<string, typeof mobilePending>()
-                      for (const e of mobilePending) {
+                      for (const e of filtered) {
                         const u = effectiveName(e.user)
                         if (!byUser.has(u)) byUser.set(u, [])
                         byUser.get(u)!.push(e)
@@ -1446,7 +1461,7 @@ export default function ManagerPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                             <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Mobile — Προέγκριση</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{mobilePending.length} σύνολο</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 16 }}>
                             {[...byUser.entries()].map(([user, ues]) => (
@@ -1465,8 +1480,11 @@ export default function ManagerPage() {
                     })()}
                     {homePending.length > 0 && (() => {
                       const color = CATEGORY_COLORS.home
+                      const filtered = pendingFromDate
+                        ? homePending.filter(e => { const d = e.date || e.implDate; return d != null && d >= new Date(pendingFromDate) })
+                        : homePending
                       const byUser = new Map<string, typeof homePending>()
-                      for (const e of homePending) {
+                      for (const e of filtered) {
                         const u = effectiveName(e.user)
                         if (!byUser.has(u)) byUser.set(u, [])
                         byUser.get(u)!.push(e)
@@ -1476,7 +1494,7 @@ export default function ManagerPage() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                             <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Vodafone Home — Υπό Υλοποίηση</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{homePending.length} σύνολο</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 16 }}>
                             {[...byUser.entries()].map(([user, ues]) => (
