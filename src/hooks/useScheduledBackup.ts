@@ -15,8 +15,20 @@ const SCHEDULE: Record<number, { h: number; m: number }> = {
 
 const LAST_BACKUP_KEY = 'ws_last_scheduled_backup'
 
+// Stable filename the app auto-loads on boot (see main.tsx). Always overwritten with the newest data.
+export const LATEST_FILENAME = 'worksmart-latest.json'
+
 function scheduleKeyFor(date: Date): string {
   return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}-${date.getDay()}`
+}
+
+// Silently writes the latest snapshot to the connected folder. No-op if no granted dir handle.
+async function writeLatestToDir(): Promise<boolean> {
+  const dirHandle = await getActiveDirHandle()
+  if (!dirHandle) return false
+  const backup = await exportBackup()
+  await writeFileToDir(dirHandle, LATEST_FILENAME, JSON.stringify(backup, null, 2))
+  return true
 }
 
 async function triggerBackup() {
@@ -27,7 +39,8 @@ async function triggerBackup() {
 
   const dirHandle = await getActiveDirHandle()
   if (dirHandle) {
-    await writeFileToDir(dirHandle, filename, json)
+    await writeFileToDir(dirHandle, filename, json)        // dated history snapshot
+    await writeFileToDir(dirHandle, LATEST_FILENAME, json) // stable file for boot auto-load
   } else {
     // fallback: browser download
     const blob = new Blob([json], { type: 'application/json' })
@@ -59,5 +72,20 @@ export function useScheduledBackup() {
     check() // run immediately on mount in case app opened exactly at scheduled time
     const id = setInterval(check, 60_000)
     return () => clearInterval(id)
+  }, [])
+
+  // Auto-save to the connected folder on every data change (debounced), so the
+  // 'worksmart-latest.json' file stays current between scheduled backups.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onChange = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => { writeLatestToDir().catch(console.error) }, 2500)
+    }
+    window.addEventListener('ws:entries-updated', onChange)
+    return () => {
+      if (timer) clearTimeout(timer)
+      window.removeEventListener('ws:entries-updated', onChange)
+    }
   }, [])
 }

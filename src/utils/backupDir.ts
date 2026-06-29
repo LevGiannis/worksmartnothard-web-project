@@ -85,6 +85,17 @@ export async function writeFileToDir(handle: FileSystemDirectoryHandle, filename
   await writable.close()
 }
 
+// Reads a file's text from the directory, or null if it doesn't exist / can't be read.
+export async function readFileFromDir(handle: FileSystemDirectoryHandle, filename: string): Promise<string | null> {
+  try {
+    const fileHandle = await handle.getFileHandle(filename, { create: false })
+    const file = await fileHandle.getFile()
+    return await file.text()
+  } catch {
+    return null
+  }
+}
+
 export function isDirPickerSupported(): boolean {
   return 'showDirectoryPicker' in window
 }

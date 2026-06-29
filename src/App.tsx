@@ -12,6 +12,7 @@ import ManagerPage from './pages/ManagerPage'
 import ErrorBoundary from './components/ErrorBoundary'
 import { useScheduledBackup } from './hooks/useScheduledBackup'
 import BackupCountdown from './components/BackupCountdown'
+import DataLoadPrompt from './components/DataLoadPrompt'
 
 const THEME_KEY = 'ws_app_theme'
 type ThemeKey = 'midnight' | 'amethyst' | 'emerald' | 'slate' | 'ocean' | 'sunset' | 'forest' | 'coral' | 'lightgrey' | 'rosegold'
@@ -126,6 +127,7 @@ export default function App() {
     <ThemeContext.Provider value={{ theme, setTheme }}>
       <div className="page-shell font-sans text-slate-100">
         <BackupCountdown />
+        <DataLoadPrompt />
         <main className="container-wide">
           <Routes>
             <Route path="/" element={<ErrorBoundary><MainPage /></ErrorBoundary>} />
