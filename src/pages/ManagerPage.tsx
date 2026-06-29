@@ -64,11 +64,24 @@ function computeAutoSuggestions(rawUsers: string[]): MatchSuggestion[] {
       } else if (levenshtein(na, nb) <= 2) {
         score = 'close'
       } else {
-        // Token overlap: at least one significant token (≥5 chars) in common
+        // Token overlap: at least 2 significant tokens (≥5 chars) in common, or
+        // one token ≥8 chars (rare enough to be a unique identifier on its own)
         const ta = tokenize(a), tb = tokenize(b)
         if (ta.length && tb.length) {
-          const common = ta.filter(t => tb.includes(t))
-          if (common.some(t => t.length >= 5)) score = 'close'
+          const common = ta.filter(t => tb.includes(t) && t.length >= 5)
+          if (common.length >= 2 || common.some(t => t.length >= 8)) score = 'close'
+        }
+        // Username pattern: SURNAME+INITIAL+NUM (e.g. "Vamvakari Alexandra" ↔ "VAMVAKARIA1")
+        // The username (shorter) = surname_prefix + first_initial + digits
+        // The full name (longer) starts with the same surname_prefix
+        if (!score) {
+          const [username, fullname] = na.length <= nb.length ? [na, nb] : [nb, na]
+          // username must end with letter+digits (e.g. "A1", "V1", "M2")
+          const usernameMatch = username.match(/^([A-Z]{5,})[A-Z]\d+$/)
+          if (usernameMatch) {
+            const surnamePrefix = usernameMatch[1]
+            if (fullname.startsWith(surnamePrefix)) score = 'close'
+          }
         }
         // Substring: one normalized name fully contained in the other (min 5 chars)
         if (!score) {
