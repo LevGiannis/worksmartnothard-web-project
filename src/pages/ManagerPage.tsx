@@ -1392,98 +1392,141 @@ export default function ManagerPage() {
                   <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 16 }}>Σε εκκρεμότητα</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                     {mobilePending.length > 0 && (() => {
-                      const label = 'Mobile — Προέγκριση'
                       const color = CATEGORY_COLORS.mobile
-                      const isExpanded = expandedPending.has(label)
-                      const byUser = pendingByUser(mobilePending)
+                      const byUser = new Map<string, typeof mobilePending>()
+                      for (const e of mobilePending) {
+                        const u = effectiveName(e.user)
+                        if (!byUser.has(u)) byUser.set(u, [])
+                        byUser.get(u)!.push(e)
+                      }
                       return (
                         <div>
-                          <div
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: 'pointer' }}
-                            onClick={() => toggleExpandPending(label)}
-                          >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Mobile — Προέγκριση</span>
                             <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{mobilePending.length} σύνολο</span>
-                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>
                           </div>
-                          {isExpanded ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
-                              {mobilePending.map((e, idx) => (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                                    <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{e.subCategory ? <> · <span style={{ color }}>{e.subCategory}</span></> : null}{e.date ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span></> : null}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 16 }}>
+                            {[...byUser.entries()].map(([user, ues]) => {
+                              const key = `mobile-${user}`
+                              const isExpanded = expandedPending.has(key)
+                              return (
+                                <div key={user}>
+                                  <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer' }}
+                                    onClick={() => toggleExpandPending(key)}
+                                  >
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', flex: 1 }}>{user}</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color }}>{ues.length}</span>
                                   </div>
-                                  {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                  {isExpanded && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 12, marginTop: 5 }}>
+                                      {[...ues].sort((a, b) => {
+                                        if (!a.date && !b.date) return 0
+                                        if (!a.date) return 1
+                                        if (!b.date) return -1
+                                        return b.date.getTime() - a.date.getTime()
+                                      }).map((e, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
+                                          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                            <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                            <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>
+                                              {e.subCategory ? <><span style={{ color }}>{e.subCategory}</span>{e.date ? <> · </> : null}</> : null}
+                                              {e.date ? <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(e.date)}</span> : null}
+                                            </span>
+                                          </div>
+                                          {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
-                              {byUser.map(([user, count]) => (
-                                <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
-                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                              )
+                            })}
+                          </div>
                         </div>
                       )
                     })()}
-                    {([
-                      { label: 'Vodafone Home — Υπό Υλοποίηση', entries: homePending, color: CATEGORY_COLORS.home, expandable: true },
-                      { label: 'Migration FTTH — Υπό Υλοποίηση', entries: migraPending, color: CATEGORY_COLORS.migra, expandable: false },
-                    ] as const).map(({ label, entries: pe, color, expandable }) => {
-                      if (!pe.length) return null
-                      const byUser = pendingByUser(pe)
-                      const isExpanded = expandedPending.has(label)
+                    {homePending.length > 0 && (() => {
+                      const color = CATEGORY_COLORS.home
+                      const byUser = new Map<string, typeof homePending>()
+                      for (const e of homePending) {
+                        const u = effectiveName(e.user)
+                        if (!byUser.has(u)) byUser.set(u, [])
+                        byUser.get(u)!.push(e)
+                      }
                       return (
-                        <div key={label}>
-                          <div
-                            style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, cursor: expandable ? 'pointer' : 'default' }}
-                            onClick={() => expandable && toggleExpandPending(label)}
-                          >
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{pe.length} σύνολο</span>
-                            {expandable && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{isExpanded ? '▲' : '▼'}</span>}
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Vodafone Home — Υπό Υλοποίηση</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{homePending.length} σύνολο</span>
                           </div>
-                          {isExpanded ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, paddingLeft: 16 }}>
-                              {[...pe].sort((a, b) => {
-                                const u = effectiveName(a.user).localeCompare(effectiveName(b.user), 'el')
-                                if (u !== 0) return u
-                                const da = a.date?.getTime() ?? Infinity
-                                const db = b.date?.getTime() ?? Infinity
-                                return da - db
-                              }).map((e, idx) => {
-                                const displayDate = e.date || e.implDate
-                                return (
-                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
-                                  <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
-                                    <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
-                                    <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.35)', marginTop: 1 }}>{effectiveName(e.user)}{displayDate ? <> · <span style={{ color: 'rgba(255,255,255,0.25)' }}>{formatDate(displayDate)}</span></> : null}</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingLeft: 16 }}>
+                            {[...byUser.entries()].map(([user, ues]) => {
+                              const key = `home-${user}`
+                              const isExpanded = expandedPending.has(key)
+                              return (
+                                <div key={user}>
+                                  <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer' }}
+                                    onClick={() => toggleExpandPending(key)}
+                                  >
+                                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', flex: 1 }}>{user}</span>
+                                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color }}>{ues.length}</span>
                                   </div>
-                                  {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                  {isExpanded && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 12, marginTop: 5 }}>
+                                      {[...ues].sort((a, b) => {
+                                        const da = (a.date || a.implDate)
+                                        const db = (b.date || b.implDate)
+                                        if (!da && !db) return 0
+                                        if (!da) return 1
+                                        if (!db) return -1
+                                        return db.getTime() - da.getTime()
+                                      }).map((e, idx) => {
+                                        const displayDate = e.date || e.implDate
+                                        return (
+                                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 8, background: `${color}0d`, border: `1px solid ${color}25` }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                              <span style={{ fontSize: '0.83rem', color: 'rgba(255,255,255,0.8)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
+                                              {displayDate && <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.25)', marginTop: 1 }}>{formatDate(displayDate)}</span>}
+                                            </div>
+                                            {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.28)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  )}
                                 </div>
-                                )
-                              })}
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
-                              {byUser.map(([user, count]) => (
-                                <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                  <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
-                                  <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                              )
+                            })}
+                          </div>
                         </div>
                       )
-                    })}
+                    })()}
+                    {migraPending.length > 0 && (() => {
+                      const label = 'Migration FTTH — Υπό Υλοποίηση'
+                      const color = CATEGORY_COLORS.migra
+                      const byUser = pendingByUser(migraPending)
+                      return (
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{migraPending.length} σύνολο</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
+                            {byUser.map(([user, count]) => (
+                              <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                                <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               )}
@@ -1515,11 +1558,15 @@ export default function ManagerPage() {
                             >
                               <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.7)', flex: 1 }}>{user}</span>
                               <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#fca5a5' }}>{ues.length}</span>
-                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)' }}>{isExpanded ? '▲' : '▼'}</span>
                             </div>
                             {isExpanded && (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 5, paddingLeft: 12, marginTop: 5 }}>
-                                {ues.map((e, idx) => {
+                                {[...ues].sort((a, b) => {
+                                  if (!a.date && !b.date) return 0
+                                  if (!a.date) return 1
+                                  if (!b.date) return -1
+                                  return b.date.getTime() - a.date.getTime()
+                                }).map((e, idx) => {
                                   const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
                                   const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
                                   return (
