@@ -191,6 +191,24 @@ export async function importBackup(backup: unknown): Promise<{ importedKeys: num
   return { importedKeys }
 }
 
+// True if any core data key holds a non-empty array. Used to decide whether the app needs
+// a data-load prompt at session start (storage is empty after a Citrix profile reset).
+export async function hasAnyData(): Promise<boolean> {
+  const storage = getStorageBackend()
+  for (const k of CORE_KEYS) {
+    try {
+      const raw = await storage.getItem(k)
+      if (raw) {
+        const arr = JSON.parse(raw)
+        if (Array.isArray(arr) && arr.length > 0) return true
+      }
+    } catch {
+      // ignore unreadable/invalid key
+    }
+  }
+  return false
+}
+
 export async function clearAllData(){
   const storage = getStorageBackend()
   try {
