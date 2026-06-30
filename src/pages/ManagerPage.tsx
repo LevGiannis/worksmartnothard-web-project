@@ -1720,12 +1720,12 @@ export default function ManagerPage() {
                   const subColWidth = Math.min(280, Math.max(150, maxSubLength * 6))
                   return (
                     <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid rgba(255,255,255,0.08)`, marginTop: 4 }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: 'auto', background: 'rgba(255,255,255,0.01)', tableLayout: 'auto' }}>
+                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: '100%', background: 'rgba(255,255,255,0.01)', tableLayout: 'fixed' }}>
                         <thead>
                           <tr style={{ background: 'rgba(255,255,255,0.08)', borderBottom: `2px solid ${sep}` }}>
-                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, width: subColWidth }}>Προϊόν</th>
+                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, width: subColWidth, wordBreak: 'break-word' }}>Προϊόν</th>
                             {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'nowrap', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 50 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
+                              <th key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'normal', wordBreak: 'break-word', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 50 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
                             ))}
                             <th style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 45 }}>Σύν.</th>
                           </tr>
