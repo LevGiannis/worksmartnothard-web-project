@@ -332,7 +332,7 @@ function formatHomeProductLabel(raw: string): string {
   if (isTriplePlay) {
     const parts = stripped.split('·')
     const speed = (parts.length > 1 ? parts[parts.length - 1] : stripped).trim()
-    return speed ? `Triple Play ${speed}` : 'Triple Play'
+    return speed ? `Triple Play · ${speed}` : 'Triple Play'
   }
 
   if (/double play/i.test(raw)) {
