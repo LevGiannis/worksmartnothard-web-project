@@ -328,12 +328,7 @@ function formatHomeProductLabel(raw: string): string {
     return stripped.replace(/\s*·\s*(4G|5G)\s*$/i, '')
   }
 
-  // Spelled-out "triple play" (any case): normalize the casing, keep the rest of the name as-is.
-  if (/triple play/i.test(raw)) {
-    return stripped.replace(/triple play/i, 'Triple Play')
-  }
-
-  const isTriplePlay = /vodafone tv/i.test(raw) || /^tp\b/i.test(stripped)
+  const isTriplePlay = /vodafone tv/i.test(raw) || /^tp\b/i.test(stripped) || /triple play/i.test(raw)
   if (isTriplePlay) {
     const parts = stripped.split('·')
     const speed = (parts.length > 1 ? parts[parts.length - 1] : stripped).trim()
