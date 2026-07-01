@@ -887,29 +887,73 @@ export default function ManagerPage() {
   }
 
   const handleExportMonthly = () => {
-    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, migra: 2, home: 3 }
+    const catOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
     const source = exportMode === 'done'
       ? effectiveDoneMonthEntries
       : viewEntries.filter(e => e.date && e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth)
-    const rows = [...source]
-      .sort((a, b) => {
-        if (catOrder[a.category] !== catOrder[b.category]) return catOrder[a.category] - catOrder[b.category]
-        return effectiveName(a.user).localeCompare(effectiveName(b.user))
-      })
-      .map(e => ({
-        'Κατηγορία': CATEGORY_LABELS[e.category],
-        'Υποκατηγορία': e.subCategory ?? '',
-        'Χρήστης': effectiveName(e.user),
-        'Ονοματεπώνυμο': e.customer,
-        'Αριθμός Παραγγελίας': e.requestId,
-        'Κατάσταση': e.status,
-        'Ημ/νία Αίτησης': e.date ? formatDate(e.date) : '',
-        'Ημ/νία Ολοκλήρωσης': e.implDate ? formatDate(e.implDate) : '',
-        'Συνδέσεις': e.connections ?? 1,
-      }))
-    if (!rows.length) return
-    const ws = XLSX.utils.json_to_sheet(rows)
-    styleHeaderRow(ws, Object.keys(rows[0]).length)
+    const sortedSource = [...source].sort((a, b) => {
+      if (catOrder[a.category] !== catOrder[b.category]) return catOrder[a.category] - catOrder[b.category]
+      const subCmp = (a.subCategory ?? '').localeCompare(b.subCategory ?? '')
+      if (subCmp !== 0) return subCmp
+      return effectiveName(a.user).localeCompare(effectiveName(b.user))
+    })
+    if (!sortedSource.length) return
+
+    const toRow = (e: ParsedEntry): Record<string, string | number> => ({
+      'Κατηγορία': CATEGORY_LABELS[e.category],
+      'Υποκατηγορία': e.subCategory ?? '',
+      'Χρήστης': effectiveName(e.user),
+      'Ονοματεπώνυμο': e.customer,
+      'Αριθμός Παραγγελίας': e.requestId,
+      'Κατάσταση': e.status,
+      'Ημ/νία Αίτησης': e.date ? formatDate(e.date) : '',
+      'Ημ/νία Ολοκλήρωσης': e.implDate ? formatDate(e.implDate) : '',
+      'Συνδέσεις': e.connections ?? 1,
+    })
+
+    const sheetRows: Record<string, string | number>[] = []
+    const specialRows = new Map<number, 'subcat' | 'cat' | 'grand'>()
+
+    let idx = 0
+    while (idx < sortedSource.length) {
+      const cat = sortedSource[idx].category
+      const catGroup: ParsedEntry[] = []
+      while (idx < sortedSource.length && sortedSource[idx].category === cat) {
+        const sub = sortedSource[idx].subCategory ?? ''
+        const subGroup: ParsedEntry[] = []
+        while (idx < sortedSource.length && sortedSource[idx].category === cat && (sortedSource[idx].subCategory ?? '') === sub) {
+          subGroup.push(sortedSource[idx])
+          idx++
+        }
+        subGroup.forEach(e => sheetRows.push(toRow(e)))
+        catGroup.push(...subGroup)
+        sheetRows.push({ 'Κατηγορία': `Σύνολο ${sub || '—'}`, 'Συνδέσεις': countEntries(subGroup) })
+        specialRows.set(sheetRows.length - 1, 'subcat')
+      }
+      sheetRows.push({ 'Κατηγορία': `Σύνολο ${CATEGORY_LABELS[cat]}`, 'Συνδέσεις': countEntries(catGroup) })
+      specialRows.set(sheetRows.length - 1, 'cat')
+    }
+    sheetRows.push({ 'Κατηγορία': 'ΓΕΝΙΚΟ ΣΥΝΟΛΟ', 'Συνδέσεις': countEntries(sortedSource) })
+    specialRows.set(sheetRows.length - 1, 'grand')
+
+    const ws = XLSX.utils.json_to_sheet(sheetRows)
+    styleHeaderRow(ws, 9)
+
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+    const SPECIAL_FILL: Record<'subcat' | 'cat' | 'grand', string> = { subcat: 'F0F0F0', cat: 'D0D0D0', grand: 'E60000' }
+    specialRows.forEach((kind, rowIdxInData) => {
+      const R = rowIdxInData + 1 // +1 to skip the header row
+      for (let C = range.s.c; C <= range.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({ r: R, c: C })
+        if (!ws[addr]) ws[addr] = { t: 's', v: '' }
+        ws[addr].s = {
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          font: { bold: true, color: { rgb: kind === 'grand' ? 'FFFFFF' : '000000' } },
+          fill: { patternType: 'solid', fgColor: { rgb: SPECIAL_FILL[kind] } },
+        }
+      }
+    })
+
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Παραγγελίες')
     const userSuffix = selectedUser ? `-${selectedUser}` : ''
