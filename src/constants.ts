@@ -24,8 +24,8 @@ export const HOME_TYPE_OPTIONS = [
   '100/200 FTTH TRIPLE',
   '300/500/1000 FTTH DOUBLE',
   '300/500/1000 FTTH TRIPLE',
-  'FWA',
-  'FWA VOICE',
+  'Wireless Unlimited 5G',
+  'Wireless Unlimited 4G',
 ]
 
 export const APPOINTMENT_AMOUNTS = [6.85, 15.31, 10.47, 40.32]
