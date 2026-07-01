@@ -316,6 +316,28 @@ function dateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
+// Display-only shortening of Vodafone Home product names for the breakdown table
+// (does not touch the underlying subCategory data used for filtering/counting).
+function formatHomeProductLabel(raw: string): string {
+  if (!raw) return raw
+  if (/wireless/i.test(raw)) return raw // leave Wireless products untouched
+
+  const stripped = raw.replace(/^vodafone home\s+/i, '')
+
+  const isTriplePlay = /vodafone tv/i.test(raw) || /^tp\b/i.test(stripped)
+  if (isTriplePlay) {
+    const parts = stripped.split('·')
+    const speed = (parts.length > 1 ? parts[parts.length - 1] : stripped).trim()
+    return speed ? `Triple Play ${speed}` : 'Triple Play'
+  }
+
+  if (/double play/i.test(raw)) {
+    return stripped.replace(/double play/i, 'Double Play')
+  }
+
+  return raw
+}
+
 type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
 
 const serializeEntries = (entries: ParsedEntry[]): string => {
@@ -1667,7 +1689,8 @@ export default function ManagerPage() {
                   users: string[],
                   subs: string[],
                   color: string,
-                  chartMode: boolean
+                  chartMode: boolean,
+                  formatLabel: (sub: string) => string = (sub) => sub
                 ) => {
                   if (!users.length || !subs.length) return null
                   const count = (user: string, sub: string) =>
@@ -1685,7 +1708,7 @@ export default function ManagerPage() {
                           {subsNonEmpty.map((sub, i) => (
                             <div key={sub} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                               <div style={{ width: 8, height: 8, borderRadius: 2, background: color, opacity: opacities[i], flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{sub}</span>
+                              <span style={{ fontSize: '0.63rem', color: 'rgba(255,255,255,0.38)' }}>{formatLabel(sub)}</span>
                             </div>
                           ))}
                         </div>
@@ -1702,7 +1725,7 @@ export default function ManagerPage() {
                                   const n = count(u, sub)
                                   if (!n) return null
                                   const segPct = (n / total) * barMax
-                                  const el = <div key={sub} style={{ position: 'absolute', left: `${filled}%`, width: `${segPct}%`, height: '100%', background: color, opacity: opacities[i], transition: 'width 300ms ease' }} title={`${sub}: ${n}`} />
+                                  const el = <div key={sub} style={{ position: 'absolute', left: `${filled}%`, width: `${segPct}%`, height: '100%', background: color, opacity: opacities[i], transition: 'width 300ms ease' }} title={`${formatLabel(sub)}: ${n}`} />
                                   filled += segPct
                                   return el
                                 })}
@@ -1733,7 +1756,7 @@ export default function ManagerPage() {
                         <tbody>
                           {subs.map((sub, i) => (
                             <tr key={sub} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)', borderBottom: `1px solid rgba(255,255,255,0.06)`, transition: 'background 150ms' }}>
-                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', fontWeight: 500, wordBreak: 'break-word', width: subColWidth }}>{sub}</td>
+                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', fontWeight: 500, wordBreak: 'break-word', width: subColWidth }}>{formatLabel(sub)}</td>
                               {users.map(u => {
                                 const n = count(u, sub)
                                 return <td key={u} style={{ textAlign: 'center', padding: '7px 8px', color: n > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 50 }}>{n > 0 ? n : '—'}</td>
@@ -1833,7 +1856,7 @@ export default function ManagerPage() {
                                   style={{ fontSize: '0.6rem', padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(0,0,0,0.15)', background: subcatChartMode.has(`${s.id}-home`) ? CATEGORY_COLORS.home : 'transparent', color: subcatChartMode.has(`${s.id}-home`) ? '#fff' : CATEGORY_COLORS.home, cursor: 'pointer', fontWeight: 600, letterSpacing: 0.5 }}
                                 >{subcatChartMode.has(`${s.id}-home`) ? 'Πίνακας' : 'Γράφημα'}</button>
                               </div>
-                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home, subcatChartMode.has(`${s.id}-home`))}
+                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home, subcatChartMode.has(`${s.id}-home`), formatHomeProductLabel)}
                             </div>
                           )}
                         </div>
