@@ -27,7 +27,7 @@ const PROFILE_KEYS = [
 ]
 
 const CORE_KEYS = [ENTRIES_KEY, GOALS_KEY, TASKS_KEY, PENDINGS_KEY] as const
-const BACKUP_KEYS = [...CORE_KEYS, ...PROFILE_KEYS] as const
+const BACKUP_KEYS = [...CORE_KEYS, ...PROFILE_KEYS, 'ws_app_theme', 'ws_category_colors'] as const
 
 type StorageBackend = {
   getItem: (key: string) => string | null | Promise<string | null>

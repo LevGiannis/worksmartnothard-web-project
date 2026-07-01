@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useContext } from 'react'
-import * as XLSX from 'xlsx'
+import * as XLSX from 'xlsx-js-style'
 import PageHeader from '../components/PageHeader'
 import { ThemeContext } from '../App'
 
@@ -343,6 +343,34 @@ function formatHomeProductLabel(raw: string): string {
 }
 
 type MonthTargets = { reg: Partial<Record<Category, number>>; done: Partial<Record<Category, number>> }
+
+// Applies the shared Excel-export look (red/white bold header, min column width,
+// centered cells) to a worksheet produced via XLSX.utils.json_to_sheet.
+// Note: xlsx-js-style's writer does not support freeze panes (Pro-only SheetJS feature),
+// so the header row cannot be frozen through this library.
+const styleHeaderRow = (ws: XLSX.WorkSheet, colCount: number) => {
+  ws['!cols'] = Array.from({ length: colCount }, (_, i) => {
+    const existing = ws['!cols']?.[i]?.wch ?? 0
+    return { wch: Math.max(existing, 18) }
+  })
+
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+  for (let R = range.s.r; R <= range.e.r; R++) {
+    for (let C = range.s.c; C <= range.e.c; C++) {
+      const addr = XLSX.utils.encode_cell({ r: R, c: C })
+      const cell = ws[addr]
+      if (!cell) continue
+      const alignment = { horizontal: 'center' as const, vertical: 'center' as const, wrapText: true }
+      cell.s = R === range.s.r
+        ? {
+            alignment,
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'E60000' } },
+          }
+        : { alignment }
+    }
+  }
+}
 
 const serializeEntries = (entries: ParsedEntry[]): string => {
   return JSON.stringify(entries.map(e => ({
@@ -881,6 +909,7 @@ export default function ManagerPage() {
       }))
     if (!rows.length) return
     const ws = XLSX.utils.json_to_sheet(rows)
+    styleHeaderRow(ws, Object.keys(rows[0]).length)
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, 'Παραγγελίες')
     const userSuffix = selectedUser ? `-${selectedUser}` : ''
@@ -927,8 +956,12 @@ export default function ManagerPage() {
     })
     sellerRows.sort((a, b) => (b['Σύνολο'] as number) - (a['Σύνολο'] as number))
     const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'Καταστήματα')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sellerRows), 'Πωλητές')
+    const wsStores = XLSX.utils.json_to_sheet(summaryRows)
+    styleHeaderRow(wsStores, Object.keys(summaryRows[0] || {}).length)
+    const wsSellers = XLSX.utils.json_to_sheet(sellerRows)
+    styleHeaderRow(wsSellers, Object.keys(sellerRows[0] || {}).length)
+    XLSX.utils.book_append_sheet(wb, wsStores, 'Καταστήματα')
+    XLSX.utils.book_append_sheet(wb, wsSellers, 'Πωλητές')
     XLSX.writeFile(wb, `σύγκριση-καταστημάτων-${selectedMonth}.xlsx`)
     void catOrder
   }
@@ -953,21 +986,7 @@ export default function ManagerPage() {
       }))
 
       const ws = XLSX.utils.json_to_sheet(rows)
-      ws['!cols'] = Array(9).fill({ wch: 20 })
-
-      Object.keys(ws).forEach(cell => {
-        if (cell.startsWith('!')) return
-        ws[cell].alignment = { horizontal: 'center', vertical: 'center', wrapText: true }
-      })
-
-      const headerRange = XLSX.utils.decode_range(ws['!ref'] || 'A1')
-      for (let C = headerRange.s.c; C <= headerRange.e.c; ++C) {
-        const addr = XLSX.utils.encode_cell({ r: 0, c: C })
-        if (!ws[addr]) continue
-        ws[addr].alignment = { horizontal: 'center', vertical: 'center', wrapText: true }
-        ws[addr].font = { bold: true }
-        ws[addr].fill = { fgColor: { rgb: 'FFD3D3D3' } }
-      }
+      styleHeaderRow(ws, 9)
 
       XLSX.utils.book_append_sheet(wb, ws, user.substring(0, 31))
     })
