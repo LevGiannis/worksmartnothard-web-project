@@ -320,9 +320,13 @@ function dateKey(d: Date): string {
 // (does not touch the underlying subCategory data used for filtering/counting).
 function formatHomeProductLabel(raw: string): string {
   if (!raw) return raw
-  if (/wireless/i.test(raw)) return raw // leave Wireless products untouched
 
   const stripped = raw.replace(/^vodafone home\s+/i, '')
+
+  if (/wireless/i.test(raw)) {
+    // Drop the trailing repeated type, e.g. "Wireless Unlimited 4G · 4G" → "Wireless Unlimited 4G"
+    return stripped.replace(/\s*·\s*(4G|5G)\s*$/i, '')
+  }
 
   const isTriplePlay = /vodafone tv/i.test(raw) || /^tp\b/i.test(stripped)
   if (isTriplePlay) {
