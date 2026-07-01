@@ -971,9 +971,16 @@ export default function ManagerPage() {
     const wb = XLSX.utils.book_new()
     const categoryLabel = categories.length === 1 ? CATEGORY_LABELS[categories[0]] : 'Όλα'
 
+    const exportCatOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
+
     allUsers.forEach(user => {
       const userEntries = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && categories.includes(e.category))
-      const rows = userEntries.map(e => ({
+      const sortedEntries = [...userEntries].sort((a, b) => {
+        if (exportCatOrder[a.category] !== exportCatOrder[b.category]) return exportCatOrder[a.category] - exportCatOrder[b.category]
+        return (a.subCategory || '—').localeCompare(b.subCategory || '—')
+      })
+
+      const toRow = (e: ParsedEntry): Record<string, string | number> => ({
         'Κατηγορία': CATEGORY_LABELS[e.category],
         'Request ID': e.requestId || '—',
         'Ημερομηνία': e.date ? dateKey(e.date) : '—',
@@ -983,10 +990,53 @@ export default function ManagerPage() {
         'Πελάτης': e.customer || '—',
         'Κωδικός Dealer': e.shopCode || '—',
         'Κατάστημα': stores.find(s => s.id === e.storeId)?.code || e.storeId || '—',
-      }))
+      })
 
-      const ws = XLSX.utils.json_to_sheet(rows)
+      const sheetRows: Record<string, string | number>[] = []
+      const specialRows = new Map<number, 'subcat' | 'cat' | 'grand'>()
+
+      let idx = 0
+      while (idx < sortedEntries.length) {
+        const cat = sortedEntries[idx].category
+        const catGroup: ParsedEntry[] = []
+        while (idx < sortedEntries.length && sortedEntries[idx].category === cat) {
+          const sub = sortedEntries[idx].subCategory || '—'
+          const subGroup: ParsedEntry[] = []
+          while (idx < sortedEntries.length && sortedEntries[idx].category === cat && (sortedEntries[idx].subCategory || '—') === sub) {
+            subGroup.push(sortedEntries[idx])
+            idx++
+          }
+          subGroup.forEach(e => sheetRows.push(toRow(e)))
+          catGroup.push(...subGroup)
+          sheetRows.push({ 'Κατηγορία': `Σύνολο ${sub}: ${countEntries(subGroup)}` })
+          specialRows.set(sheetRows.length - 1, 'subcat')
+        }
+        sheetRows.push({ 'Κατηγορία': `Σύνολο ${CATEGORY_LABELS[cat]}: ${countEntries(catGroup)}` })
+        specialRows.set(sheetRows.length - 1, 'cat')
+      }
+      sheetRows.push({ 'Κατηγορία': `ΣΥΝΟΛΟ: ${countEntries(sortedEntries)}` })
+      specialRows.set(sheetRows.length - 1, 'grand')
+
+      const ws = XLSX.utils.json_to_sheet(sheetRows)
       styleHeaderRow(ws, 9)
+
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1')
+      const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = ws['!merges'] || []
+      const SPECIAL_FILL: Record<'subcat' | 'cat' | 'grand', string> = { subcat: 'F0F0F0', cat: 'D0D0D0', grand: 'E60000' }
+      specialRows.forEach((kind, rowIdxInData) => {
+        const R = rowIdxInData + 1 // +1 to skip the header row
+        for (let C = range.s.c; C <= range.e.c; C++) {
+          const addr = XLSX.utils.encode_cell({ r: R, c: C })
+          if (!ws[addr]) ws[addr] = { t: 's', v: '' }
+          ws[addr].s = {
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            font: { bold: true, color: { rgb: kind === 'grand' ? 'FFFFFF' : '000000' } },
+            fill: { patternType: 'solid', fgColor: { rgb: SPECIAL_FILL[kind] } },
+          }
+        }
+        merges.push({ s: { r: R, c: range.s.c }, e: { r: R, c: range.e.c } })
+      })
+      ws['!merges'] = merges
 
       XLSX.utils.book_append_sheet(wb, ws, user.substring(0, 31))
     })
