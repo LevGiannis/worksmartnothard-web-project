@@ -864,19 +864,13 @@ export default function ManagerPage() {
       return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0)
     })
   const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
-  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)))
     .filter(e => shopPassFilter(e))
     .filter(e => {
       const s = e.status.toUpperCase()
-      if (e.category === 'home') return s.includes('ΛΑΘΟΣ') || s.includes('ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ') || s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ') || s === 'ΝΕΑ'
-      if (e.category === 'mobile') {
-        if (s === 'ΝΕΑ' || s === 'ΚΑΤΑΧΩΡΗΜΕΝΗ') return true
-        if (s === 'ΣΕ ΕΚΚΡΕΜΟΤΗΤΑ') return e.date != null && e.date >= thirtyDaysAgo
-        if (s.includes('ΑΠΟΡΡΙΦΘ')) return e.date != null && e.date >= thirtyDaysAgo
-        return false
-      }
+      if (e.category === 'home') return !s.includes('ΥΛΟΠΟΙΗΜΕΝΗ') && !s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+      if (e.category === 'mobile') return !s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') && !s.includes('ΠΡΟΕΓΚΡΙΣΗ')
       if (e.category === 'migra') return s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
       return false
     })
