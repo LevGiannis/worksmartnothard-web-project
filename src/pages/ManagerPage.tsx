@@ -328,20 +328,20 @@ function countEntries(arr: ParsedEntry[]): number {
 }
 
 // Fixed-order categorical palette (validated for adjacent-pair CVD safety).
-const PIE_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
+const CHART_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
 // Beyond the 8 fixed hues, step around the wheel by the golden angle so any
 // number of extra series stay visually spread out instead of clustering.
-const PIE_EXTRA_HUE_STEP = 137.508
-function pieColor(index: number): string {
-  if (index < PIE_COLORS.length) return PIE_COLORS[index]
-  const hue = (index * PIE_EXTRA_HUE_STEP) % 360
+const CHART_EXTRA_HUE_STEP = 137.508
+function chartColor(index: number): string {
+  if (index < CHART_COLORS.length) return CHART_COLORS[index]
+  const hue = (index * CHART_EXTRA_HUE_STEP) % 360
   return `hsl(${hue.toFixed(0)}, 62%, 58%)`
 }
 
-type PieSlice = { label: string; entries: ParsedEntry[]; color: string }
+type ChartSlice = { label: string; entries: ParsedEntry[]; color: string }
 
-// One slice per seller — no folding, every user keeps their own slice.
-function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): PieSlice[] {
+// One bar per seller — no folding, every user keeps their own bar.
+function buildChartSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): ChartSlice[] {
   const byUser = new Map<string, ParsedEntry[]>()
   for (const e of entries) {
     const u = nameOf(e)
@@ -349,41 +349,34 @@ function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => stri
     byUser.get(u)!.push(e)
   }
   const sorted = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
-  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: pieColor(i) }))
+  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: chartColor(i) }))
 }
 
-function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
+// Horizontal, sorted bar list — labels stay fully readable and values compare
+// directly by length, unlike thin pie slices once there are many categories.
+function BarList({ slices, onSliceClick }: { slices: ChartSlice[]; onSliceClick: (idx: number) => void }) {
   const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
   if (!total) return null
-  const cx = size / 2, cy = size / 2, r = size / 2
-  const polarPoint = (angleDeg: number) => {
-    const rad = (angleDeg - 90) * Math.PI / 180
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
-  }
-  let cursor = 0
+  const max = Math.max(...slices.map(s => s.entries.length))
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      {slices.length === 1
-        ? <circle cx={cx} cy={cy} r={r} fill={slices[0].color} style={{ cursor: 'pointer' }} onClick={() => onSliceClick(0)} />
-        : slices.map((s, i) => {
-            const sweep = (s.entries.length / total) * 360
-            const start = polarPoint(cursor)
-            const end = polarPoint(cursor + sweep)
-            const largeArc = sweep > 180 ? 1 : 0
-            cursor += sweep
-            return (
-              <path
-                key={i}
-                d={`M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`}
-                fill={s.color}
-                stroke="#1e2535"
-                strokeWidth={2}
-                style={{ cursor: 'pointer' }}
-                onClick={() => onSliceClick(i)}
-              />
-            )
-          })}
-    </svg>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {slices.map((s, i) => {
+        const pct = Math.round((s.entries.length / total) * 100)
+        const fillPct = (s.entries.length / max) * 100
+        return (
+          <div key={s.label} onClick={() => onSliceClick(i)} style={{ cursor: 'pointer' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.68)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
+              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 30, textAlign: 'right' }}>{pct}%</span>
+            </div>
+            <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${fillPct}%`, background: s.color, borderRadius: 999, transition: 'width 300ms ease' }} />
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -1812,9 +1805,9 @@ export default function ManagerPage() {
                           ? all.filter(e => { const d = dateOf(e); return d != null && d >= new Date(pendingFromDate) })
                           : all
                         if (!filtered.length) return null
-                        const slices = buildPieSlices(filtered, e => effectiveName(e.user))
+                        const slices = buildChartSlices(filtered, e => effectiveName(e.user))
                         const total = filtered.length
-                        const openSlice = (s: PieSlice) => setPendingModal({
+                        const openSlice = (s: ChartSlice) => setPendingModal({
                           user: s.label,
                           color: s.color,
                           entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
@@ -1826,22 +1819,8 @@ export default function ManagerPage() {
                               <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
                               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', paddingLeft: 16 }}>
-                              <PieChart slices={slices} onSliceClick={i => openSlice(slices[i])} />
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 200 }}>
-                                {slices.map((s, i) => (
-                                  <div
-                                    key={s.label}
-                                    onClick={() => openSlice(s)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, background: `${s.color}0d` }}
-                                  >
-                                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-                                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
-                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 32, textAlign: 'right' }}>{Math.round((s.entries.length / total) * 100)}%</span>
-                                  </div>
-                                ))}
-                              </div>
+                            <div style={{ paddingLeft: 16 }}>
+                              <BarList slices={slices} onSliceClick={i => openSlice(slices[i])} />
                             </div>
                           </div>
                         )
@@ -1998,10 +1977,9 @@ export default function ManagerPage() {
                   formatLabel: (sub: string) => string = (sub) => sub
                 ) => {
                   if (!doneEntries.length) return null
-                  const productSlices = buildPieSlices(doneEntries, e => formatLabel(e.subCategory ?? '—'))
-                  const userSlices = buildPieSlices(doneEntries, e => effectiveName(e.user))
-                  const total = doneEntries.length
-                  const openSlice = (s: PieSlice) => setPendingModal({
+                  const productSlices = buildChartSlices(doneEntries, e => formatLabel(e.subCategory ?? '—'))
+                  const userSlices = buildChartSlices(doneEntries, e => effectiveName(e.user))
+                  const openSlice = (s: ChartSlice) => setPendingModal({
                     user: s.label,
                     color: s.color,
                     entries: [...s.entries].sort((a, b) => {
@@ -2012,9 +1990,9 @@ export default function ManagerPage() {
                       return db.getTime() - da.getTime()
                     }),
                   })
-                  // Clicking a seller slice first shows their own product breakdown;
+                  // Clicking a seller bar first shows their own product breakdown;
                   // clicking a product within that opens the exact request list.
-                  const openUserDrilldown = (s: PieSlice) => {
+                  const openUserDrilldown = (s: ChartSlice) => {
                     const bySub = new Map<string, ParsedEntry[]>()
                     for (const e of s.entries) {
                       const label = formatLabel(e.subCategory ?? '—')
@@ -2026,28 +2004,16 @@ export default function ManagerPage() {
                       .sort((a, b) => countEntries(b.entries) - countEntries(a.entries))
                     setUserDrilldownModal({ user: s.label, color: s.color, groups })
                   }
-                  const renderMiniPie = (title: string, slices: PieSlice[], onClick: (s: PieSlice) => void = openSlice) => (
-                    <div key={title} style={{ flex: 1, minWidth: 220 }}>
+                  const renderMiniBars = (title: string, slices: ChartSlice[], onClick: (s: ChartSlice) => void = openSlice) => (
+                    <div key={title} style={{ flex: '1 1 260px', minWidth: 220 }}>
                       <div style={{ fontSize: '0.66rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>{title}</div>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                        <PieChart slices={slices} size={124} onSliceClick={i => onClick(slices[i])} />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 140 }}>
-                          {slices.map(s => (
-                            <div key={s.label} onClick={() => onClick(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '3px 6px', borderRadius: 6, background: `${s.color}0d` }}>
-                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.68)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
-                              <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.28)', minWidth: 28, textAlign: 'right' }}>{Math.round((s.entries.length / total) * 100)}%</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <BarList slices={slices} onSliceClick={i => onClick(slices[i])} />
                     </div>
                   )
                   return (
                     <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 4 }}>
-                      {renderMiniPie('Ανά προϊόν', productSlices)}
-                      {renderMiniPie('Ανά πωλητή', userSlices, openUserDrilldown)}
+                      {renderMiniBars('Ανά προϊόν', productSlices)}
+                      {renderMiniBars('Ανά πωλητή', userSlices, openUserDrilldown)}
                     </div>
                   )
                 }
