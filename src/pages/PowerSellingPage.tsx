@@ -129,64 +129,78 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
     }))
   const totalMonthly = lines.reduce((s, l) => s + (l.price || 0), 0)
 
+  const VF_RED = '#e60000'
+
   return (
     <div className="print-only-offer">
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 36px', fontFamily: 'Inter, Arial, sans-serif', color: '#111' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '4px solid #e60000', paddingBottom: 16, marginBottom: 28 }}>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, color: '#e60000', textTransform: 'uppercase' }}>Η προσφορά σου</div>
-            <div style={{ fontSize: 30, fontWeight: 900, color: '#111', marginTop: 4 }}>{item.customerName}</div>
+      <div style={{ fontFamily: 'Arial, Inter, sans-serif', color: '#111', background: '#fff' }}>
+
+        {/* full-bleed Vodafone-red masthead */}
+        <div style={{ background: VF_RED, padding: '20px 36px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 20, color: VF_RED, flexShrink: 0 }}>V</div>
+            <div style={{ fontWeight: 900, fontSize: 22, color: '#fff', letterSpacing: 1.5 }}>VODAFONE</div>
           </div>
-          <div style={{ textAlign: 'right', fontSize: 12, color: '#777' }}>{formatDate(item.createdAt)}</div>
+          {store && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: 700, letterSpacing: 0.5 }}>{store}</div>}
         </div>
 
-        {lines.map(l => (
-          <div key={l.type} style={{ border: '1px solid #e5e5e5', borderRadius: 14, padding: 22, marginBottom: 18 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
-              <div style={{ fontSize: 24, fontWeight: 800 }}>{l.plan}</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#e60000' }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: '#777' }}>/μήνα</span></div>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '30px 36px 36px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `3px solid ${VF_RED}`, paddingBottom: 14, marginBottom: 26 }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 2, color: VF_RED, textTransform: 'uppercase' }}>Η προσφορά σου</div>
+              <div style={{ fontSize: 30, fontWeight: 900, color: '#111', marginTop: 4 }}>{item.customerName}</div>
             </div>
-            {l.connectionType && (
-              <div style={{ fontSize: 13.5, color: '#555', marginTop: 8 }}>
-                {l.connectionType === 'portability' ? `Μεταφορά αριθμού από ${l.previousProvider || 'άλλον πάροχο'}` : 'Νέα σύνδεση'}
-              </div>
-            )}
-            {typeof l.previousPrice === 'number' && l.previousPrice > (l.price || 0) && (
-              <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 14px', fontSize: 14.5, color: '#15803d', fontWeight: 800 }}>
-                💰 Εξοικονομείς {formatNumber(l.previousPrice - (l.price || 0), 2)} €/μήνα σε σχέση με πριν
-              </div>
-            )}
+            <div style={{ textAlign: 'right', fontSize: 12, color: '#777' }}>{formatDate(item.createdAt)}</div>
           </div>
-        ))}
 
-        {(item.hasGiftDevices || item.hasSubsidy) && (
-          <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
-            {item.hasGiftDevices && (
-              <div style={{ flex: 1, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: 18, textAlign: 'center' }}>
-                <div style={{ fontSize: 28 }}>🎁</div>
-                <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#9a3412' }}>Δώρο {item.giftDevicesCount} πάγι{item.giftDevicesCount === 1 ? 'ο' : 'α'}</div>
+          {lines.map(l => (
+            <div key={l.type} style={{ background: '#fff', border: '1px solid #ececec', borderLeft: `5px solid ${VF_RED}`, borderRadius: 10, padding: 22, marginBottom: 18, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ fontSize: 24, fontWeight: 900, textTransform: 'uppercase' }}>{l.plan}</div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: VF_RED }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: '#777' }}>/μήνα</span></div>
               </div>
-            )}
-            {item.hasSubsidy && (
-              <div style={{ flex: 1, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 14, padding: 18, textAlign: 'center' }}>
-                <div style={{ fontSize: 28 }}>💶</div>
-                <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#1e40af' }}>Επιδότηση {formatNumber(item.subsidyAmount || 0, 2)} €</div>
-              </div>
-            )}
-          </div>
-        )}
+              {l.connectionType && (
+                <div style={{ fontSize: 13.5, color: '#555', marginTop: 8 }}>
+                  {l.connectionType === 'portability' ? `Μεταφορά αριθμού από ${l.previousProvider || 'άλλον πάροχο'}` : 'Νέα σύνδεση'}
+                </div>
+              )}
+              {typeof l.previousPrice === 'number' && l.previousPrice > (l.price || 0) && (
+                <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 14px', fontSize: 14.5, color: '#15803d', fontWeight: 800 }}>
+                  💰 Εξοικονομείς {formatNumber(l.previousPrice - (l.price || 0), 2)} €/μήνα σε σχέση με πριν
+                </div>
+              )}
+            </div>
+          ))}
 
-        {lines.length > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', color: '#fff', borderRadius: 14, padding: '18px 22px', marginTop: 6 }}>
-            <div style={{ fontWeight: 700, fontSize: 15 }}>Συνολικό μηνιαίο κόστος</div>
-            <div style={{ fontSize: 26, fontWeight: 900 }}>{formatNumber(totalMonthly, 2)} €</div>
-          </div>
-        )}
+          {(item.hasGiftDevices || item.hasSubsidy) && (
+            <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
+              {item.hasGiftDevices && (
+                <div style={{ flex: 1, background: '#fff5f5', border: `1px solid ${VF_RED}33`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
+                  <div style={{ fontSize: 28 }}>🎁</div>
+                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: VF_RED }}>Δώρο {item.giftDevicesCount} πάγι{item.giftDevicesCount === 1 ? 'ο' : 'α'}</div>
+                </div>
+              )}
+              {item.hasSubsidy && (
+                <div style={{ flex: 1, background: '#fff5f5', border: `1px solid ${VF_RED}33`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
+                  <div style={{ fontSize: 28 }}>💶</div>
+                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: VF_RED }}>Επιδότηση {formatNumber(item.subsidyAmount || 0, 2)} €</div>
+                </div>
+              )}
+            </div>
+          )}
 
-        <div style={{ marginTop: 36, paddingTop: 16, borderTop: '1px solid #e5e5e5', fontSize: 12, color: '#999', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-          <div>{sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}</div>
-          <div>Ημ/νία εκτύπωσης: {formatDate(new Date().toISOString())}</div>
+          {lines.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: VF_RED, color: '#fff', borderRadius: 10, padding: '18px 22px', marginTop: 6 }}>
+              <div style={{ fontWeight: 700, fontSize: 15 }}>Συνολικό μηνιαίο κόστος</div>
+              <div style={{ fontSize: 26, fontWeight: 900 }}>{formatNumber(totalMonthly, 2)} €</div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: '#999', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+            <div>{sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}</div>
+            <div>Ημ/νία εκτύπωσης: {formatDate(new Date().toISOString())}</div>
+          </div>
         </div>
       </div>
     </div>
