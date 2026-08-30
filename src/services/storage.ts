@@ -5,6 +5,7 @@ const ENTRIES_KEY = 'ws_entries'
 const GOALS_KEY = 'ws_goals'
 const TASKS_KEY = 'ws_tasks'
 const PENDINGS_KEY = 'ws_pendings'
+const POWER_SELLING_KEY = 'ws_power_selling'
 
 // profile + suggestions (stored directly by Profile/AddGoal pages)
 const PROFILE_KEYS = [
@@ -26,7 +27,7 @@ const PROFILE_KEYS = [
   'ws_suggestions_goal_category',
 ]
 
-const CORE_KEYS = [ENTRIES_KEY, GOALS_KEY, TASKS_KEY, PENDINGS_KEY] as const
+const CORE_KEYS = [ENTRIES_KEY, GOALS_KEY, TASKS_KEY, PENDINGS_KEY, POWER_SELLING_KEY] as const
 const BACKUP_KEYS = [...CORE_KEYS, ...PROFILE_KEYS, 'ws_app_theme', 'ws_category_colors'] as const
 
 type StorageBackend = {
@@ -109,6 +110,21 @@ export interface DailyEntry { id: string, points:number, date:string, category?:
 export interface Goal { id: string, category?:string, title?:string, target:number, year?:number, month?:number, notes?:string, color?:string }
 export interface Task { id: string, title:string, done:boolean }
 export interface CategoryProgress { category: string, target:number, achieved:number, month:number, year:number, color?:string }
+export interface PowerSellingItem {
+  id: string
+  customerName: string
+  offerTypes: string[] // 'mobile' | 'landline'
+  mobilePlan?: string
+  mobilePrice?: number
+  landlinePlan?: string
+  landlinePrice?: number
+  hasGiftDevices: boolean
+  giftDevicesCount?: number
+  hasSubsidy: boolean
+  subsidyAmount?: number
+  notes?: string
+  createdAt?: string
+}
 export interface PendingItem {
   id: string
   customerName?: string
@@ -426,6 +442,43 @@ export async function deletePendingItem(id:string){
   if(idx===-1) return false
   arr.splice(idx,1)
   await write(PENDINGS_KEY, arr)
+  return true
+}
+
+// Power Selling entries (φόρμες πωλήσεων σε πελάτες)
+export async function loadPowerSellingItems(): Promise<PowerSellingItem[]>{
+  const all = await read<PowerSellingItem>(POWER_SELLING_KEY)
+  return all.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+}
+
+export async function savePowerSellingItem(payload: Partial<PowerSellingItem>){
+  const arr = await read<PowerSellingItem>(POWER_SELLING_KEY)
+  const p: PowerSellingItem = {
+    id: uuidv4(),
+    customerName: payload.customerName || '',
+    offerTypes: payload.offerTypes || [],
+    mobilePlan: payload.mobilePlan || '',
+    mobilePrice: typeof payload.mobilePrice === 'number' ? payload.mobilePrice : undefined,
+    landlinePlan: payload.landlinePlan || '',
+    landlinePrice: typeof payload.landlinePrice === 'number' ? payload.landlinePrice : undefined,
+    hasGiftDevices: !!payload.hasGiftDevices,
+    giftDevicesCount: payload.hasGiftDevices ? (payload.giftDevicesCount || 0) : undefined,
+    hasSubsidy: !!payload.hasSubsidy,
+    subsidyAmount: payload.hasSubsidy ? (payload.subsidyAmount || 0) : undefined,
+    notes: payload.notes || '',
+    createdAt: payload.createdAt || new Date().toISOString(),
+  }
+  arr.push(p)
+  await write(POWER_SELLING_KEY, arr)
+  return p
+}
+
+export async function deletePowerSellingItem(id: string){
+  const arr = await read<PowerSellingItem>(POWER_SELLING_KEY)
+  const idx = arr.findIndex(a => a.id === id)
+  if (idx === -1) return false
+  arr.splice(idx, 1)
+  await write(POWER_SELLING_KEY, arr)
   return true
 }
 
