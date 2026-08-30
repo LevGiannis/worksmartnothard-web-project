@@ -130,20 +130,45 @@ function buildAutoMap(rawUsers: string[], dismissed: string[]): Record<string, s
   return autoMap
 }
 
-type Category = 'mobile' | 'prepay' | 'migra' | 'home'
+type Category = 'mobile' | 'prepay' | 'home'
 
 const CATEGORY_LABELS: Record<Category, string> = {
   mobile: 'Mobile',
   prepay: 'Prepay',
-  migra: 'Migration FTTH',
   home: 'Vodafone Home',
 }
 
 const CATEGORY_COLORS: Record<Category, string> = {
   mobile: '#06b6d4',
   prepay: '#3b82f6',
-  migra: '#10b981',
   home: '#f59e0b',
+}
+
+type HomeProductType = 'ftth' | 'fttc' | 'wireless' | 'onenet'
+
+const HOME_PRODUCT_LABELS: Record<HomeProductType, string> = {
+  ftth: 'FTTH',
+  fttc: 'FTTC',
+  wireless: 'Wireless',
+  onenet: 'One Net',
+}
+
+const HOME_PRODUCT_COLORS: Record<HomeProductType, string> = {
+  ftth: '#f59e0b',
+  fttc: '#eab308',
+  wireless: '#fb923c',
+  onenet: '#facc15',
+}
+
+// Classifies a Vodafone Home entry's product type from its subCategory text
+// ("Πρόγραμμα Χρήσης · Ταχύτητα", or the original mobile subCategory for
+// reclassified Fixed Activation / One Net rows).
+function classifyHomeProduct(e: ParsedEntry): HomeProductType {
+  const sub = (e.subCategory ?? '').toUpperCase()
+  if (sub.includes('FIXED ACTIVATION')) return 'onenet'
+  if (sub.includes('WIRELESS')) return 'wireless'
+  if (sub.includes('FTTH')) return 'ftth'
+  return 'fttc'
 }
 
 interface ParsedEntry {
@@ -163,7 +188,6 @@ interface ParsedEntry {
 function detectCategory(headers: string[]): Category | null {
   if (headers.includes('Ημ/νία Αίτησης') && headers.includes('Τύπος Αίτησης')) return 'mobile'
   if (headers.includes('MSISDN')) return 'prepay'
-  if (headers.includes('Κωδ. Χρήστη')) return 'migra'
   if (headers.includes('Τηλέφωνο Υπηρεσίας')) return 'home'
   return null
 }
@@ -234,17 +258,6 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
             implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης'))
-          } else if (cat === 'migra') {
-            user = String(get(row, 'Κωδ. Χρήστη') ?? '')
-            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
-            status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
-            customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
-            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
-            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης (Από - Έως)'))
-            const speedBefore = String(get(row, 'Ταχύτητα πριν το Retention') ?? '')
-            const speedAfter = String(get(row, 'Επιλεγμένη Ταχύτητα') ?? '')
-            if (!speedAfter.toUpperCase().includes('FTTH') || speedBefore.toUpperCase().includes('FTTH')) continue
-            subCategory = speedAfter.trim()
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
@@ -290,7 +303,7 @@ function isMobileCountable(e: ParsedEntry): boolean {
 function isDone(e: ParsedEntry): boolean {
   const s = e.status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')) return true
-  if ((e.category === 'home' || e.category === 'migra') && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
+  if (e.category === 'home' && s.includes('ΥΛΟΠΟΙΗΜΕΝΗ')) return true
   return false
 }
 
@@ -753,7 +766,7 @@ export default function ManagerPage() {
   const shopCodeMap = new Map<string, Set<Category>>()
   entries.forEach(e => { if (e.shopCode) { if (!shopCodeMap.has(e.shopCode)) shopCodeMap.set(e.shopCode, new Set()); shopCodeMap.get(e.shopCode)!.add(e.category) } })
   const allShopCodes = [...shopCodeMap.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  const cats: Category[] = ['mobile', 'prepay', 'migra', 'home']
+  const cats: Category[] = ['mobile', 'prepay', 'home']
 
   const shopPassFilter = (e: ParsedEntry) => {
     if (e.shopCode) {
@@ -803,7 +816,7 @@ export default function ManagerPage() {
     return isMobileCountable(e)
   })
   const doneMonthEntries = viewEntries.filter(e => {
-    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+    const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
     if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
     return isMobileCountable(e) && isDone(e)
   })
@@ -832,7 +845,7 @@ export default function ManagerPage() {
   const prevYear = mMonth === 1 ? mYear - 1 : mYear
   const prevM = mMonth === 1 ? 12 : mMonth - 1
   const prevDoneEntries = viewEntries.filter(e => {
-    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+    const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
     if (!d) return false
     return d.getFullYear() === prevYear && d.getMonth() + 1 === prevM && isMobileCountable(e) && isDone(e)
   })
@@ -863,7 +876,6 @@ export default function ManagerPage() {
       if (u !== 0) return u
       return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0)
     })
-  const migraPending = viewEntries.filter(e => e.category === 'migra' && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)))
     .filter(e => shopPassFilter(e))
@@ -871,17 +883,30 @@ export default function ManagerPage() {
       const s = e.status.toUpperCase()
       if (e.category === 'home') return !s.includes('ΥΛΟΠΟΙΗΜΕΝΗ') && !s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
       if (e.category === 'mobile') return !s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ') && !s.includes('ΠΡΟΕΓΚΡΙΣΗ')
-      if (e.category === 'migra') return s.includes('ΚΑΤΑΧΩΡΗΜΕΝΗ')
       return false
     })
-  const pendingByUser = (arr: ParsedEntry[]): [string, number][] => {
-    const m = new Map<string, number>()
-    for (const e of arr) { const u = effectiveName(e.user); m.set(u, (m.get(u) ?? 0) + 1) }
-    return [...m.entries()].sort((a, b) => b[1] - a[1])
-  }
+
+  // ── Vodafone Home: two monthly views ──
+  // "Συνδεδεμένα μήνα" — every Home entry implemented (Κ5) this month, regardless
+  // of when it was registered, broken down by product type (FTTH/FTTC/Wireless/One Net).
+  const homeConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'home')
+  const homeConnectedByType: Record<HomeProductType, ParsedEntry[]> = { ftth: [], fttc: [], wireless: [], onenet: [] }
+  homeConnectedThisMonth.forEach(e => homeConnectedByType[classifyHomeProduct(e)].push(e))
+
+  // "Μετράνε στον στόχο μήνα" — FTTC/Wireless/One Net implemented this month count as-is;
+  // FTTH only counts here if it was BOTH registered and implemented this month, plus any
+  // FTTH registered this month that is still ΥΠΟ ΥΛΟΠΟΙΗΣΗ (pipeline credit).
+  const isInMonth = (d: Date | null | undefined, y: number, m: number) => !!d && d.getFullYear() === y && d.getMonth() + 1 === m
+  const homeCountedNonFtth = [...homeConnectedByType.fttc, ...homeConnectedByType.wireless, ...homeConnectedByType.onenet]
+  const homeCountedFtthConnected = homeConnectedByType.ftth.filter(e => isInMonth(e.date, mYear, mMonth))
+  const homeFtthPendingThisMonth = viewEntries.filter(e =>
+    e.category === 'home' && classifyHomeProduct(e) === 'ftth' &&
+    isInMonth(e.date, mYear, mMonth) && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+  )
+  const homeCountedEntries = [...homeCountedNonFtth, ...homeCountedFtthConnected, ...homeFtthPendingThisMonth]
 
   const handleExportMonthly = () => {
-    const catOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
+    const catOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2 }
     const source = exportMode === 'done'
       ? effectiveDoneMonthEntries
       : viewEntries.filter(e => e.date && e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth)
@@ -957,11 +982,11 @@ export default function ManagerPage() {
 
   const handleExportComparison = () => {
     if (!stores.length) return
-    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, migra: 2, home: 3 }
+    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, home: 2 }
     const storeDoneEntries = (storeId: string) => {
       const se = entries.filter(e => e.storeId === storeId)
       const done = se.filter(e => {
-        const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+        const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
         if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
         return isMobileCountable(e) && isDone(e)
       })
@@ -1009,7 +1034,7 @@ export default function ManagerPage() {
     const wb = XLSX.utils.book_new()
     const categoryLabel = categories.length === 1 ? CATEGORY_LABELS[categories[0]] : 'Όλα'
 
-    const exportCatOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
+    const exportCatOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2 }
 
     allUsers.forEach(user => {
       const userEntries = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && categories.includes(e.category))
@@ -1275,7 +1300,7 @@ export default function ManagerPage() {
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.95rem' }}>Ανέβασμα αρχείων Excel</div>
-                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Migration FTTH · Vodafone Home</div>
+                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Vodafone Home</div>
                 </div>
               </div>
               <label style={{ cursor: 'pointer' }}>
@@ -1380,7 +1405,7 @@ export default function ManagerPage() {
                     Mobile
                   </button>
                   <button
-                    onClick={() => exportByCategory(['home', 'mobile', 'prepay', 'migra'])}
+                    onClick={() => exportByCategory(['home', 'mobile', 'prepay'])}
                     style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid rgba(16,185,129,0.4)', background: 'rgba(16,185,129,0.1)', color: '#10b981', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><polyline points="7 10 12 15 17 10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
@@ -1521,7 +1546,7 @@ export default function ManagerPage() {
                   <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Ολοκληρωμένα — {monthLabel}</div>
                   <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)' }}>Δ vs προηγούμενο μήνα</div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cats.length}, 1fr)`, gap: 12 }}>
                   {cats.map(c => {
                     const done = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
                     const reg = countEntries(regMonthEntries.filter(e => e.category === c))
@@ -1560,8 +1585,60 @@ export default function ManagerPage() {
                 </div>
               </div>
 
+              {/* Vodafone Home — two monthly analysis windows */}
+              {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {
+                const homeColor = CATEGORY_COLORS.home
+                const productOrder: HomeProductType[] = ['ftth', 'fttc', 'wireless', 'onenet']
+                const renderProductRow = (type: HomeProductType, count: number) => (
+                  <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                    <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS[type], flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>{HOME_PRODUCT_LABELS[type]}</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS[type] }}>{countEntries(homeConnectedByType[type])}</span>
+                  </div>
+                )
+                const homeFtthConnectedNotCounted = homeConnectedByType.ftth.filter(e => !isInMonth(e.date, mYear, mMonth))
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
+                    {/* Window A: all connected this month, by product type, regardless of registration date */}
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Συνδεδεμένα Μήνα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ό,τι συνδέθηκε (Κ5) τον μήνα, ανεξαρτήτως πότε καταχωρήθηκε</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeConnectedThisMonth)}</div>
+                      {productOrder.map(type => renderProductRow(type, countEntries(homeConnectedByType[type])))}
+                    </div>
+
+                    {/* Window B: official monthly KPI count */}
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Μετράνε στον Μήνα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα&συνδεδεμένα ή σε Υπό Υλοποίηση</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeCountedEntries)}</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS.fttc, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTC · Wireless · One Net</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS.fttc }}>{countEntries(homeCountedNonFtth)}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS.ftth, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTH — καταχωρήθηκε &amp; συνδέθηκε</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS.ftth }}>{countEntries(homeCountedFtthConnected)}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTH — Υπό Υλοποίηση</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#3b82f6' }}>{countEntries(homeFtthPendingThisMonth)}</span>
+                      </div>
+                      {homeFtthConnectedNotCounted.length > 0 && (
+                        <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.25)', marginTop: 10 }}>
+                          {countEntries(homeFtthConnectedNotCounted)} FTTH συνδέθηκαν αυτόν τον μήνα αλλά καταχωρήθηκαν άλλον μήνα — δεν μετράνε εδώ
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+
               {/* Pending / Under implementation panel */}
-              {(mobilePending.length > 0 || homePending.length > 0 || migraPending.length > 0) && (
+              {(mobilePending.length > 0 || homePending.length > 0) && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σε εκκρεμότητα</div>
@@ -1636,28 +1713,6 @@ export default function ManagerPage() {
                               >
                                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)' }}>{user}</span>
                                 <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{ues.length}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                    {migraPending.length > 0 && (() => {
-                      const label = 'Migration FTTH — Υπό Υλοποίηση'
-                      const color = CATEGORY_COLORS.migra
-                      const byUser = pendingByUser(migraPending)
-                      return (
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{migraPending.length} σύνολο</span>
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, paddingLeft: 16 }}>
-                            {byUser.map(([user, count]) => (
-                              <div key={user} style={{ padding: '6px 14px', borderRadius: 8, background: `${color}12`, border: `1px solid ${color}35`, display: 'flex', alignItems: 'center', gap: 10 }}>
-                                <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.6)' }}>{user}</span>
-                                <span style={{ fontWeight: 800, fontSize: '0.95rem', color }}>{count}</span>
                               </div>
                             ))}
                           </div>
@@ -1760,7 +1815,7 @@ export default function ManagerPage() {
                     if (e.storeId !== storeId) return false
                     if (!shopPassFilter(e)) return false
                     if (appliedExcludedUsers.has(effectiveName(e.user))) return false
-                    const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+                    const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
                     if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
                     return isMobileCountable(e) && isDone(e)
                   })
@@ -2064,7 +2119,7 @@ export default function ManagerPage() {
               const storeDoneMonth = (storeId: string): ParsedEntry[] => {
                 const se = entries.filter(e => e.storeId === storeId && shopPassFilter(e) && !appliedExcludedUsers.has(effectiveName(e.user)))
                 const done = se.filter(e => {
-                  const d = (e.category === 'home' || e.category === 'migra') ? e.implDate : (e.implDate || e.date)
+                  const d = e.category === 'home' ? e.implDate : (e.implDate || e.date)
                   if (!d || !(d.getFullYear() === mYear && d.getMonth() + 1 === mMonth)) return false
                   return isMobileCountable(e) && isDone(e)
                 })

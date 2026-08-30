@@ -6,7 +6,7 @@ Branch: `main`
 ## Executive Summary
 
 - Το project είναι λειτουργικό ως **Web SPA (Vite/React)** και ως **Portable offline** build (double‑click `portable/index.html`).
-- Η σελίδα **Manager** έχει επεκταθεί σημαντικά με πλήρη ανάλυση αρχείων Excel (Mobile, Prepay, Migration FTTH, Vodafone Home), μηνιαία/ημερήσια views, targets, και export.
+- Η σελίδα **Manager** έχει επεκταθεί σημαντικά με πλήρη ανάλυση αρχείων Excel (Mobile, Prepay, Vodafone Home), μηνιαία/ημερήσια views, targets, και export.
 - Κύρια "τριβή" σε portable διανομή: σε ορισμένα περιβάλλοντα, το browser storage σε `file://` μπορεί να καθαρίζεται/μπλοκάρεται.
 
 ---
@@ -51,7 +51,6 @@ Notes:
 |-------|-----------------|------------|
 | Mobile | `Ημ/νία Αίτησης` | Μετρεί συνδέσεις από `Αριθμός Συνδέσεων` |
 | Prepay | `MSISDN` | |
-| Migration FTTH | `Κωδ. Χρήστη` | Φίλτρο: πριν μη-FTTH → μετά FTTH |
 | Vodafone Home | `Τηλέφωνο Υπηρεσίας` | |
 
 ### Κανόνες κατηγοριοποίησης
@@ -61,7 +60,11 @@ Notes:
 
 **Mobile PORT IN PREPAY**: εξαιρείται από mobile counts, αλλά αν ολοκληρωθεί μετρά ως **prepay**.
 
-**Migration FTTH**: λαμβάνεται υπόψη μόνο αν η ταχύτητα πριν (`Ταχύτητα πριν το Retention`) δεν είναι FTTH και η ταχύτητα μετά (`Επιλεγμένη Ταχύτητα`) είναι FTTH.
+**Mobile FIXED ACTIVATION**: εξαιρείται από mobile counts, αλλά αν ολοκληρωθεί μετρά ως **Vodafone Home / One Net**.
+
+**Vodafone Home — ταξινόμηση προϊόντος** (`classifyHomeProduct`): One Net (reclassified Fixed Activation) → Wireless (`Προγραμμά Χρήσης` περιέχει `Wireless`) → FTTH (`Ταχύτητα` περιέχει `FTTH`) → FTTC (fallback). Βλ. `MANAGER_LOGIC.md` για τη λογική των δύο μηνιαίων παραθύρων ("Συνδεδεμένα Μήνα" vs "Μετράνε στον Μήνα").
+
+> Η κατηγορία **Migration FTTH** καταργήθηκε (δεν αναγνωρίζεται πλέον καθόλου — τα αρχεία της απλά αγνοούνται στο upload).
 
 ### Αποκλεισμοί (viewEntries)
 Εξαιρούνται παντού εγγραφές με status:
@@ -76,10 +79,10 @@ Notes:
 | Κατηγορία | Συνθήκες |
 |-----------|---------|
 | Όλες | status περιέχει `ΟΛΟΚΛΗΡΩΘΗΚΕ` ή `ΥΠΟ ΥΛΟΠΟΙΗΣΗ` |
-| home, migra | επιπλέον: status περιέχει `ΥΛΟΠΟΙΗΜΕΝΗ` |
+| home | επιπλέον: status περιέχει `ΥΛΟΠΟΙΗΜΕΝΗ` |
 
 Ημερομηνία αναφοράς ανά κατηγορία:
-- **home / migra**: `implDate` (Ημ/νία Ολοκλήρωσης)
+- **home**: `implDate` (Ημ/νία Ολοκλήρωσης / Κ5)
 - **mobile**: `Ημερομηνία Έγκρισης`
 - **prepay**: `implDate || date`
 
@@ -93,7 +96,8 @@ Notes:
 **Μηνιαία (all users)**:
 - Καταχωρήσεις vs στόχο (ανά κατηγορία, με progress bar)
 - Ολοκληρωμένα/Συνδεδεμένα vs στόχο (ανά κατηγορία, με progress bar)
-- Panel εκκρεμοτήτων: Mobile Προέγκριση · Home Υπό Υλοποίηση · Migra Υπό Υλοποίηση (counts ανά χρήστη)
+- Panel εκκρεμοτήτων: Mobile Προέγκριση · Home Υπό Υλοποίηση (counts ανά χρήστη)
+- Vodafone Home — δύο παράθυρα ανάλυσης: "Συνδεδεμένα Μήνα" (ανά τύπο FTTH/FTTC/Wireless/One Net, ανεξαρτήτως καταχώρησης) και "Μετράνε στον Μήνα" (επίσημο KPI — FTTH μόνο αν καταχωρήθηκε+συνδέθηκε ίδιο μήνα, ή σε ΥΠΟ ΥΛΟΠΟΙΗΣΗ)
 - Panel **δικαιολογητικών Home**: λίστα αιτήσεων με `ΛΑΘΟΣ/ΕΛΛΙΠΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ` ή `ΕΚΚΡΕΜΗ ΔΙΚΑΙΟΛΟΓΗΤΙΚΑ` (πελάτης + παραγγελία + status)
 - Πίνακας χρηστών (done / σύνολο ανά κατηγορία)
 - Αναλυτική λίστα ανά χρήστη: done entries (έντονα) + reg-only entries (faded), με πελάτη, παραγγελία, subCategory
@@ -129,7 +133,7 @@ Notes:
 
 ### Resolved since last audit
 - ✅ README ανανεώθηκε με πλήρες feature list, tech stack, project structure
-- ✅ Manager page: πλήρης λογική Mobile/Prepay/Migra/Home με σωστά φίλτρα
+- ✅ Manager page: πλήρης λογική Mobile/Prepay/Home με σωστά φίλτρα
 - ✅ Αποκλεισμός ακυρωμένων/νέων/απορριφθέντων παντού
 - ✅ Εμφάνιση πελάτη + παραγγελίας σε όλα τα views
 - ✅ Export Excel μηνιαίων δεδομένων
