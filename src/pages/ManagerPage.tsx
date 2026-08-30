@@ -504,6 +504,7 @@ export default function ManagerPage() {
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
   const [pendingModal, setPendingModal] = useState<{ user: string; entries: ParsedEntry[]; color: string } | null>(null)
+  const [userDrilldownModal, setUserDrilldownModal] = useState<{ user: string; color: string; groups: { label: string; entries: ParsedEntry[] }[] } | null>(null)
   const [docFromDate, setDocFromDate] = useState<string>('')
   const [pendingFromDate, setPendingFromDate] = useState<string>('')
   const toggleExclude = (u: string) => setExcludedUsers(prev => { const n = new Set(prev); n.has(u) ? n.delete(u) : n.add(u); return n })
@@ -1175,6 +1176,53 @@ export default function ManagerPage() {
                   </div>
                 )
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {userDrilldownModal && (
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+          onClick={() => setUserDrilldownModal(null)}
+        >
+          <div
+            style={{ background: '#1e2535', borderRadius: 14, padding: 24, maxWidth: 420, width: '100%', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.5)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: userDrilldownModal.color, flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, color: userDrilldownModal.color, fontSize: '0.9rem' }}>{userDrilldownModal.user}</span>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>
+                {userDrilldownModal.groups.reduce((sum, g) => sum + countEntries(g.entries), 0)} κομμάτια
+              </span>
+              <button onClick={() => setUserDrilldownModal(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {userDrilldownModal.groups.map(g => (
+                <div
+                  key={g.label}
+                  onClick={() => {
+                    const { user, color } = userDrilldownModal
+                    setUserDrilldownModal(null)
+                    setPendingModal({
+                      user: `${user} — ${g.label}`,
+                      color,
+                      entries: [...g.entries].sort((a, b) => {
+                        const da = a.date || a.implDate, db = b.date || b.implDate
+                        if (!da && !db) return 0
+                        if (!da) return 1
+                        if (!db) return -1
+                        return db.getTime() - da.getTime()
+                      }),
+                    })
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 12px', borderRadius: 8, background: `${userDrilldownModal.color}0d`, border: `1px solid ${userDrilldownModal.color}25` }}
+                >
+                  <span style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.75)', flex: 1 }}>{g.label}</span>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: userDrilldownModal.color }}>{countEntries(g.entries)}</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -1964,14 +2012,28 @@ export default function ManagerPage() {
                       return db.getTime() - da.getTime()
                     }),
                   })
-                  const renderMiniPie = (title: string, slices: PieSlice[]) => (
+                  // Clicking a seller slice first shows their own product breakdown;
+                  // clicking a product within that opens the exact request list.
+                  const openUserDrilldown = (s: PieSlice) => {
+                    const bySub = new Map<string, ParsedEntry[]>()
+                    for (const e of s.entries) {
+                      const label = formatLabel(e.subCategory ?? '—')
+                      if (!bySub.has(label)) bySub.set(label, [])
+                      bySub.get(label)!.push(e)
+                    }
+                    const groups = [...bySub.entries()]
+                      .map(([label, es]) => ({ label, entries: es }))
+                      .sort((a, b) => countEntries(b.entries) - countEntries(a.entries))
+                    setUserDrilldownModal({ user: s.label, color: s.color, groups })
+                  }
+                  const renderMiniPie = (title: string, slices: PieSlice[], onClick: (s: PieSlice) => void = openSlice) => (
                     <div key={title} style={{ flex: 1, minWidth: 220 }}>
                       <div style={{ fontSize: '0.66rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>{title}</div>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                        <PieChart slices={slices} size={124} onSliceClick={i => openSlice(slices[i])} />
+                        <PieChart slices={slices} size={124} onSliceClick={i => onClick(slices[i])} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 140 }}>
                           {slices.map(s => (
-                            <div key={s.label} onClick={() => openSlice(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '3px 6px', borderRadius: 6, background: `${s.color}0d` }}>
+                            <div key={s.label} onClick={() => onClick(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '3px 6px', borderRadius: 6, background: `${s.color}0d` }}>
                               <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
                               <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.68)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
                               <span style={{ fontSize: '0.72rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
@@ -1985,7 +2047,7 @@ export default function ManagerPage() {
                   return (
                     <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 4 }}>
                       {renderMiniPie('Ανά προϊόν', productSlices)}
-                      {renderMiniPie('Ανά πωλητή', userSlices)}
+                      {renderMiniPie('Ανά πωλητή', userSlices, openUserDrilldown)}
                     </div>
                   )
                 }
