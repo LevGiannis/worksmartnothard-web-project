@@ -1612,11 +1612,9 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Μετράνε στον Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα&συνδεδεμένα ή σε Υπό Υλοποίηση</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeCountedEntries)}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS.fttc, flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTC · Wireless · One Net</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS.fttc }}>{countEntries(homeCountedNonFtth)}</span>
-                      </div>
+                      {renderProductRow('fttc', countEntries(homeConnectedByType.fttc))}
+                      {renderProductRow('wireless', countEntries(homeConnectedByType.wireless))}
+                      {renderProductRow('onenet', countEntries(homeConnectedByType.onenet))}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS.ftth, flexShrink: 0 }} />
                         <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTH — καταχωρήθηκε &amp; συνδέθηκε</span>
@@ -1637,6 +1635,29 @@ export default function ManagerPage() {
                 )
               })()}
 
+              {/* Vodafone Home — status breakdown before Υπό Υλοποίηση */}
+              {(() => {
+                const homeDocIssues = docIssues.filter(e => e.category === 'home')
+                if (!homeDocIssues.length) return null
+                const byStatus = new Map<string, number>()
+                for (const e of homeDocIssues) {
+                  const s = e.status.trim() || '—'
+                  byStatus.set(s, (byStatus.get(s) ?? 0) + 1)
+                }
+                const rows = [...byStatus.entries()].sort((a, b) => b[1] - a[1])
+                return (
+                  <div className="panel-card" style={{ padding: '14px 20px', marginBottom: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Home — πριν το Υπό Υλοποίηση</span>
+                    {rows.map(([status, count]) => (
+                      <span key={status} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `${statusColor(status)}18`, border: `1px solid ${statusColor(status)}40`, color: statusColor(status) }}>
+                        {count} {status}
+                      </span>
+                    ))}
+                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{homeDocIssues.length} σύνολο</span>
+                  </div>
+                )
+              })()}
+
               {/* Pending / Under implementation panel */}
               {(mobilePending.length > 0 || homePending.length > 0) && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
@@ -1652,71 +1673,57 @@ export default function ManagerPage() {
                       <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                    {mobilePending.length > 0 && (() => {
-                      const color = CATEGORY_COLORS.mobile
-                      const filtered = pendingFromDate
-                        ? mobilePending.filter(e => e.date != null && e.date >= new Date(pendingFromDate))
-                        : mobilePending
-                      const byUser = new Map<string, typeof mobilePending>()
-                      for (const e of filtered) {
-                        const u = effectiveName(e.user)
-                        if (!byUser.has(u)) byUser.set(u, [])
-                        byUser.get(u)!.push(e)
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    {(() => {
+                      const renderPendingList = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
+                        if (!all.length) return null
+                        const filtered = pendingFromDate
+                          ? all.filter(e => { const d = dateOf(e); return d != null && d >= new Date(pendingFromDate) })
+                          : all
+                        if (!filtered.length) return null
+                        const byUser = new Map<string, ParsedEntry[]>()
+                        for (const e of filtered) {
+                          const u = effectiveName(e.user)
+                          if (!byUser.has(u)) byUser.set(u, [])
+                          byUser.get(u)!.push(e)
+                        }
+                        const sortedUsers = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
+                        return (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 16 }}>
+                              {sortedUsers.map(([user, ues]) => {
+                                const sorted = [...ues].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() })
+                                return (
+                                  <div key={user} style={{ padding: '8px 12px', borderRadius: 8, background: `${color}0a`, border: `1px solid ${color}25` }}>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
+                                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{user}</span>
+                                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color }}>{ues.length}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                      {sorted.map((e, idx) => (
+                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.76rem' }}>
+                                          <span style={{ color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{e.customer || '—'}</span>
+                                          {dateOf(e) && <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.22)', flexShrink: 0 }}>{formatDate(dateOf(e)!)}</span>}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )
                       }
                       return (
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Mobile — Προέγκριση</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 16 }}>
-                            {[...byUser.entries()].map(([user, ues]) => (
-                              <div
-                                key={user}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 7, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer' }}
-                                onClick={() => setPendingModal({ user, color, entries: [...ues].sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return b.date.getTime() - a.date.getTime() }) })}
-                              >
-                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)' }}>{user}</span>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{ues.length}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })()}
-                    {homePending.length > 0 && (() => {
-                      const color = CATEGORY_COLORS.home
-                      const filtered = pendingFromDate
-                        ? homePending.filter(e => { const d = e.date || e.implDate; return d != null && d >= new Date(pendingFromDate) })
-                        : homePending
-                      const byUser = new Map<string, typeof homePending>()
-                      for (const e of filtered) {
-                        const u = effectiveName(e.user)
-                        if (!byUser.has(u)) byUser.set(u, [])
-                        byUser.get(u)!.push(e)
-                      }
-                      return (
-                        <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>Vodafone Home — Υπό Υλοποίηση</span>
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, paddingLeft: 16 }}>
-                            {[...byUser.entries()].map(([user, ues]) => (
-                              <div
-                                key={user}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 7, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer' }}
-                                onClick={() => setPendingModal({ user, color, entries: [...ues].sort((a, b) => { const da = a.date || a.implDate, db = b.date || b.implDate; if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }) })}
-                              >
-                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)' }}>{user}</span>
-                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{ues.length}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
+                        <>
+                          {renderPendingList('Mobile — Προέγκριση', mobilePending, CATEGORY_COLORS.mobile, e => e.date)}
+                          {renderPendingList('Vodafone Home — Υπό Υλοποίηση', homePending, CATEGORY_COLORS.home, e => e.date || e.implDate)}
+                        </>
                       )
                     })()}
                   </div>
