@@ -110,19 +110,33 @@ export interface DailyEntry { id: string, points:number, date:string, category?:
 export interface Goal { id: string, category?:string, title?:string, target:number, year?:number, month?:number, notes?:string, color?:string }
 export interface Task { id: string, title:string, done:boolean }
 export interface CategoryProgress { category: string, target:number, achieved:number, month:number, year:number, color?:string }
+export type ConnectionType = 'new' | 'portability'
+export interface PowerSellingComment {
+  id: string
+  text: string
+  createdAt: string
+}
 export interface PowerSellingItem {
   id: string
   customerName: string
+  contactPhone: string
+  afm?: string
   offerTypes: string[] // 'mobile' | 'landline'
   mobilePlan?: string
   mobilePrice?: number
+  mobileConnectionType?: ConnectionType
+  mobilePreviousProvider?: string
+  mobilePreviousPrice?: number
   landlinePlan?: string
   landlinePrice?: number
+  landlineConnectionType?: ConnectionType
+  landlinePreviousProvider?: string
+  landlinePreviousPrice?: number
   hasGiftDevices: boolean
   giftDevicesCount?: number
   hasSubsidy: boolean
   subsidyAmount?: number
-  notes?: string
+  comments: PowerSellingComment[]
   createdAt?: string
 }
 export interface PendingItem {
@@ -446,31 +460,69 @@ export async function deletePendingItem(id:string){
 }
 
 // Power Selling entries (φόρμες πωλήσεων σε πελάτες)
+function normalizePowerSellingItem(it: any): PowerSellingItem {
+  const comments: PowerSellingComment[] = Array.isArray(it.comments)
+    ? it.comments
+    : (it.notes ? [{ id: uuidv4(), text: String(it.notes), createdAt: it.createdAt || new Date().toISOString() }] : [])
+  return {
+    id: it.id || uuidv4(),
+    customerName: it.customerName || '',
+    contactPhone: it.contactPhone || '',
+    afm: it.afm || '',
+    offerTypes: Array.isArray(it.offerTypes) ? it.offerTypes : [],
+    mobilePlan: it.mobilePlan || '',
+    mobilePrice: typeof it.mobilePrice === 'number' ? it.mobilePrice : undefined,
+    mobileConnectionType: it.mobileConnectionType || undefined,
+    mobilePreviousProvider: it.mobilePreviousProvider || '',
+    mobilePreviousPrice: typeof it.mobilePreviousPrice === 'number' ? it.mobilePreviousPrice : undefined,
+    landlinePlan: it.landlinePlan || '',
+    landlinePrice: typeof it.landlinePrice === 'number' ? it.landlinePrice : undefined,
+    landlineConnectionType: it.landlineConnectionType || undefined,
+    landlinePreviousProvider: it.landlinePreviousProvider || '',
+    landlinePreviousPrice: typeof it.landlinePreviousPrice === 'number' ? it.landlinePreviousPrice : undefined,
+    hasGiftDevices: !!it.hasGiftDevices,
+    giftDevicesCount: it.hasGiftDevices ? (it.giftDevicesCount || 0) : undefined,
+    hasSubsidy: !!it.hasSubsidy,
+    subsidyAmount: it.hasSubsidy ? (it.subsidyAmount || 0) : undefined,
+    comments,
+    createdAt: it.createdAt || new Date().toISOString(),
+  }
+}
+
 export async function loadPowerSellingItems(): Promise<PowerSellingItem[]>{
-  const all = await read<PowerSellingItem>(POWER_SELLING_KEY)
-  return all.slice().sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+  const raw = await read<any>(POWER_SELLING_KEY)
+  const all = raw.map(normalizePowerSellingItem)
+  return all.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
 }
 
 export async function savePowerSellingItem(payload: Partial<PowerSellingItem>){
-  const arr = await read<PowerSellingItem>(POWER_SELLING_KEY)
-  const p: PowerSellingItem = {
-    id: uuidv4(),
-    customerName: payload.customerName || '',
-    offerTypes: payload.offerTypes || [],
-    mobilePlan: payload.mobilePlan || '',
-    mobilePrice: typeof payload.mobilePrice === 'number' ? payload.mobilePrice : undefined,
-    landlinePlan: payload.landlinePlan || '',
-    landlinePrice: typeof payload.landlinePrice === 'number' ? payload.landlinePrice : undefined,
-    hasGiftDevices: !!payload.hasGiftDevices,
-    giftDevicesCount: payload.hasGiftDevices ? (payload.giftDevicesCount || 0) : undefined,
-    hasSubsidy: !!payload.hasSubsidy,
-    subsidyAmount: payload.hasSubsidy ? (payload.subsidyAmount || 0) : undefined,
-    notes: payload.notes || '',
-    createdAt: payload.createdAt || new Date().toISOString(),
-  }
+  const arr = await read<any>(POWER_SELLING_KEY)
+  const p = normalizePowerSellingItem({ ...payload, id: uuidv4(), createdAt: payload.createdAt || new Date().toISOString() })
   arr.push(p)
   await write(POWER_SELLING_KEY, arr)
   return p
+}
+
+export async function updatePowerSellingItem(id: string, patch: Partial<PowerSellingItem>): Promise<PowerSellingItem | null> {
+  const arr = await read<any>(POWER_SELLING_KEY)
+  const idx = arr.findIndex((a: any) => a.id === id)
+  if (idx === -1) return null
+  const updated = normalizePowerSellingItem({ ...arr[idx], ...patch, id, comments: arr[idx].comments })
+  arr[idx] = updated
+  await write(POWER_SELLING_KEY, arr)
+  return updated
+}
+
+export async function addPowerSellingComment(id: string, text: string): Promise<PowerSellingItem | null> {
+  const arr = await read<any>(POWER_SELLING_KEY)
+  const idx = arr.findIndex((a: any) => a.id === id)
+  if (idx === -1) return null
+  const normalized = normalizePowerSellingItem(arr[idx])
+  const comment: PowerSellingComment = { id: uuidv4(), text, createdAt: new Date().toISOString() }
+  normalized.comments = [...normalized.comments, comment]
+  arr[idx] = normalized
+  await write(POWER_SELLING_KEY, arr)
+  return normalized
 }
 
 export async function deletePowerSellingItem(id: string){
