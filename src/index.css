@@ -745,6 +745,16 @@ input[list] {
 /* small accessibility helpers */
 .sr-only{position:absolute !important;height:1px;width:1px;overflow:hidden;clip:rect(1px, 1px, 1px, 1px);white-space:nowrap;border:0;padding:0;margin:-1px}
 
+/* Printable customer offer: hidden on screen, the only thing visible when printing */
+@media screen {
+	.print-only-offer{ display:none }
+}
+@media print {
+	body *{ visibility:hidden }
+	.print-only-offer, .print-only-offer *{ visibility:visible; -webkit-print-color-adjust:exact; print-color-adjust:exact }
+	.print-only-offer{ position:absolute; left:0; top:0; width:100%; background:#fff }
+}
+
 /* Table zebra striping and hover */
 .stats-table tbody tr:nth-child(odd){background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00))}
 .stats-table tbody tr:hover, .entries-table tbody tr:hover{background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));transform:translateY(-2px);transition:background 140ms ease, transform 140ms ease}

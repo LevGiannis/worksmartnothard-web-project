@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { formatNumber } from '../utils/formatNumber'
+import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 import {
   loadPowerSellingItems, savePowerSellingItem, updatePowerSellingItem, deletePowerSellingItem, addPowerSellingComment,
   PowerSellingItem, ConnectionType,
@@ -108,6 +109,90 @@ function formatDateTime(d?: string) {
   return new Date(d).toLocaleString('el-GR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
+const LINE_LABEL: Record<OfferType, string> = { mobile: 'Κινητή Τηλεφωνία', landline: 'Σταθερή Τηλεφωνία & Internet' }
+const LINE_ICON: Record<OfferType, string> = { mobile: '📱', landline: '☎️' }
+
+// ─── customer-facing printable offer: only what the customer needs to see, styled to stand out ──
+function PrintableOffer({ item }: { item: PowerSellingItem }) {
+  const sellerName = `${safeLocalStorageGet('ws_user_first') || ''} ${safeLocalStorageGet('ws_user_last') || ''}`.trim()
+  const store = safeLocalStorageGet('ws_user_store') || ''
+
+  const lines = (['mobile', 'landline'] as OfferType[])
+    .filter(t => item.offerTypes.includes(t))
+    .map(t => ({
+      type: t,
+      plan: t === 'mobile' ? item.mobilePlan : item.landlinePlan,
+      price: t === 'mobile' ? item.mobilePrice : item.landlinePrice,
+      connectionType: t === 'mobile' ? item.mobileConnectionType : item.landlineConnectionType,
+      previousProvider: t === 'mobile' ? item.mobilePreviousProvider : item.landlinePreviousProvider,
+      previousPrice: t === 'mobile' ? item.mobilePreviousPrice : item.landlinePreviousPrice,
+    }))
+  const totalMonthly = lines.reduce((s, l) => s + (l.price || 0), 0)
+
+  return (
+    <div className="print-only-offer">
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '32px 36px', fontFamily: 'Inter, Arial, sans-serif', color: '#111' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: '4px solid #e60000', paddingBottom: 16, marginBottom: 28 }}>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 2, color: '#e60000', textTransform: 'uppercase' }}>Η προσφορά σου</div>
+            <div style={{ fontSize: 30, fontWeight: 900, color: '#111', marginTop: 4 }}>{item.customerName}</div>
+          </div>
+          <div style={{ textAlign: 'right', fontSize: 12, color: '#777' }}>{formatDate(item.createdAt)}</div>
+        </div>
+
+        {lines.map(l => (
+          <div key={l.type} style={{ border: '1px solid #e5e5e5', borderRadius: 14, padding: 22, marginBottom: 18 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 24, fontWeight: 800 }}>{l.plan}</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#e60000' }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: '#777' }}>/μήνα</span></div>
+            </div>
+            {l.connectionType && (
+              <div style={{ fontSize: 13.5, color: '#555', marginTop: 8 }}>
+                {l.connectionType === 'portability' ? `Μεταφορά αριθμού από ${l.previousProvider || 'άλλον πάροχο'}` : 'Νέα σύνδεση'}
+              </div>
+            )}
+            {typeof l.previousPrice === 'number' && l.previousPrice > (l.price || 0) && (
+              <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 14px', fontSize: 14.5, color: '#15803d', fontWeight: 800 }}>
+                💰 Εξοικονομείς {formatNumber(l.previousPrice - (l.price || 0), 2)} €/μήνα σε σχέση με πριν
+              </div>
+            )}
+          </div>
+        ))}
+
+        {(item.hasGiftDevices || item.hasSubsidy) && (
+          <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
+            {item.hasGiftDevices && (
+              <div style={{ flex: 1, background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: 14, padding: 18, textAlign: 'center' }}>
+                <div style={{ fontSize: 28 }}>🎁</div>
+                <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#9a3412' }}>Δώρο {item.giftDevicesCount} πάγι{item.giftDevicesCount === 1 ? 'ο' : 'α'}</div>
+              </div>
+            )}
+            {item.hasSubsidy && (
+              <div style={{ flex: 1, background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 14, padding: 18, textAlign: 'center' }}>
+                <div style={{ fontSize: 28 }}>💶</div>
+                <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#1e40af' }}>Επιδότηση {formatNumber(item.subsidyAmount || 0, 2)} €</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {lines.length > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', color: '#fff', borderRadius: 14, padding: '18px 22px', marginTop: 6 }}>
+            <div style={{ fontWeight: 700, fontSize: 15 }}>Συνολικό μηνιαίο κόστος</div>
+            <div style={{ fontSize: 26, fontWeight: 900 }}>{formatNumber(totalMonthly, 2)} €</div>
+          </div>
+        )}
+
+        <div style={{ marginTop: 36, paddingTop: 16, borderTop: '1px solid #e5e5e5', fontSize: 12, color: '#999', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div>{sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}</div>
+          <div>Ημ/νία εκτύπωσης: {formatDate(new Date().toISOString())}</div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PowerSellingPage() {
   const navigate = useNavigate()
 
@@ -154,8 +239,23 @@ export default function PowerSellingPage() {
   const [commentSaving, setCommentSaving] = useState(false)
   const [deleteConfirming, setDeleteConfirming] = useState(false)
 
+  // ── print ────────────────────────────────────────────────────
+  const [printItem, setPrintItem] = useState<PowerSellingItem | null>(null)
+
   const reload = () => { setLoading(true); loadPowerSellingItems().then(all => { setItems(all); setLoading(false) }) }
   useEffect(() => { reload() }, [])
+
+  useEffect(() => {
+    if (!printItem) return
+    const t = setTimeout(() => window.print(), 50)
+    return () => clearTimeout(t)
+  }, [printItem])
+
+  useEffect(() => {
+    const onAfterPrint = () => setPrintItem(null)
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => window.removeEventListener('afterprint', onAfterPrint)
+  }, [])
 
   const toggleOfferType = (t: OfferType) => setOfferTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
 
@@ -583,7 +683,16 @@ export default function PowerSellingPage() {
                 <div key={it.id} className="panel-card" style={{ padding: 18, cursor: 'pointer' }} onClick={() => openEdit(it)}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
                     <div style={{ fontWeight: 800, fontSize: '1rem', color: '#fff' }}>{it.customerName || '—'}</div>
-                    <CategoryBadge category={category} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        type="button"
+                        title="Εκτύπωση προσφοράς"
+                        aria-label={`Εκτύπωση προσφοράς για ${it.customerName || ''}`}
+                        onClick={e => { e.stopPropagation(); setPrintItem(it) }}
+                        style={{ padding: '3px 7px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', fontSize: '0.78rem', lineHeight: 1 }}
+                      >🖨️</button>
+                      <CategoryBadge category={category} />
+                    </div>
                   </div>
                   <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>{formatDate(it.createdAt)}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
@@ -660,6 +769,10 @@ export default function PowerSellingPage() {
               )}
             </div>
 
+            <button className="btn-ghost" onClick={() => editItem && setPrintItem(editItem)} style={{ padding: '10px 0', fontWeight: 700 }}>
+              🖨️ Εκτύπωση προσφοράς για τον πελάτη
+            </button>
+
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn" disabled={editSaving} onClick={saveEdit} style={{ flex: 1, padding: '10px 0', fontWeight: 700 }}>
                 {editSaving ? 'Αποθήκευση...' : 'Αποθήκευση αλλαγών'}
@@ -696,6 +809,8 @@ export default function PowerSellingPage() {
           {toast}
         </div>
       )}
+
+      {printItem && <PrintableOffer item={printItem} />}
     </div>
   )
 }
