@@ -400,10 +400,9 @@ function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; si
   )
 }
 
-// Cumulative connections per day of the given month, from day 1 through the
-// last day of the month — days with no entries simply carry the running total
-// forward, so the series naturally flattens once there's no more data.
-function buildDailyCumulative(entries: ParsedEntry[], dateOf: (e: ParsedEntry) => Date | null | undefined, year: number, month: number): number[] {
+// Raw (non-cumulative) count per day of the given month, day 1 through the
+// last day of the month.
+function buildDailyCounts(entries: ParsedEntry[], dateOf: (e: ParsedEntry) => Date | null | undefined, year: number, month: number): number[] {
   const days = new Date(year, month, 0).getDate()
   const perDay = new Array(days).fill(0)
   for (const e of entries) {
@@ -411,10 +410,51 @@ function buildDailyCumulative(entries: ParsedEntry[], dateOf: (e: ParsedEntry) =
     if (!d || d.getFullYear() !== year || d.getMonth() + 1 !== month) continue
     perDay[d.getDate() - 1] += e.connections ?? 1
   }
+  return perDay
+}
+
+// Cumulative connections per day of the given month, from day 1 through the
+// last day of the month — days with no entries simply carry the running total
+// forward, so the series naturally flattens once there's no more data.
+function buildDailyCumulative(entries: ParsedEntry[], dateOf: (e: ParsedEntry) => Date | null | undefined, year: number, month: number): number[] {
   const cumulative: number[] = []
   let running = 0
-  for (const n of perDay) { running += n; cumulative.push(running) }
+  for (const n of buildDailyCounts(entries, dateOf, year, month)) { running += n; cumulative.push(running) }
   return cumulative
+}
+
+// Team-wide daily activity bar chart — one bar per day of the month, height
+// by count. A native <title> per bar gives a hover tooltip for free.
+function DailyBarChart({ counts, color, width = 100, height = 64 }: { counts: number[]; color: string; width?: number; height?: number }) {
+  const n = counts.length
+  if (!n) return null
+  const max = Math.max(...counts, 1)
+  const barGap = 2
+  const barW = Math.max(1, width / n - barGap)
+  const labelDays = new Set([1, n])
+  for (let d = 5; d < n; d += 5) labelDays.add(d)
+  return (
+    <div>
+      <svg width="100%" height={height} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ display: 'block', width: '100%', height }}>
+        {counts.map((c, i) => {
+          const h = (c / max) * (height - 2)
+          const x = i * (width / n) + barGap / 2
+          return (
+            <rect key={i} x={x} y={height - h} width={barW} height={h} fill={color} opacity={c > 0 ? 0.9 : 0.15} rx={1}>
+              <title>{`Ημέρα ${i + 1}: ${c}`}</title>
+            </rect>
+          )
+        })}
+      </svg>
+      <div style={{ display: 'flex', marginTop: 4 }}>
+        {counts.map((_, i) => (
+          <div key={i} style={{ flex: 1, textAlign: 'center', fontSize: '0.6rem', color: 'rgba(255,255,255,0.25)' }}>
+            {labelDays.has(i + 1) ? i + 1 : ''}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // How far actual cumulative progress is from the straight-line pace needed to
@@ -1831,6 +1871,28 @@ export default function ManagerPage() {
                   </div>
                 )
               })()}
+
+              {/* Team daily activity — registrations per day, per category */}
+              {(regMonthEntries.some(e => e.category === 'mobile') || regMonthEntries.some(e => e.category === 'home')) && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
+                  <div className="panel-card" style={{ padding: 20 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Καταχωρήσεις ανά Ημέρα</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
+                    <DailyBarChart
+                      counts={buildDailyCounts(regMonthEntries.filter(e => e.category === 'mobile'), e => e.date, mYear, mMonth)}
+                      color={categoryColors.mobile}
+                    />
+                  </div>
+                  <div className="panel-card" style={{ padding: 20 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Καταχωρήσεις ανά Ημέρα</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
+                    <DailyBarChart
+                      counts={buildDailyCounts(regMonthEntries.filter(e => e.category === 'home'), e => e.date, mYear, mMonth)}
+                      color={categoryColors.home}
+                    />
+                  </div>
+                </div>
+              )}
 
               {/* Vodafone Home — two monthly analysis windows */}
               {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {
