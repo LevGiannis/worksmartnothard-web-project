@@ -670,6 +670,8 @@ export default function ManagerPage() {
   const [storeTargets, setStoreTargets] = useState<Record<string, number>>({})
   const [expandedStores, setExpandedStores] = useState<Set<string>>(new Set())
   const [showLeaderboard, setShowLeaderboard] = useState(false)
+  const [showPendingPies, setShowPendingPies] = useState(false)
+  const [showStorePies, setShowStorePies] = useState(false)
   useEffect(() => {
     const stored = localStorage.getItem(USER_MAP_KEY)
     if (stored) {
@@ -2098,16 +2100,25 @@ export default function ManagerPage() {
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σε εκκρεμότητα</div>
-                    <input
-                      type="date"
-                      value={pendingFromDate}
-                      onChange={ev => setPendingFromDate(ev.target.value)}
-                      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
-                    />
-                    {pendingFromDate && (
-                      <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
+                    <button
+                      onClick={() => setShowPendingPies(v => !v)}
+                      style={{ marginLeft: 12, padding: '5px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: showPendingPies ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)', color: showPendingPies ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
+                    >{showPendingPies ? '▲ Απόκρυψη' : '▼ Εμφάνιση'}</button>
+                    {showPendingPies && (
+                      <>
+                        <input
+                          type="date"
+                          value={pendingFromDate}
+                          onChange={ev => setPendingFromDate(ev.target.value)}
+                          style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
+                        />
+                        {pendingFromDate && (
+                          <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
+                        )}
+                      </>
                     )}
                   </div>
+                  {showPendingPies && (
                   <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 22 }}>
                     {(() => {
                       const renderPendingPie = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
@@ -2158,6 +2169,7 @@ export default function ManagerPage() {
                       )
                     })()}
                   </div>
+                  )}
                 </div>
               )}
 
@@ -2273,6 +2285,12 @@ export default function ManagerPage() {
                         onClick={() => setShowLeaderboard(v => !v)}
                         style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: showLeaderboard ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)', color: showLeaderboard ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
                       >{showLeaderboard ? '▲ Απόκρυψη κατάταξης' : '▼ Εμφάνιση κατάταξης'}</button>
+                      {storeBreakdowns.length > 0 && (
+                        <button
+                          onClick={() => setShowStorePies(v => !v)}
+                          style={{ padding: '5px 14px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: showStorePies ? 'rgba(124,58,237,0.15)' : 'rgba(255,255,255,0.04)', color: showStorePies ? '#a78bfa' : 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', transition: 'all 150ms' }}
+                        >{showStorePies ? '▲ Απόκρυψη ανάλυσης καταστημάτων' : '▼ Εμφάνιση ανάλυσης καταστημάτων'}</button>
+                      )}
                     </div>
 
                     {/* Leaderboard (collapsible) */}
@@ -2318,8 +2336,8 @@ export default function ManagerPage() {
                       </div>
                     )}
 
-                    {/* Per-store subcategory pies */}
-                    {storeBreakdowns.map(({ s, mobileDone, homeDone }) => (
+                    {/* Per-store subcategory pies (collapsible) */}
+                    {showStorePies && storeBreakdowns.map(({ s, mobileDone, homeDone }) => (
                       <div key={s.id} className="panel-card" style={{ padding: 16 }}>
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 14 }}>{s.code}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
