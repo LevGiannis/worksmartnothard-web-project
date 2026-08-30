@@ -1815,37 +1815,32 @@ export default function ManagerPage() {
                           if (!byUser.has(u)) byUser.set(u, [])
                           byUser.get(u)!.push(e)
                         }
-                        return [...byUser.entries()].sort((a, b) => b[1].length - a[1].length).map(([user, ues]) => (
-                          <div
-                            key={user}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 7, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer' }}
-                            onClick={() => setPendingModal({ user, color, entries: sortEntries(ues) })}
-                          >
-                            <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)' }}>{user}</span>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{ues.length}</span>
-                          </div>
-                        ))
-                      }
-                      const byStatus = new Map<string, number>()
-                      for (const e of [...docHome, ...docMobile]) {
-                        const s = e.status.trim() || '—'
-                        byStatus.set(s, (byStatus.get(s) ?? 0) + 1)
-                      }
-                      const statusRows = [...byStatus.entries()].sort((a, b) => b[1] - a[1])
-                      return (
-                        <>
-                          {statusRows.length > 0 && (
-                            <div>
-                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Ανά κατάσταση</div>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {statusRows.map(([status, count]) => (
-                                  <span key={status} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `${statusColor(status)}18`, border: `1px solid ${statusColor(status)}40`, color: statusColor(status) }}>
-                                    {count} {status}
-                                  </span>
-                                ))}
+                        return [...byUser.entries()].sort((a, b) => b[1].length - a[1].length).map(([user, ues]) => {
+                          const byStatus = new Map<string, number>()
+                          for (const e of ues) {
+                            const s = e.status.trim() || '—'
+                            byStatus.set(s, (byStatus.get(s) ?? 0) + 1)
+                          }
+                          const statusRows = [...byStatus.entries()].sort((a, b) => b[1] - a[1])
+                          return (
+                            <div
+                              key={user}
+                              style={{ padding: '6px 10px', borderRadius: 7, background: `${color}12`, border: `1px solid ${color}35`, cursor: 'pointer', minWidth: 150 }}
+                              onClick={() => setPendingModal({ user, color, entries: sortEntries(ues) })}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.65)' }}>{user}</span>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 700, color }}>{ues.length}</span>
+                              </div>
+                              <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                                {statusRows.map(([status, count]) => `${count} ${status}`).join(' · ')}
                               </div>
                             </div>
-                          )}
+                          )
+                        })
+                      }
+                      return (
+                        <>
                           {docHome.length > 0 && (
                             <div>
                               <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Vodafone Home</div>
