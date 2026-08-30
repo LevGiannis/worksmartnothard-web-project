@@ -1576,6 +1576,13 @@ export default function ManagerPage() {
                   mobileConnectedBySubcat.get(key)!.push(e)
                 }
                 const subcatRows = [...mobileConnectedBySubcat.entries()].sort((a, b) => countEntries(b[1]) - countEntries(a[1]))
+                const mobilePendingBySubcat = new Map<string, ParsedEntry[]>()
+                for (const e of mobilePending) {
+                  const key = classifyMobileSubcat(e)
+                  if (!mobilePendingBySubcat.has(key)) mobilePendingBySubcat.set(key, [])
+                  mobilePendingBySubcat.get(key)!.push(e)
+                }
+                const pendingSubcatRows = [...mobilePendingBySubcat.entries()].sort((a, b) => countEntries(b[1]) - countEntries(a[1]))
                 const prepayConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
                 if (!mobileConnectedThisMonth.length && !mobilePending.length && !prepayConnectedThisMonth.length) return null
                 return (
@@ -1596,7 +1603,14 @@ export default function ManagerPage() {
                     <div className="panel-card" style={{ padding: 20 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Προέγκριση</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Αιτήσεις σε αναμονή έγκρισης</div>
-                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: mobileColor, lineHeight: 1 }}>{countEntries(mobilePending)}</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: mobileColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(mobilePending)}</div>
+                      {pendingSubcatRows.map(([key, ues]) => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: mobileColor, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>{MOBILE_SUBCAT_LABELS[key] ?? key}</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: mobileColor }}>{countEntries(ues)}</span>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="panel-card" style={{ padding: 20 }}>

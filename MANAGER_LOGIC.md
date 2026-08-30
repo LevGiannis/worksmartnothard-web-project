@@ -49,7 +49,7 @@ Status απαιτείται: **`ΟΛΟΚΛΗΡΩΘΗΚΕ`**
 Ακριβώς πάνω από τα δύο παράθυρα Vodafone Home, τρία panels δίπλα-δίπλα:
 
 - **Mobile — Συνδεδεμένα Μήνα**: όλες οι mobile εγγραφές που ολοκληρώθηκαν τον μήνα, ομαδοποιημένες ανά subcategory (`classifyMobileSubcat` — Ex Prepay, Port In Postpay/EC, New Connection/EC, Pre2EC, Prepay 2 EC), ταξινομημένες κατά πλήθος.
-- **Mobile — Προέγκριση**: σύνολο mobile αιτήσεων με status `ΠΡΟΕΓΚΡΙΣΗ` (ίδιο σύνολο με `mobilePending`, χωρίς μηνιαίο φίλτρο).
+- **Mobile — Προέγκριση**: σύνολο mobile αιτήσεων με status `ΠΡΟΕΓΚΡΙΣΗ` (ίδιο σύνολο με `mobilePending`, χωρίς μηνιαίο φίλτρο), με breakdown ανά subcategory (`classifyMobileSubcat`, ίδιο ταξινόμηση με το "Συνδεδεμένα Μήνα" — Ex Prepay, Port In Postpay/EC, New Connection/EC, Pre2EC, Prepay 2 EC).
 - **Prepay — Συνδεδεμένα Μήνα**: όλες οι prepay εγγραφές που ολοκληρώθηκαν τον μήνα, περιλαμβανομένων των Port In Prepay (reclassified από το mobile αρχείο).
 
 ---
