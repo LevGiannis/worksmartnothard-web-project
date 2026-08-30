@@ -327,15 +327,20 @@ function countEntries(arr: ParsedEntry[]): number {
   return arr.reduce((sum, e) => sum + (e.connections ?? 1), 0)
 }
 
-// Fixed-order categorical palette (validated for adjacent-pair CVD safety) plus
-// a neutral gray for the folded "Λοιποί" bucket — never a generated 6th hue.
-const PIE_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181']
-const PIE_OTHER_COLOR = '#7d8695'
+// Fixed-order categorical palette (validated for adjacent-pair CVD safety).
+const PIE_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
+// Beyond the 8 fixed hues, step around the wheel by the golden angle so any
+// number of extra series stay visually spread out instead of clustering.
+const PIE_EXTRA_HUE_STEP = 137.508
+function pieColor(index: number): string {
+  if (index < PIE_COLORS.length) return PIE_COLORS[index]
+  const hue = (index * PIE_EXTRA_HUE_STEP) % 360
+  return `hsl(${hue.toFixed(0)}, 62%, 58%)`
+}
 
 type PieSlice = { label: string; entries: ParsedEntry[]; color: string }
 
-// Groups entries by seller, keeps the top 5 by count, folds the rest into one
-// "Λοιποί" slice — keeps a pie chart within the <=6 segment part-to-whole cap.
+// One slice per seller — no folding, every user keeps their own slice.
 function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): PieSlice[] {
   const byUser = new Map<string, ParsedEntry[]>()
   for (const e of entries) {
@@ -344,15 +349,10 @@ function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => stri
     byUser.get(u)!.push(e)
   }
   const sorted = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
-  const top: PieSlice[] = sorted.slice(0, 5).map(([user, ues], i) => ({ label: user, entries: ues, color: PIE_COLORS[i] }))
-  const rest = sorted.slice(5)
-  if (rest.length) {
-    top.push({ label: `Λοιποί (${rest.length})`, entries: rest.flatMap(([, ues]) => ues), color: PIE_OTHER_COLOR })
-  }
-  return top
+  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: pieColor(i) }))
 }
 
-function PieChart({ slices, size = 108, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
+function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
   const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
   if (!total) return null
   const cx = size / 2, cy = size / 2, r = size / 2
@@ -1745,7 +1745,7 @@ export default function ManagerPage() {
                               <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
                               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap', paddingLeft: 16 }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap', paddingLeft: 16 }}>
                               <PieChart slices={slices} onSliceClick={i => openSlice(slices[i])} />
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 200 }}>
                                 {slices.map((s, i) => (
