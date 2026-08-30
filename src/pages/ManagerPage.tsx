@@ -294,6 +294,23 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
 
 const MOBILE_COUNTED_SUBCATS = ['EX PREPAY', 'PRE2EC', 'PORT IN POSTPAY', 'PORT IN EC', 'NEW CONNECTION', 'NEW EC', 'PREPAY 2 EC']
 
+const MOBILE_SUBCAT_LABELS: Record<string, string> = {
+  'EX PREPAY': 'Ex Prepay',
+  'PRE2EC': 'Pre2EC',
+  'PORT IN POSTPAY': 'Port In Postpay',
+  'PORT IN EC': 'Port In EC',
+  'NEW CONNECTION': 'New Connection',
+  'NEW EC': 'New EC',
+  'PREPAY 2 EC': 'Prepay 2 EC',
+}
+
+// Groups a mobile entry into its canonical MOBILE_COUNTED_SUBCATS bucket
+// (matches the same substring rule as isMobileCountable).
+function classifyMobileSubcat(e: ParsedEntry): string {
+  const sub = (e.subCategory ?? '').toUpperCase().trim()
+  return MOBILE_COUNTED_SUBCATS.find(s => sub.includes(s)) ?? (e.subCategory ?? '—')
+}
+
 function isMobileCountable(e: ParsedEntry): boolean {
   if (e.category !== 'mobile') return true
   const sub = (e.subCategory ?? '').toUpperCase().trim()
@@ -1584,6 +1601,50 @@ export default function ManagerPage() {
                   })}
                 </div>
               </div>
+
+              {/* Mobile — connected breakdown, pre-approval, and Prepay side by side */}
+              {(() => {
+                const mobileColor = CATEGORY_COLORS.mobile
+                const prepayColor = CATEGORY_COLORS.prepay
+                const mobileConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'mobile')
+                const mobileConnectedBySubcat = new Map<string, ParsedEntry[]>()
+                for (const e of mobileConnectedThisMonth) {
+                  const key = classifyMobileSubcat(e)
+                  if (!mobileConnectedBySubcat.has(key)) mobileConnectedBySubcat.set(key, [])
+                  mobileConnectedBySubcat.get(key)!.push(e)
+                }
+                const subcatRows = [...mobileConnectedBySubcat.entries()].sort((a, b) => countEntries(b[1]) - countEntries(a[1]))
+                const prepayConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
+                if (!mobileConnectedThisMonth.length && !mobilePending.length && !prepayConnectedThisMonth.length) return null
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 4 }}>
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Συνδεδεμένα Μήνα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ολοκληρωμένες συνδέσεις τον μήνα, ανά τύπο</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: mobileColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(mobileConnectedThisMonth)}</div>
+                      {subcatRows.map(([key, ues]) => (
+                        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: mobileColor, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>{MOBILE_SUBCAT_LABELS[key] ?? key}</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: mobileColor }}>{countEntries(ues)}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Προέγκριση</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Αιτήσεις σε αναμονή έγκρισης</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: mobileColor, lineHeight: 1 }}>{countEntries(mobilePending)}</div>
+                    </div>
+
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Συνδεδεμένα Μήνα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Περιλαμβάνει Port In Prepay από Mobile</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1 }}>{countEntries(prepayConnectedThisMonth)}</div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Vodafone Home — two monthly analysis windows */}
               {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {

@@ -44,6 +44,14 @@ Status απαιτείται: **`ΟΛΟΚΛΗΡΩΘΗΚΕ`**
 
 Αν το πεδίο `Αριθμός Συνδέσεων` > 1, χρησιμοποιείται ως πολλαπλασιαστής στο σύνολο.
 
+### Μηνιαίο panel: Mobile / Προέγκριση / Prepay
+
+Ακριβώς πάνω από τα δύο παράθυρα Vodafone Home, τρία panels δίπλα-δίπλα:
+
+- **Mobile — Συνδεδεμένα Μήνα**: όλες οι mobile εγγραφές που ολοκληρώθηκαν τον μήνα, ομαδοποιημένες ανά subcategory (`classifyMobileSubcat` — Ex Prepay, Port In Postpay/EC, New Connection/EC, Pre2EC, Prepay 2 EC), ταξινομημένες κατά πλήθος.
+- **Mobile — Προέγκριση**: σύνολο mobile αιτήσεων με status `ΠΡΟΕΓΚΡΙΣΗ` (ίδιο σύνολο με `mobilePending`, χωρίς μηνιαίο φίλτρο).
+- **Prepay — Συνδεδεμένα Μήνα**: όλες οι prepay εγγραφές που ολοκληρώθηκαν τον μήνα, περιλαμβανομένων των Port In Prepay (reclassified από το mobile αρχείο).
+
 ---
 
 ## Prepay
