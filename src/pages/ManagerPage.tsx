@@ -1939,81 +1939,53 @@ export default function ManagerPage() {
                   const done = storeMonthDone(s.id)
                   const mobileDone = done.filter(e => e.category === 'mobile' && !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY'))
                   const homeDone = done.filter(e => e.category === 'home')
-                  const mobileUsers = [...new Set(mobileDone.map(e => effectiveName(e.user)))]
-                    .sort((a, b) => countEntries(mobileDone.filter(e => effectiveName(e.user) === b)) - countEntries(mobileDone.filter(e => effectiveName(e.user) === a)))
-                  const mobileSubs = [...new Set(mobileDone.map(e => e.subCategory ?? '—'))].sort()
-                  const homeUsers = [...new Set(homeDone.map(e => effectiveName(e.user)))]
-                    .sort((a, b) => countEntries(homeDone.filter(e => effectiveName(e.user) === b)) - countEntries(homeDone.filter(e => effectiveName(e.user) === a)))
-                  const homeSubs = [...new Set(homeDone.map(e => e.subCategory ?? '—'))].sort()
-                  return { s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }
+                  return { s, mobileDone, homeDone }
                 }).filter(x => x.mobileDone.length > 0 || x.homeDone.length > 0)
 
                 if (!leaderboard.length) return null
 
-                const renderSubTable = (
+                // Two pies per category: product mix and seller mix, replacing the old dense table.
+                const renderSubPies = (
                   doneEntries: ParsedEntry[],
-                  users: string[],
-                  subs: string[],
-                  color: string,
                   formatLabel: (sub: string) => string = (sub) => sub
                 ) => {
-                  if (!users.length || !subs.length) return null
-                  const userTotal = (user: string) => countEntries(doneEntries.filter(e => effectiveName(e.user) === user))
-
-                  // Group raw subCategory values by their display label, so multiple raw names that
-                  // format to the same shown text (e.g. several "...300 FTTH" variants → "Triple Play ·
-                  // 300 FTTH") collapse into a single row with per-user counts summed across the group.
-                  const groupsByLabel = new Map<string, string[]>()
-                  for (const sub of subs) {
-                    const label = formatLabel(sub)
-                    const arr = groupsByLabel.get(label)
-                    if (arr) arr.push(sub)
-                    else groupsByLabel.set(label, [sub])
-                  }
-                  const groups = [...groupsByLabel.entries()]
-                    .map(([label, rawSubs]) => ({ label, rawSubs }))
-                    .sort((a, b) => a.label.localeCompare(b.label))
-
-                  const groupCount = (user: string, rawSubs: string[]) =>
-                    countEntries(doneEntries.filter(e => effectiveName(e.user) === user && rawSubs.includes(e.subCategory ?? '—')))
-                  const groupTotal = (rawSubs: string[]) =>
-                    countEntries(doneEntries.filter(e => rawSubs.includes(e.subCategory ?? '—')))
-
-                  const sep = 'rgba(255,255,255,0.1)'
-                  const maxLabelLength = Math.max(...groups.map(g => g.label.length))
-                  const subColWidth = Math.min(280, Math.max(150, maxLabelLength * 6))
-                  return (
-                    <div style={{ overflowX: 'auto', borderRadius: 8, border: `1px solid rgba(255,255,255,0.08)`, marginTop: 4 }}>
-                      <table style={{ borderCollapse: 'collapse', fontSize: '0.75rem', width: '100%', background: 'rgba(255,255,255,0.01)', tableLayout: 'fixed' }}>
-                        <thead>
-                          <tr style={{ background: 'rgba(255,255,255,0.08)', borderBottom: `2px solid ${sep}` }}>
-                            <th style={{ textAlign: 'left', padding: '8px 12px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, width: subColWidth, wordBreak: 'break-word' }}>Προϊόν</th>
-                            {users.map(u => (
-                              <th key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.8)', fontWeight: 700, whiteSpace: 'normal', wordBreak: 'break-word', textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 50 }}>{u.split(/\s+/)[0].toUpperCase()}</th>
-                            ))}
-                            <th style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.7)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.68rem', letterSpacing: 0.5, minWidth: 45 }}>Σύν.</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {groups.map(({ label, rawSubs }, i) => (
-                            <tr key={label} style={{ background: i % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.045)', borderBottom: `1px solid rgba(255,255,255,0.06)`, transition: 'background 150ms' }}>
-                              <td style={{ padding: '7px 12px', color: 'rgba(255,255,255,0.65)', fontWeight: 500, wordBreak: 'break-word', width: subColWidth }}>{label}</td>
-                              {users.map(u => {
-                                const n = groupCount(u, rawSubs)
-                                return <td key={u} style={{ textAlign: 'center', padding: '7px 8px', color: n > 0 ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.15)', fontWeight: n > 0 ? 700 : 400, fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 50 }}>{n > 0 ? n : '—'}</td>
-                              })}
-                              <td style={{ textAlign: 'center', padding: '7px 8px', color: 'rgba(255,255,255,0.6)', fontWeight: 600, fontFamily: 'monospace', fontSize: '0.8rem', minWidth: 45 }}>{groupTotal(rawSubs)}</td>
-                            </tr>
+                  if (!doneEntries.length) return null
+                  const productSlices = buildPieSlices(doneEntries, e => formatLabel(e.subCategory ?? '—'))
+                  const userSlices = buildPieSlices(doneEntries, e => effectiveName(e.user))
+                  const total = doneEntries.length
+                  const openSlice = (s: PieSlice) => setPendingModal({
+                    user: s.label,
+                    color: s.color,
+                    entries: [...s.entries].sort((a, b) => {
+                      const da = a.date || a.implDate, db = b.date || b.implDate
+                      if (!da && !db) return 0
+                      if (!da) return 1
+                      if (!db) return -1
+                      return db.getTime() - da.getTime()
+                    }),
+                  })
+                  const renderMiniPie = (title: string, slices: PieSlice[]) => (
+                    <div key={title} style={{ flex: 1, minWidth: 220 }}>
+                      <div style={{ fontSize: '0.66rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>{title}</div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
+                        <PieChart slices={slices} size={124} onSliceClick={i => openSlice(slices[i])} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 140 }}>
+                          {slices.map(s => (
+                            <div key={s.label} onClick={() => openSlice(s)} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', padding: '3px 6px', borderRadius: 6, background: `${s.color}0d` }}>
+                              <div style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.68)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                              <span style={{ fontSize: '0.72rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
+                              <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.28)', minWidth: 28, textAlign: 'right' }}>{Math.round((s.entries.length / total) * 100)}%</span>
+                            </div>
                           ))}
-                          <tr style={{ background: 'rgba(255,255,255,0.08)', borderTop: `2px solid ${sep}` }}>
-                            <td style={{ padding: '8px 12px', color: 'rgba(255,255,255,0.8)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.68rem', width: subColWidth }}>Σύνολο</td>
-                            {users.map(u => (
-                              <td key={u} style={{ textAlign: 'center', padding: '8px 8px', color: 'rgba(255,255,255,0.95)', fontWeight: 800, fontFamily: 'monospace', fontSize: '0.82rem', minWidth: 50 }}>{userTotal(u) || '—'}</td>
-                            ))}
-                            <td style={{ textAlign: 'center', padding: '8px 8px', fontWeight: 900, color: '#fff', fontFamily: 'monospace', fontSize: '0.82rem', minWidth: 45 }}>{countEntries(doneEntries)}</td>
-                          </tr>
-                        </tbody>
-                      </table>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                  return (
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', marginTop: 4 }}>
+                      {renderMiniPie('Ανά προϊόν', productSlices)}
+                      {renderMiniPie('Ανά πωλητή', userSlices)}
                     </div>
                   )
                 }
@@ -2071,8 +2043,8 @@ export default function ManagerPage() {
                       </div>
                     )}
 
-                    {/* Per-store subcategory tables */}
-                    {storeBreakdowns.map(({ s, mobileDone, mobileUsers, mobileSubs, homeDone, homeUsers, homeSubs }) => (
+                    {/* Per-store subcategory pies */}
+                    {storeBreakdowns.map(({ s, mobileDone, homeDone }) => (
                       <div key={s.id} className="panel-card" style={{ padding: 16 }}>
                         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: '#22d3ee', letterSpacing: 1, marginBottom: 14 }}>{s.code}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -2081,7 +2053,7 @@ export default function ManagerPage() {
                               <div style={{ marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
                               </div>
-                              {renderSubTable(mobileDone, mobileUsers, mobileSubs, CATEGORY_COLORS.mobile)}
+                              {renderSubPies(mobileDone)}
                             </div>
                           )}
                           {homeDone.length > 0 && (
@@ -2089,7 +2061,7 @@ export default function ManagerPage() {
                               <div style={{ marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
                               </div>
-                              {renderSubTable(homeDone, homeUsers, homeSubs, CATEGORY_COLORS.home, formatHomeProductLabel)}
+                              {renderSubPies(homeDone, formatHomeProductLabel)}
                             </div>
                           )}
                         </div>
