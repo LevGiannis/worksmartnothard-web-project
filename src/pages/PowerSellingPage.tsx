@@ -221,9 +221,8 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
             </div>
           )}
 
-          <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: VF.grey, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
-            <div>{sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}</div>
-            <div>Ημ/νία εκτύπωσης: {formatDate(new Date().toISOString())}</div>
+          <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: VF.grey }}>
+            {sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}
           </div>
           <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: VF.red, letterSpacing: 0.5 }}>Μαζί μπορούμε.</div>
         </div>
