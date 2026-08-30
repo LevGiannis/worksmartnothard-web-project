@@ -1504,51 +1504,6 @@ export default function ManagerPage() {
 
             {tab === 'monthly' && !selectedUser && (
               <>
-              {/* Category scoreboard strip */}
-              <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Ολοκληρωμένα — {monthLabel}</div>
-                  <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)' }}>Δ vs προηγούμενο μήνα</div>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cats.length}, 1fr)`, gap: 12 }}>
-                  {cats.map(c => {
-                    const done = countEntries(effectiveDoneMonthEntries.filter(e => e.category === c))
-                    const reg = countEntries(regMonthEntries.filter(e => e.category === c))
-                    const target = getDoneTarget(c)
-                    const pct = target > 0 ? Math.min(100, Math.round((done / target) * 100)) : 0
-                    const prevDone = countEntries(effectivePrevDoneEntries.filter(e => e.category === c))
-                    const delta = done - prevDone
-                    const color = CATEGORY_COLORS[c]
-                    return (
-                      <div key={c} style={{ padding: '16px', borderRadius: 14, background: `${color}0d`, border: `1px solid ${color}22` }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                          <span style={{ fontSize: '0.72rem', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: 0.5 }}>{CATEGORY_LABELS[c]}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 10, flexWrap: 'wrap' }}>
-                          <span style={{ fontSize: '2.4rem', fontWeight: 900, color, lineHeight: 1 }}>{done}</span>
-                          <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.2)' }}>/{reg}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginLeft: 'auto' }}>
-                            {delta !== 0 ? (
-                              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: delta > 0 ? '#10b981' : '#ef4444', background: delta > 0 ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${delta > 0 ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`, borderRadius: 5, padding: '2px 6px' }}>
-                                {delta > 0 ? '↑' : '↓'}{Math.abs(delta)}
-                              </span>
-                            ) : prevDone > 0 ? (
-                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', padding: '2px 5px' }}>=</span>
-                            ) : null}
-                            <input type="number" min={0} value={target || ''} placeholder="—" onChange={e => setDoneTarget(c, Math.max(0, parseInt(e.target.value) || 0))} title="Στόχος" style={{ width: 40, padding: '2px 5px', borderRadius: 6, border: `1px solid ${color}30`, background: `${color}10`, color: 'rgba(255,255,255,0.4)', fontSize: '0.75rem', fontWeight: 600, outline: 'none', textAlign: 'center' }} />
-                          </div>
-                        </div>
-                        <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden', marginBottom: 4 }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? '#10b981' : color, borderRadius: 999, transition: 'width 400ms ease' }} />
-                        </div>
-                        {target > 0 && <div style={{ fontSize: '0.62rem', color: pct >= 100 ? '#10b981' : 'rgba(255,255,255,0.2)', textAlign: 'right' }}>{pct}%</div>}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Mobile — connected breakdown, pre-approval, and Prepay side by side */}
               {(() => {
                 const mobileColor = CATEGORY_COLORS.mobile
