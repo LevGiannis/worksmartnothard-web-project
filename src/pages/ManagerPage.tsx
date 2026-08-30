@@ -380,6 +380,87 @@ function BarList({ slices, onSliceClick }: { slices: ChartSlice[]; onSliceClick:
   )
 }
 
+// Cumulative connections per day of the given month, from day 1 through the
+// last day of the month — days with no entries simply carry the running total
+// forward, so the series naturally flattens once there's no more data.
+function buildDailyCumulative(entries: ParsedEntry[], dateOf: (e: ParsedEntry) => Date | null | undefined, year: number, month: number): number[] {
+  const days = new Date(year, month, 0).getDate()
+  const perDay = new Array(days).fill(0)
+  for (const e of entries) {
+    const d = dateOf(e)
+    if (!d || d.getFullYear() !== year || d.getMonth() + 1 !== month) continue
+    perDay[d.getDate() - 1] += e.connections ?? 1
+  }
+  const cumulative: number[] = []
+  let running = 0
+  for (const n of perDay) { running += n; cumulative.push(running) }
+  return cumulative
+}
+
+// How far actual cumulative progress is from the straight-line pace needed to
+// hit `target` by month end, measured at today (or month end for past months).
+function computePaceDelta(actual: number[], target: number, year: number, month: number): number | null {
+  if (target <= 0 || !actual.length) return null
+  const now = new Date()
+  const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
+  const dayIdx = (isCurrentMonth ? Math.min(now.getDate(), actual.length) : actual.length) - 1
+  const paceAtDay = target * ((dayIdx + 1) / actual.length)
+  return Math.round(actual[dayIdx] - paceAtDay)
+}
+
+// Small trend line (a "sparkline" per the stat-tile pattern — value + delta +
+// sparkline — so no hover/tooltip chrome, just the shape) showing cumulative
+// progress through the month against the straight-line pace to target.
+function MonthSparkline({ actual, target, color, width = 260, height = 40 }: { actual: number[]; target: number; color: string; width?: number; height?: number }) {
+  const n = actual.length
+  if (n < 2) return null
+  const maxVal = Math.max(target, actual[n - 1], 1)
+  const x = (i: number) => (i / (n - 1)) * width
+  const y = (v: number) => height - Math.min(1, v / maxVal) * height
+  const actualPath = actual.map((v, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ')
+  const areaPath = `${actualPath} L ${width} ${height} L 0 ${height} Z`
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ display: 'block', width: '100%', height }} preserveAspectRatio="none">
+      {target > 0 && (
+        <line x1={0} y1={y(0)} x2={width} y2={y(target)} stroke="rgba(255,255,255,0.22)" strokeWidth={1.5} strokeDasharray="3 3" />
+      )}
+      <path d={areaPath} fill={color} fillOpacity={0.12} stroke="none" />
+      <path d={actualPath} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+// Sparkline + pace delta + the target input that drives it, bundled together
+// since the pace comparison is meaningless without a target to compare to.
+function PaceRow({ actual, target, onTargetChange, color, year, month }: {
+  actual: number[]; target: number; onTargetChange: (v: number) => void; color: string; year: number; month: number
+}) {
+  const delta = computePaceDelta(actual, target, year, month)
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <MonthSparkline actual={actual} target={target} color={color} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, gap: 8 }}>
+        {delta != null ? (
+          <span style={{ fontSize: '0.68rem', fontWeight: 700, color: delta >= 0 ? '#10b981' : '#ef4444' }}>
+            {delta >= 0 ? `+${delta} μπροστά από τον ρυθμό` : `${delta} πίσω από τον ρυθμό`}
+          </span>
+        ) : <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)' }}>Όρισε στόχο για σύγκριση ρυθμού</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+          <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)' }}>Στόχος</span>
+          <input
+            type="number"
+            min={0}
+            value={target || ''}
+            placeholder="—"
+            onChange={e => onTargetChange(Math.max(0, parseInt(e.target.value) || 0))}
+            style={{ width: 44, padding: '2px 5px', borderRadius: 6, border: `1px solid ${color}30`, background: `${color}10`, color: 'rgba(255,255,255,0.4)', fontSize: '0.7rem', fontWeight: 600, outline: 'none', textAlign: 'center' }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function statusColor(status: string): string {
   const s = status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')) return '#10b981'
@@ -1651,6 +1732,14 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Συνδεδεμένα Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ολοκληρωμένες συνδέσεις τον μήνα, ανά τύπο</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: mobileColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(mobileConnectedThisMonth)}</div>
+                      <PaceRow
+                        actual={buildDailyCumulative(mobileConnectedThisMonth, e => e.implDate || e.date, mYear, mMonth)}
+                        target={getDoneTarget('mobile')}
+                        onTargetChange={v => setDoneTarget('mobile', v)}
+                        color={mobileColor}
+                        year={mYear}
+                        month={mMonth}
+                      />
                       {subcatRows.map(([key, ues]) => (
                         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                           <div style={{ width: 7, height: 7, borderRadius: '50%', background: mobileColor, flexShrink: 0 }} />
@@ -1676,7 +1765,15 @@ export default function ManagerPage() {
                     <div className="panel-card" style={{ padding: 20 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Συνδεδεμένα Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Περιλαμβάνει Port In Prepay από Mobile</div>
-                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1 }}>{countEntries(prepayConnectedThisMonth)}</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(prepayConnectedThisMonth)}</div>
+                      <PaceRow
+                        actual={buildDailyCumulative(prepayConnectedThisMonth, e => e.implDate || e.date, mYear, mMonth)}
+                        target={getDoneTarget('prepay')}
+                        onTargetChange={v => setDoneTarget('prepay', v)}
+                        color={prepayColor}
+                        year={mYear}
+                        month={mMonth}
+                      />
                     </div>
                   </div>
                 )
@@ -1701,6 +1798,14 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Συνδεδεμένα Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ό,τι συνδέθηκε (Κ5) τον μήνα, ανεξαρτήτως πότε καταχωρήθηκε</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeConnectedThisMonth)}</div>
+                      <PaceRow
+                        actual={buildDailyCumulative(homeConnectedThisMonth, e => e.implDate, mYear, mMonth)}
+                        target={getDoneTarget('home')}
+                        onTargetChange={v => setDoneTarget('home', v)}
+                        color={homeColor}
+                        year={mYear}
+                        month={mMonth}
+                      />
                       {productOrder.map(type => renderProductRow(type, countEntries(homeConnectedByType[type])))}
                     </div>
 

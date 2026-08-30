@@ -52,6 +52,14 @@ Status απαιτείται: **`ΟΛΟΚΛΗΡΩΘΗΚΕ`**
 - **Mobile — Προέγκριση**: σύνολο mobile αιτήσεων με status `ΠΡΟΕΓΚΡΙΣΗ` (ίδιο σύνολο με `mobilePending`, χωρίς μηνιαίο φίλτρο), με breakdown ανά subcategory (`classifyMobileSubcat`, ίδιο ταξινόμηση με το "Συνδεδεμένα Μήνα" — Ex Prepay, Port In Postpay/EC, New Connection/EC, Pre2EC, Prepay 2 EC).
 - **Prepay — Συνδεδεμένα Μήνα**: όλες οι prepay εγγραφές που ολοκληρώθηκαν τον μήνα, περιλαμβανομένων των Port In Prepay (reclassified από το mobile αρχείο).
 
+### Sparkline προόδου + ρυθμός στόχου (`PaceRow`)
+
+Στις τρεις κάρτες "Συνδεδεμένα Μήνα" (Mobile, Prepay, Vodafone Home Window A) υπάρχει μικρό sparkline δίπλα στον μεγάλο αριθμό:
+
+- **Πραγματική γραμμή** (`buildDailyCumulative`): σωρευτικό πλήθος συνδέσεων ανά ημέρα του μήνα (implDate, με fallback στο date για Mobile/Prepay· χωρίς fallback για Home, όπως και αλλού).
+- **Γραμμή ρυθμού-στόχου** (διακεκομμένη): ευθεία από 0 στο `Στόχος` (νέο πεδίο input δίπλα στο sparkline, ανά κατηγορία/μήνα — ίδιο `monthlyTargets`/`getDoneTarget`/`setDoneTarget` που χρησιμοποιούσε το παλιό, αφαιρεμένο, scoreboard).
+- **Απόκλιση ρυθμού** (`computePaceDelta`): διαφορά πραγματικού από τον αναμενόμενο ρυθμό στη "σημερινή" ημέρα (ή στο τέλος του μήνα, αν προβάλλεις παλιότερο μήνα) — πράσινο αν μπροστά, κόκκινο αν πίσω. Χωρίς Στόχο δεν εμφανίζεται απόκλιση, μόνο η καμπύλη.
+
 ---
 
 ## Prepay
