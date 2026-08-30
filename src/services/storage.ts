@@ -116,24 +116,24 @@ export interface PowerSellingComment {
   text: string
   createdAt: string
 }
+export interface PowerSellingLine {
+  id: string
+  type: 'mobile' | 'landline'
+  plan?: string
+  price?: number
+  connectionType?: ConnectionType
+  previousProvider?: string
+  previousPrice?: number
+}
 export interface PowerSellingItem {
   id: string
   customerName: string
   contactPhone: string
   afm?: string
-  offerTypes: string[] // 'mobile' | 'landline'
-  mobilePlan?: string
-  mobilePrice?: number
-  mobileConnectionType?: ConnectionType
-  mobilePreviousProvider?: string
-  mobilePreviousPrice?: number
-  landlinePlan?: string
-  landlinePrice?: number
-  landlineConnectionType?: ConnectionType
-  landlinePreviousProvider?: string
-  landlinePreviousPrice?: number
+  lines: PowerSellingLine[] // one entry per line — supports more than one line per category (e.g. two mobile numbers)
   hasGiftDevices: boolean
   giftDevicesCount?: number
+  giftDevicesValue?: number
   hasSubsidy: boolean
   subsidyAmount?: number
   comments: PowerSellingComment[]
@@ -460,6 +460,38 @@ export async function deletePendingItem(id:string){
 }
 
 // Power Selling entries (φόρμες πωλήσεων σε πελάτες)
+function normalizePowerSellingLine(l: any): PowerSellingLine {
+  return {
+    id: l.id || uuidv4(),
+    type: l.type === 'landline' ? 'landline' : 'mobile',
+    plan: l.plan || '',
+    price: typeof l.price === 'number' ? l.price : undefined,
+    connectionType: l.connectionType || undefined,
+    previousProvider: l.previousProvider || '',
+    previousPrice: typeof l.previousPrice === 'number' ? l.previousPrice : undefined,
+  }
+}
+
+// Migrates the old single-mobile/single-landline shape (offerTypes + mobileX/landlineX fields) into a lines array.
+function migratePowerSellingLines(it: any): PowerSellingLine[] {
+  if (Array.isArray(it.lines)) return it.lines.map(normalizePowerSellingLine)
+  const lines: PowerSellingLine[] = []
+  const offerTypes: string[] = Array.isArray(it.offerTypes) ? it.offerTypes : []
+  if (offerTypes.includes('mobile') || it.mobilePlan) {
+    lines.push(normalizePowerSellingLine({
+      type: 'mobile', plan: it.mobilePlan, price: it.mobilePrice,
+      connectionType: it.mobileConnectionType, previousProvider: it.mobilePreviousProvider, previousPrice: it.mobilePreviousPrice,
+    }))
+  }
+  if (offerTypes.includes('landline') || it.landlinePlan) {
+    lines.push(normalizePowerSellingLine({
+      type: 'landline', plan: it.landlinePlan, price: it.landlinePrice,
+      connectionType: it.landlineConnectionType, previousProvider: it.landlinePreviousProvider, previousPrice: it.landlinePreviousPrice,
+    }))
+  }
+  return lines
+}
+
 function normalizePowerSellingItem(it: any): PowerSellingItem {
   const comments: PowerSellingComment[] = Array.isArray(it.comments)
     ? it.comments
@@ -469,19 +501,10 @@ function normalizePowerSellingItem(it: any): PowerSellingItem {
     customerName: it.customerName || '',
     contactPhone: it.contactPhone || '',
     afm: it.afm || '',
-    offerTypes: Array.isArray(it.offerTypes) ? it.offerTypes : [],
-    mobilePlan: it.mobilePlan || '',
-    mobilePrice: typeof it.mobilePrice === 'number' ? it.mobilePrice : undefined,
-    mobileConnectionType: it.mobileConnectionType || undefined,
-    mobilePreviousProvider: it.mobilePreviousProvider || '',
-    mobilePreviousPrice: typeof it.mobilePreviousPrice === 'number' ? it.mobilePreviousPrice : undefined,
-    landlinePlan: it.landlinePlan || '',
-    landlinePrice: typeof it.landlinePrice === 'number' ? it.landlinePrice : undefined,
-    landlineConnectionType: it.landlineConnectionType || undefined,
-    landlinePreviousProvider: it.landlinePreviousProvider || '',
-    landlinePreviousPrice: typeof it.landlinePreviousPrice === 'number' ? it.landlinePreviousPrice : undefined,
+    lines: migratePowerSellingLines(it),
     hasGiftDevices: !!it.hasGiftDevices,
     giftDevicesCount: it.hasGiftDevices ? (it.giftDevicesCount || 0) : undefined,
+    giftDevicesValue: it.hasGiftDevices && typeof it.giftDevicesValue === 'number' ? it.giftDevicesValue : undefined,
     hasSubsidy: !!it.hasSubsidy,
     subsidyAmount: it.hasSubsidy ? (it.subsidyAmount || 0) : undefined,
     comments,

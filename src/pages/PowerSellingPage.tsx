@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { v4 as uuidv4 } from 'uuid'
 import PageHeader from '../components/PageHeader'
 import Modal from '../components/Modal'
 import { formatNumber } from '../utils/formatNumber'
 import { safeLocalStorageGet } from '../utils/safeLocalStorage'
 import {
   loadPowerSellingItems, savePowerSellingItem, updatePowerSellingItem, deletePowerSellingItem, addPowerSellingComment,
-  PowerSellingItem, ConnectionType,
+  PowerSellingItem, PowerSellingLine, ConnectionType,
 } from '../services/storage'
 import { MOBILE_PLAN_PRESETS, HOME_TYPE_OPTIONS, PROVIDER_PRESETS } from '../constants'
 
@@ -16,14 +17,39 @@ type Category = 'mobile' | 'landline' | 'both' | 'none'
 const OFFER_TYPE_LABEL: Record<OfferType, string> = { mobile: 'Κινητό', landline: 'Σταθερό' }
 const CONNECTION_TYPE_LABEL: Record<ConnectionType, string> = { new: 'Νέα Σύνδεση', portability: 'Φορητότητα' }
 const CATEGORY_LABEL: Record<Category, string> = { mobile: 'Κινητό', landline: 'Σταθερό', both: 'Και τα δύο', none: '—' }
+const LINE_LABEL: Record<OfferType, string> = { mobile: 'Κινητή Τηλεφωνία', landline: 'Σταθερή Τηλεφωνία & Internet' }
+const LINE_ICON: Record<OfferType, string> = { mobile: '📱', landline: '☎️' }
 
-function categoryOf(offerTypes: string[]): Category {
-  const hasMobile = offerTypes.includes('mobile')
-  const hasLandline = offerTypes.includes('landline')
+function categoryOf(types: string[]): Category {
+  const hasMobile = types.includes('mobile')
+  const hasLandline = types.includes('landline')
   if (hasMobile && hasLandline) return 'both'
   if (hasMobile) return 'mobile'
   if (hasLandline) return 'landline'
   return 'none'
+}
+
+// annotates lines with a per-type ordinal (#1, #2, ...); showOrdinal is only true when a category has more than one line,
+// so the common single-line-per-category case stays uncluttered.
+function withOrdinals<T extends { type: OfferType }>(lines: T[]): (T & { ordinal: number; showOrdinal: boolean })[] {
+  const counts: Record<OfferType, number> = { mobile: 0, landline: 0 }
+  lines.forEach(l => { counts[l.type]++ })
+  const seen: Record<OfferType, number> = { mobile: 0, landline: 0 }
+  return lines.map(l => {
+    seen[l.type]++
+    return { ...l, ordinal: seen[l.type], showOrdinal: counts[l.type] > 1 }
+  })
+}
+function lineTitle(l: { type: OfferType; ordinal: number; showOrdinal: boolean }) {
+  return OFFER_TYPE_LABEL[l.type] + (l.showOrdinal ? ` #${l.ordinal}` : '')
+}
+function summarizeLines(lines: { type: OfferType }[]): string {
+  const counts: Record<OfferType, number> = { mobile: 0, landline: 0 }
+  lines.forEach(l => { counts[l.type]++ })
+  const parts: string[] = []
+  if (counts.mobile) parts.push(counts.mobile > 1 ? `${counts.mobile} × ${OFFER_TYPE_LABEL.mobile}` : OFFER_TYPE_LABEL.mobile)
+  if (counts.landline) parts.push(counts.landline > 1 ? `${counts.landline} × ${OFFER_TYPE_LABEL.landline}` : OFFER_TYPE_LABEL.landline)
+  return parts.join(' + ') || '—'
 }
 
 function StepLabel({ children }: { children: React.ReactNode }) {
@@ -43,39 +69,73 @@ function YesNoToggle({ value, onChange }: { value: boolean | null; onChange: (v:
   )
 }
 
-// ─── shared per-line (mobile/landline) fields — used both in the wizard and the edit modal ──
-type TypeFieldsValue = {
+// ─── one editable offer line (mobile or landline) — a single line can appear more than once per category ──
+type WizardLine = {
+  id: string
+  type: OfferType
   plan: string
   price: number | ''
   connectionType: ConnectionType | null
   previousProvider: string
   previousPrice: number | ''
 }
-const emptyTypeFields: TypeFieldsValue = { plan: '', price: '', connectionType: null, previousProvider: '', previousPrice: '' }
+function makeLine(type: OfferType): WizardLine {
+  return { id: uuidv4(), type, plan: '', price: '', connectionType: null, previousProvider: '', previousPrice: '' }
+}
+function validateTypeFields(v: WizardLine): string {
+  if (!v.plan.trim() || v.price === '') return 'πρόγραμμα και τιμή'
+  if (v.connectionType === 'portability' && !v.previousProvider.trim()) return 'πάροχο προέλευσης (φορητότητα)'
+  return ''
+}
+function lineToPayload(l: WizardLine): PowerSellingLine {
+  return {
+    id: l.id,
+    type: l.type,
+    plan: l.plan,
+    price: l.price === '' ? undefined : Number(l.price),
+    connectionType: l.connectionType || undefined,
+    previousProvider: l.connectionType === 'portability' ? l.previousProvider : '',
+    previousPrice: l.previousPrice === '' ? undefined : Number(l.previousPrice),
+  }
+}
 
-function TypeFieldsEditor({ idPrefix, label, value, onChange, planOptions }: { idPrefix: string; label: string; value: TypeFieldsValue; onChange: (v: TypeFieldsValue) => void; planOptions: string[] }) {
+function TypeFieldsEditor({ idPrefix, value, onChange, planOptions }: { idPrefix: string; value: WizardLine; onChange: (patch: Partial<WizardLine>) => void; planOptions: string[] }) {
   const planListId = `${idPrefix}-plans`
   const providerListId = `${idPrefix}-providers`
   return (
     <div>
-      <StepLabel>{label} — Πρόγραμμα &amp; Τιμή</StepLabel>
+      <StepLabel>Πρόγραμμα &amp; Τιμή</StepLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 14 }}>
-        <input className="panel-input" list={planListId} placeholder="π.χ. RED 10GB ή επίλεξε" value={value.plan} onChange={e => onChange({ ...value, plan: e.target.value })} />
+        <input className="panel-input" list={planListId} placeholder="π.χ. RED 10GB ή επίλεξε" value={value.plan} onChange={e => onChange({ plan: e.target.value })} />
         <datalist id={planListId}>{planOptions.map(p => <option key={p} value={p} />)}</datalist>
-        <input className="panel-input" type="number" step="0.01" min={0} placeholder="Τιμή €" value={value.price} onChange={e => onChange({ ...value, price: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+        <input className="panel-input" type="number" step="0.01" min={0} placeholder="Τιμή €" value={value.price} onChange={e => onChange({ price: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
       </div>
-      <StepLabel>{label} — Σύνδεση <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
+      <StepLabel>Σύνδεση <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
       <div style={{ display: 'flex', gap: 10 }}>
-        <button type="button" className={value.connectionType === 'new' ? 'btn' : 'btn-ghost'} onClick={() => onChange({ ...value, connectionType: value.connectionType === 'new' ? null : 'new' })} style={{ flex: 1, padding: '10px 0' }}>Νέα Σύνδεση</button>
-        <button type="button" className={value.connectionType === 'portability' ? 'btn' : 'btn-ghost'} onClick={() => onChange({ ...value, connectionType: value.connectionType === 'portability' ? null : 'portability' })} style={{ flex: 1, padding: '10px 0' }}>Φορητότητα</button>
+        <button type="button" className={value.connectionType === 'new' ? 'btn' : 'btn-ghost'} onClick={() => onChange({ connectionType: value.connectionType === 'new' ? null : 'new' })} style={{ flex: 1, padding: '10px 0' }}>Νέα Σύνδεση</button>
+        <button type="button" className={value.connectionType === 'portability' ? 'btn' : 'btn-ghost'} onClick={() => onChange({ connectionType: value.connectionType === 'portability' ? null : 'portability' })} style={{ flex: 1, padding: '10px 0' }}>Φορητότητα</button>
       </div>
       {value.connectionType === 'portability' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginTop: 12 }}>
-          <input className="panel-input" list={providerListId} placeholder="Από ποιον πάροχο * ή επίλεξε" value={value.previousProvider} onChange={e => onChange({ ...value, previousProvider: e.target.value })} />
+          <input className="panel-input" list={providerListId} placeholder="Από ποιον πάροχο * ή επίλεξε" value={value.previousProvider} onChange={e => onChange({ previousProvider: e.target.value })} />
           <datalist id={providerListId}>{PROVIDER_PRESETS.map(p => <option key={p} value={p} />)}</datalist>
-          <input className="panel-input" type="number" step="0.01" min={0} placeholder="Πλήρωνε €" value={value.previousPrice} onChange={e => onChange({ ...value, previousPrice: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
+          <input className="panel-input" type="number" step="0.01" min={0} placeholder="Πλήρωνε €" value={value.previousPrice} onChange={e => onChange({ previousPrice: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
       )}
+    </div>
+  )
+}
+
+function LineEditorCard({ idPrefix, line, title, onChange, onRemove }: { idPrefix: string; line: WizardLine; title: string; onChange: (patch: Partial<WizardLine>) => void; onRemove: () => void }) {
+  return (
+    <div style={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, padding: 18, background: 'rgba(255,255,255,0.02)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'rgba(255,255,255,0.85)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          {LINE_ICON[line.type]} {title}
+        </div>
+        <button type="button" onClick={onRemove} className="btn-ghost" style={{ padding: '4px 10px', fontSize: '0.76rem', color: '#fca5a5', borderColor: 'rgba(239,68,68,0.2)' }}>🗑 Αφαίρεση</button>
+      </div>
+      <TypeFieldsEditor idPrefix={idPrefix} value={line} onChange={onChange} planOptions={line.type === 'mobile' ? MOBILE_PLAN_PRESETS : HOME_TYPE_OPTIONS} />
     </div>
   )
 }
@@ -109,9 +169,6 @@ function formatDateTime(d?: string) {
   return new Date(d).toLocaleString('el-GR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
 
-const LINE_LABEL: Record<OfferType, string> = { mobile: 'Κινητή Τηλεφωνία', landline: 'Σταθερή Τηλεφωνία & Internet' }
-const LINE_ICON: Record<OfferType, string> = { mobile: '📱', landline: '☎️' }
-
 // ─── Vodafone brand tokens (from the public brand identity: Pantone 485 / #E60000 red,
 // the 2017+ "speech mark" graphic device, extended accent palette, and the Greek
 // "Μαζί μπορούμε" / "Together We Can" tagline) — Poppins stands in for the
@@ -130,17 +187,13 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
   const sellerName = `${safeLocalStorageGet('ws_user_first') || ''} ${safeLocalStorageGet('ws_user_last') || ''}`.trim()
   const store = safeLocalStorageGet('ws_user_store') || ''
 
-  const lines = (['mobile', 'landline'] as OfferType[])
-    .filter(t => item.offerTypes.includes(t))
-    .map(t => ({
-      type: t,
-      plan: t === 'mobile' ? item.mobilePlan : item.landlinePlan,
-      price: t === 'mobile' ? item.mobilePrice : item.landlinePrice,
-      connectionType: t === 'mobile' ? item.mobileConnectionType : item.landlineConnectionType,
-      previousProvider: t === 'mobile' ? item.mobilePreviousProvider : item.landlinePreviousProvider,
-      previousPrice: t === 'mobile' ? item.mobilePreviousPrice : item.landlinePreviousPrice,
-    }))
+  const lines = withOrdinals(item.lines)
   const totalMonthly = lines.reduce((s, l) => s + (l.price || 0), 0)
+
+  const monthlyGain = lines.reduce((s, l) => s + Math.max(0, (l.previousPrice || 0) - (l.price || 0)), 0)
+  const giftValue = item.hasGiftDevices && typeof item.giftDevicesValue === 'number' ? item.giftDevicesValue : 0
+  const yearlyGain = monthlyGain * 12 + giftValue
+  const showGain = monthlyGain > 0 || giftValue > 0
 
   return (
     <div className="print-only-offer">
@@ -178,8 +231,8 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
           </div>
 
           {lines.map(l => (
-            <div key={l.type} style={{ background: '#fff', border: '1px solid #ececec', borderLeft: `5px solid ${VF.red}`, borderRadius: 10, padding: 22, marginBottom: 18, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: VF.grey, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
+            <div key={l.id} style={{ background: '#fff', border: '1px solid #ececec', borderLeft: `5px solid ${VF.red}`, borderRadius: 10, padding: 22, marginBottom: 18, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: VF.grey, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}{l.showOrdinal ? ` #${l.ordinal}` : ''}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: 24, fontWeight: 900, textTransform: 'uppercase' }}>{l.plan}</div>
                 <div style={{ fontSize: 28, fontWeight: 900, color: VF.red }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: VF.grey }}>/μήνα</span></div>
@@ -221,6 +274,22 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
             </div>
           )}
 
+          {showGain && (
+            <div style={{ background: '#f7f9e8', border: `2px solid ${VF.lime}`, borderRadius: 12, padding: '20px 22px', marginTop: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#5c6300', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>💰 Πόσα κερδίζεις</div>
+              <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#5c6300' }}>{formatNumber(monthlyGain, 2)} €</div>
+                  <div style={{ fontSize: 12.5, color: '#5c6300', fontWeight: 700 }}>τον μήνα</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#5c6300' }}>{formatNumber(yearlyGain, 2)} €</div>
+                  <div style={{ fontSize: 12.5, color: '#5c6300', fontWeight: 700 }}>τον χρόνο{giftValue > 0 ? ' (με το δώρο)' : ''}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: VF.grey }}>
             {sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}
           </div>
@@ -239,11 +308,10 @@ export default function PowerSellingPage() {
   const [customerName, setCustomerName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [afm, setAfm] = useState('')
-  const [offerTypes, setOfferTypes] = useState<OfferType[]>([])
-  const [mobile, setMobile] = useState<TypeFieldsValue>(emptyTypeFields)
-  const [landline, setLandline] = useState<TypeFieldsValue>(emptyTypeFields)
+  const [lines, setLines] = useState<WizardLine[]>([])
   const [hasGiftDevices, setHasGiftDevices] = useState<boolean | null>(null)
   const [giftDevicesCount, setGiftDevicesCount] = useState<number | ''>('')
+  const [giftDevicesValue, setGiftDevicesValue] = useState<number | ''>('')
   const [hasSubsidy, setHasSubsidy] = useState<boolean | null>(null)
   const [subsidyAmount, setSubsidyAmount] = useState<number | ''>('')
   const [notes, setNotes] = useState('')
@@ -264,11 +332,10 @@ export default function PowerSellingPage() {
   const [editName, setEditName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editAfm, setEditAfm] = useState('')
-  const [editOfferTypes, setEditOfferTypes] = useState<OfferType[]>([])
-  const [editMobile, setEditMobile] = useState<TypeFieldsValue>(emptyTypeFields)
-  const [editLandline, setEditLandline] = useState<TypeFieldsValue>(emptyTypeFields)
+  const [editLines, setEditLines] = useState<WizardLine[]>([])
   const [editHasGift, setEditHasGift] = useState<boolean | null>(null)
   const [editGiftCount, setEditGiftCount] = useState<number | ''>('')
+  const [editGiftValue, setEditGiftValue] = useState<number | ''>('')
   const [editHasSubsidy, setEditHasSubsidy] = useState<boolean | null>(null)
   const [editSubsidyAmount, setEditSubsidyAmount] = useState<number | ''>('')
   const [editErrors, setEditErrors] = useState<string[]>([])
@@ -295,22 +362,17 @@ export default function PowerSellingPage() {
     return () => window.removeEventListener('afterprint', onAfterPrint)
   }, [])
 
-  const toggleOfferType = (t: OfferType) => setOfferTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
+  const addLine = (type: OfferType) => setLines(prev => [...prev, makeLine(type)])
+  const removeLine = (id: string) => setLines(prev => prev.filter(l => l.id !== id))
+  const updateLine = (id: string, patch: Partial<WizardLine>) => setLines(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
 
   const steps = [
     { key: 'name', title: 'Πελάτης' },
-    { key: 'offer', title: 'Προσφορά' },
-    { key: 'plans', title: 'Προγράμματα' },
+    { key: 'lines', title: 'Γραμμές' },
     { key: 'gift', title: 'Πάγια δώρο' },
     { key: 'subsidy', title: 'Επιδότηση' },
     { key: 'review', title: 'Επιβεβαίωση' },
   ]
-
-  function validateTypeFields(v: TypeFieldsValue): string {
-    if (!v.plan.trim() || v.price === '') return 'πρόγραμμα και τιμή'
-    if (v.connectionType === 'portability' && !v.previousProvider.trim()) return 'πάροχο προέλευσης (φορητότητα)'
-    return ''
-  }
 
   function validateStep(idx: number): string {
     if (idx === 0) {
@@ -318,23 +380,17 @@ export default function PowerSellingPage() {
       if (!contactPhone.trim()) return 'Συμπλήρωσε τηλέφωνο επικοινωνίας.'
     }
     if (idx === 1) {
-      if (offerTypes.length === 0) return 'Επίλεξε τι αφορούσε η προσφορά.'
+      if (lines.length === 0) return 'Πρόσθεσε τουλάχιστον μία γραμμή προσφοράς.'
+      for (const l of withOrdinals(lines)) {
+        const missing = validateTypeFields(l)
+        if (missing) return `Συμπλήρωσε ${missing} για ${lineTitle(l)}.`
+      }
     }
     if (idx === 2) {
-      if (offerTypes.includes('mobile')) {
-        const missing = validateTypeFields(mobile)
-        if (missing) return `Συμπλήρωσε ${missing} για το κινητό.`
-      }
-      if (offerTypes.includes('landline')) {
-        const missing = validateTypeFields(landline)
-        if (missing) return `Συμπλήρωσε ${missing} για το σταθερό.`
-      }
-    }
-    if (idx === 3) {
       if (hasGiftDevices === null) return 'Επίλεξε αν δόθηκε πάγια δώρο.'
       if (hasGiftDevices && (giftDevicesCount === '' || Number(giftDevicesCount) <= 0)) return 'Συμπλήρωσε πόσα πάγια δόθηκαν δώρο.'
     }
-    if (idx === 4) {
+    if (idx === 3) {
       if (hasSubsidy === null) return 'Επίλεξε αν υπήρχε επιδότηση.'
       if (hasSubsidy && (subsidyAmount === '' || Number(subsidyAmount) <= 0)) return 'Συμπλήρωσε το ποσό της επιδότησης.'
     }
@@ -352,21 +408,12 @@ export default function PowerSellingPage() {
   const resetForm = () => {
     setStep(0)
     setCustomerName(''); setContactPhone(''); setAfm('')
-    setOfferTypes([])
-    setMobile(emptyTypeFields); setLandline(emptyTypeFields)
-    setHasGiftDevices(null); setGiftDevicesCount('')
+    setLines([])
+    setHasGiftDevices(null); setGiftDevicesCount(''); setGiftDevicesValue('')
     setHasSubsidy(null); setSubsidyAmount('')
     setNotes('')
     setError('')
   }
-
-  const typeFieldsToPayload = (v: TypeFieldsValue) => ({
-    plan: v.plan,
-    price: v.price === '' ? undefined : Number(v.price),
-    connectionType: v.connectionType || undefined,
-    previousProvider: v.connectionType === 'portability' ? v.previousProvider : '',
-    previousPrice: v.previousPrice === '' ? undefined : Number(v.previousPrice),
-  })
 
   const submit = async () => {
     for (let i = 0; i < steps.length - 1; i++) {
@@ -375,17 +422,12 @@ export default function PowerSellingPage() {
     }
     setSaving(true)
     try {
-      const mobilePayload = offerTypes.includes('mobile') ? typeFieldsToPayload(mobile) : null
-      const landlinePayload = offerTypes.includes('landline') ? typeFieldsToPayload(landline) : null
       const saved = await savePowerSellingItem({
         customerName, contactPhone, afm,
-        offerTypes,
-        mobilePlan: mobilePayload?.plan, mobilePrice: mobilePayload?.price,
-        mobileConnectionType: mobilePayload?.connectionType, mobilePreviousProvider: mobilePayload?.previousProvider, mobilePreviousPrice: mobilePayload?.previousPrice,
-        landlinePlan: landlinePayload?.plan, landlinePrice: landlinePayload?.price,
-        landlineConnectionType: landlinePayload?.connectionType, landlinePreviousProvider: landlinePayload?.previousProvider, landlinePreviousPrice: landlinePayload?.previousPrice,
+        lines: lines.map(lineToPayload),
         hasGiftDevices: !!hasGiftDevices,
         giftDevicesCount: hasGiftDevices && giftDevicesCount !== '' ? Number(giftDevicesCount) : undefined,
+        giftDevicesValue: hasGiftDevices && giftDevicesValue !== '' ? Number(giftDevicesValue) : undefined,
         hasSubsidy: !!hasSubsidy,
         subsidyAmount: hasSubsidy && subsidyAmount !== '' ? Number(subsidyAmount) : undefined,
       })
@@ -404,7 +446,7 @@ export default function PowerSellingPage() {
 
   // ── management: filtering + sorting ─────────────────────────────
   const visible = useMemo(() => {
-    let out = items.map(it => ({ it, category: categoryOf(it.offerTypes) }))
+    let out = items.map(it => ({ it, category: categoryOf(it.lines.map(l => l.type)) }))
     if (filterCategory) out = out.filter(x => x.category === filterCategory)
     if (search) {
       const q = search.toLowerCase()
@@ -419,7 +461,7 @@ export default function PowerSellingPage() {
 
   const categoryCounts = useMemo(() => {
     const counts: Record<Category, number> = { mobile: 0, landline: 0, both: 0, none: 0 }
-    items.forEach(it => { counts[categoryOf(it.offerTypes)]++ })
+    items.forEach(it => { counts[categoryOf(it.lines.map(l => l.type))]++ })
     return counts
   }, [items])
 
@@ -429,42 +471,37 @@ export default function PowerSellingPage() {
     setEditName(it.customerName || '')
     setEditPhone(it.contactPhone || '')
     setEditAfm(it.afm || '')
-    setEditOfferTypes((it.offerTypes || []) as OfferType[])
-    setEditMobile({
-      plan: it.mobilePlan || '', price: typeof it.mobilePrice === 'number' ? it.mobilePrice : '',
-      connectionType: it.mobileConnectionType || null, previousProvider: it.mobilePreviousProvider || '',
-      previousPrice: typeof it.mobilePreviousPrice === 'number' ? it.mobilePreviousPrice : '',
-    })
-    setEditLandline({
-      plan: it.landlinePlan || '', price: typeof it.landlinePrice === 'number' ? it.landlinePrice : '',
-      connectionType: it.landlineConnectionType || null, previousProvider: it.landlinePreviousProvider || '',
-      previousPrice: typeof it.landlinePreviousPrice === 'number' ? it.landlinePreviousPrice : '',
-    })
+    setEditLines(it.lines.map(l => ({
+      id: l.id || uuidv4(),
+      type: l.type,
+      plan: l.plan || '',
+      price: typeof l.price === 'number' ? l.price : '',
+      connectionType: l.connectionType || null,
+      previousProvider: l.previousProvider || '',
+      previousPrice: typeof l.previousPrice === 'number' ? l.previousPrice : '',
+    })))
     setEditHasGift(!!it.hasGiftDevices)
     setEditGiftCount(typeof it.giftDevicesCount === 'number' ? it.giftDevicesCount : '')
+    setEditGiftValue(typeof it.giftDevicesValue === 'number' ? it.giftDevicesValue : '')
     setEditHasSubsidy(!!it.hasSubsidy)
     setEditSubsidyAmount(typeof it.subsidyAmount === 'number' ? it.subsidyAmount : '')
     setEditErrors([])
     setNewComment('')
   }
 
-  function toggleEditOfferType(t: OfferType) {
-    setEditOfferTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t])
-  }
+  const addEditLine = (type: OfferType) => setEditLines(prev => [...prev, makeLine(type)])
+  const removeEditLine = (id: string) => setEditLines(prev => prev.filter(l => l.id !== id))
+  const updateEditLine = (id: string, patch: Partial<WizardLine>) => setEditLines(prev => prev.map(l => l.id === id ? { ...l, ...patch } : l))
 
   async function saveEdit() {
     if (!editItem) return
     const errs: string[] = []
     if (!editName.trim()) errs.push('Απαιτείται ονοματεπώνυμο πελάτη.')
     if (!editPhone.trim()) errs.push('Απαιτείται τηλέφωνο επικοινωνίας.')
-    if (editOfferTypes.length === 0) errs.push('Επίλεξε τι αφορούσε η προσφορά.')
-    if (editOfferTypes.includes('mobile')) {
-      const missing = validateTypeFields(editMobile)
-      if (missing) errs.push(`Συμπλήρωσε ${missing} για το κινητό.`)
-    }
-    if (editOfferTypes.includes('landline')) {
-      const missing = validateTypeFields(editLandline)
-      if (missing) errs.push(`Συμπλήρωσε ${missing} για το σταθερό.`)
+    if (editLines.length === 0) errs.push('Πρόσθεσε τουλάχιστον μία γραμμή προσφοράς.')
+    for (const l of withOrdinals(editLines)) {
+      const missing = validateTypeFields(l)
+      if (missing) errs.push(`Συμπλήρωσε ${missing} για ${lineTitle(l)}.`)
     }
     if (editHasGift && (editGiftCount === '' || Number(editGiftCount) <= 0)) errs.push('Συμπλήρωσε πόσα πάγια δόθηκαν δώρο.')
     if (editHasSubsidy && (editSubsidyAmount === '' || Number(editSubsidyAmount) <= 0)) errs.push('Συμπλήρωσε το ποσό της επιδότησης.')
@@ -472,17 +509,12 @@ export default function PowerSellingPage() {
 
     setEditSaving(true)
     try {
-      const mobilePayload = editOfferTypes.includes('mobile') ? typeFieldsToPayload(editMobile) : null
-      const landlinePayload = editOfferTypes.includes('landline') ? typeFieldsToPayload(editLandline) : null
       const updated = await updatePowerSellingItem(editItem.id, {
         customerName: editName, contactPhone: editPhone, afm: editAfm,
-        offerTypes: editOfferTypes,
-        mobilePlan: mobilePayload?.plan, mobilePrice: mobilePayload?.price,
-        mobileConnectionType: mobilePayload?.connectionType, mobilePreviousProvider: mobilePayload?.previousProvider, mobilePreviousPrice: mobilePayload?.previousPrice,
-        landlinePlan: landlinePayload?.plan, landlinePrice: landlinePayload?.price,
-        landlineConnectionType: landlinePayload?.connectionType, landlinePreviousProvider: landlinePayload?.previousProvider, landlinePreviousPrice: landlinePayload?.previousPrice,
+        lines: editLines.map(lineToPayload),
         hasGiftDevices: !!editHasGift,
         giftDevicesCount: editHasGift && editGiftCount !== '' ? Number(editGiftCount) : undefined,
+        giftDevicesValue: editHasGift && editGiftValue !== '' ? Number(editGiftValue) : undefined,
         hasSubsidy: !!editHasSubsidy,
         subsidyAmount: editHasSubsidy && editSubsidyAmount !== '' ? Number(editSubsidyAmount) : undefined,
       })
@@ -569,39 +601,52 @@ export default function PowerSellingPage() {
 
           {step === 1 && (
             <div>
-              <StepLabel>Τι αφορούσε η προσφορά;</StepLabel>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['mobile', 'landline'] as OfferType[]).map(t => (
-                  <button key={t} type="button" onClick={() => toggleOfferType(t)} className={offerTypes.includes(t) ? 'btn' : 'btn-ghost'} style={{ flex: 1, padding: '16px 0', fontWeight: 700, fontSize: '1rem' }}>
-                    {OFFER_TYPE_LABEL[t]}
-                  </button>
-                ))}
+              <StepLabel>Γραμμές προσφοράς</StepLabel>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+                <button type="button" className="btn-ghost" onClick={() => addLine('mobile')} style={{ flex: 1, padding: '12px 0', fontWeight: 700 }}>+ Κινητό</button>
+                <button type="button" className="btn-ghost" onClick={() => addLine('landline')} style={{ flex: 1, padding: '12px 0', fontWeight: 700 }}>+ Σταθερό</button>
               </div>
-              <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.35)', marginTop: 10 }}>Μπορείς να επιλέξεις και τα δύο, αν η προσφορά αφορούσε συνδυασμό.</div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-              {offerTypes.includes('mobile') && <TypeFieldsEditor idPrefix="wizard-mobile" label="Κινητό" value={mobile} onChange={setMobile} planOptions={MOBILE_PLAN_PRESETS} />}
-              {offerTypes.includes('landline') && <TypeFieldsEditor idPrefix="wizard-landline" label="Σταθερό" value={landline} onChange={setLandline} planOptions={HOME_TYPE_OPTIONS} />}
-            </div>
-          )}
-
-          {step === 3 && (
-            <div>
-              <StepLabel>Δόθηκε πάγια δώρο;</StepLabel>
-              <YesNoToggle value={hasGiftDevices} onChange={v => { setHasGiftDevices(v); if (!v) setGiftDevicesCount('') }} />
-              {hasGiftDevices && (
-                <div style={{ marginTop: 16 }}>
-                  <StepLabel>Πόσα πάγια;</StepLabel>
-                  <input className="panel-input" type="number" min={1} step={1} placeholder="π.χ. 1" value={giftDevicesCount} onChange={e => setGiftDevicesCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} autoFocus />
+              {lines.length === 0 ? (
+                <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.35)', textAlign: 'center', padding: '20px 0' }}>
+                  Πρόσθεσε τουλάχιστον μία γραμμή — μπορείς να προσθέσεις όσες θέλεις, ακόμα και παραπάνω από μία στην ίδια κατηγορία.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  {withOrdinals(lines).map(l => (
+                    <LineEditorCard
+                      key={l.id}
+                      idPrefix={`wizard-${l.id}`}
+                      line={l}
+                      title={lineTitle(l)}
+                      onChange={patch => updateLine(l.id, patch)}
+                      onRemove={() => removeLine(l.id)}
+                    />
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {step === 4 && (
+          {step === 2 && (
+            <div>
+              <StepLabel>Δόθηκε πάγια δώρο;</StepLabel>
+              <YesNoToggle value={hasGiftDevices} onChange={v => { setHasGiftDevices(v); if (!v) { setGiftDevicesCount(''); setGiftDevicesValue('') } }} />
+              {hasGiftDevices && (
+                <div style={{ marginTop: 16, display: 'flex', gap: 16 }}>
+                  <div>
+                    <StepLabel>Πόσα πάγια;</StepLabel>
+                    <input className="panel-input" type="number" min={1} step={1} placeholder="π.χ. 1" value={giftDevicesCount} onChange={e => setGiftDevicesCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} autoFocus />
+                  </div>
+                  <div>
+                    <StepLabel>Αξία δώρου (€) <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
+                    <input className="panel-input" type="number" min={0} step="0.01" placeholder="π.χ. 150" value={giftDevicesValue} onChange={e => setGiftDevicesValue(e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ width: 160 }} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {step === 3 && (
             <div>
               <StepLabel>Υπήρχε επιδότηση;</StepLabel>
               <YesNoToggle value={hasSubsidy} onChange={v => { setHasSubsidy(v); if (!v) setSubsidyAmount('') }} />
@@ -614,29 +659,22 @@ export default function PowerSellingPage() {
             </div>
           )}
 
-          {step === 5 && (
+          {step === 4 && (
             <div>
               <StepLabel>Σύνοψη</StepLabel>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: 18, marginBottom: 16 }}>
                 <SummaryRow label="Πελάτης" value={customerName} />
                 <SummaryRow label="Τηλέφωνο" value={contactPhone} />
                 {afm && <SummaryRow label="ΑΦΜ" value={afm} />}
-                <SummaryRow label="Αφορούσε" value={offerTypes.map(t => OFFER_TYPE_LABEL[t]).join(' & ') || '—'} />
-                {offerTypes.includes('mobile') && (
-                  <>
-                    <SummaryRow label="Κινητό" value={`${mobile.plan} — ${formatNumber(Number(mobile.price) || 0, 2)} €`} />
-                    {mobile.connectionType && <SummaryRow label="Κινητό — Σύνδεση" value={`${CONNECTION_TYPE_LABEL[mobile.connectionType]}${mobile.connectionType === 'portability' ? ` από ${mobile.previousProvider || '—'}` : ''}`} />}
-                    {mobile.previousPrice !== '' && <SummaryRow label="Κινητό — Πλήρωνε" value={`${formatNumber(Number(mobile.previousPrice) || 0, 2)} €`} />}
-                  </>
-                )}
-                {offerTypes.includes('landline') && (
-                  <>
-                    <SummaryRow label="Σταθερό" value={`${landline.plan} — ${formatNumber(Number(landline.price) || 0, 2)} €`} />
-                    {landline.connectionType && <SummaryRow label="Σταθερό — Σύνδεση" value={`${CONNECTION_TYPE_LABEL[landline.connectionType]}${landline.connectionType === 'portability' ? ` από ${landline.previousProvider || '—'}` : ''}`} />}
-                    {landline.previousPrice !== '' && <SummaryRow label="Σταθερό — Πλήρωνε" value={`${formatNumber(Number(landline.previousPrice) || 0, 2)} €`} />}
-                  </>
-                )}
-                <SummaryRow label="Πάγια δώρο" value={hasGiftDevices ? `Ναι — ${giftDevicesCount}` : 'Όχι'} />
+                <SummaryRow label="Αφορούσε" value={summarizeLines(lines)} />
+                {withOrdinals(lines).map(l => (
+                  <React.Fragment key={l.id}>
+                    <SummaryRow label={lineTitle(l)} value={`${l.plan} — ${formatNumber(Number(l.price) || 0, 2)} €`} />
+                    {l.connectionType && <SummaryRow label={`${lineTitle(l)} — Σύνδεση`} value={`${CONNECTION_TYPE_LABEL[l.connectionType]}${l.connectionType === 'portability' ? ` από ${l.previousProvider || '—'}` : ''}`} />}
+                    {l.previousPrice !== '' && <SummaryRow label={`${lineTitle(l)} — Πλήρωνε`} value={`${formatNumber(Number(l.previousPrice) || 0, 2)} €`} />}
+                  </React.Fragment>
+                ))}
+                <SummaryRow label="Πάγια δώρο" value={hasGiftDevices ? `Ναι — ${giftDevicesCount}${giftDevicesValue !== '' ? ` (αξίας ${formatNumber(Number(giftDevicesValue) || 0, 2)} €)` : ''}` : 'Όχι'} />
                 <SummaryRow label="Επιδότηση" value={hasSubsidy ? `Ναι — ${formatNumber(Number(subsidyAmount) || 0, 2)} €` : 'Όχι'} />
               </div>
               <StepLabel>Σχόλιο <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
@@ -735,9 +773,12 @@ export default function PowerSellingPage() {
                   <div style={{ fontSize: '0.82rem', color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>{formatDate(it.createdAt)}</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.85rem', color: 'rgba(255,255,255,0.7)' }}>
                     {it.contactPhone && <div>📞 {it.contactPhone}</div>}
-                    {it.mobilePlan && <div>📱 {it.mobilePlan} — {formatNumber(it.mobilePrice || 0, 2)} €{it.mobileConnectionType ? ` · ${CONNECTION_TYPE_LABEL[it.mobileConnectionType]}` : ''}</div>}
-                    {it.landlinePlan && <div>☎️ {it.landlinePlan} — {formatNumber(it.landlinePrice || 0, 2)} €{it.landlineConnectionType ? ` · ${CONNECTION_TYPE_LABEL[it.landlineConnectionType]}` : ''}</div>}
-                    {it.hasGiftDevices && <div>🎁 Πάγια δώρο × {it.giftDevicesCount}</div>}
+                    {withOrdinals(it.lines).map(l => (
+                      <div key={l.id}>
+                        {LINE_ICON[l.type]} {l.showOrdinal ? `${lineTitle(l)}: ` : ''}{l.plan} — {formatNumber(l.price || 0, 2)} €{l.connectionType ? ` · ${CONNECTION_TYPE_LABEL[l.connectionType]}` : ''}
+                      </div>
+                    ))}
+                    {it.hasGiftDevices && <div>🎁 Πάγια δώρο × {it.giftDevicesCount}{typeof it.giftDevicesValue === 'number' ? ` (${formatNumber(it.giftDevicesValue, 2)} €)` : ''}</div>}
                     {it.hasSubsidy && <div>💶 Επιδότηση {formatNumber(it.subsidyAmount || 0, 2)} €</div>}
                   </div>
                   {it.comments.length > 0 && (
@@ -778,24 +819,33 @@ export default function PowerSellingPage() {
             </div>
 
             <div>
-              <StepLabel>Τι αφορούσε η προσφορά</StepLabel>
-              <div style={{ display: 'flex', gap: 10 }}>
-                {(['mobile', 'landline'] as OfferType[]).map(t => (
-                  <button key={t} type="button" onClick={() => toggleEditOfferType(t)} className={editOfferTypes.includes(t) ? 'btn' : 'btn-ghost'} style={{ flex: 1, padding: '10px 0', fontWeight: 700 }}>
-                    {OFFER_TYPE_LABEL[t]}
-                  </button>
+              <StepLabel>Γραμμές προσφοράς</StepLabel>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+                <button type="button" className="btn-ghost" onClick={() => addEditLine('mobile')} style={{ flex: 1, padding: '8px 0', fontWeight: 700 }}>+ Κινητό</button>
+                <button type="button" className="btn-ghost" onClick={() => addEditLine('landline')} style={{ flex: 1, padding: '8px 0', fontWeight: 700 }}>+ Σταθερό</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {withOrdinals(editLines).map(l => (
+                  <LineEditorCard
+                    key={l.id}
+                    idPrefix={`edit-${l.id}`}
+                    line={l}
+                    title={lineTitle(l)}
+                    onChange={patch => updateEditLine(l.id, patch)}
+                    onRemove={() => removeEditLine(l.id)}
+                  />
                 ))}
               </div>
             </div>
 
-            {editOfferTypes.includes('mobile') && <TypeFieldsEditor idPrefix="edit-mobile" label="Κινητό" value={editMobile} onChange={setEditMobile} planOptions={MOBILE_PLAN_PRESETS} />}
-            {editOfferTypes.includes('landline') && <TypeFieldsEditor idPrefix="edit-landline" label="Σταθερό" value={editLandline} onChange={setEditLandline} planOptions={HOME_TYPE_OPTIONS} />}
-
             <div>
               <StepLabel>Πάγια δώρο</StepLabel>
-              <YesNoToggle value={editHasGift} onChange={v => { setEditHasGift(v); if (!v) setEditGiftCount('') }} />
+              <YesNoToggle value={editHasGift} onChange={v => { setEditHasGift(v); if (!v) { setEditGiftCount(''); setEditGiftValue('') } }} />
               {editHasGift && (
-                <input className="panel-input" type="number" min={1} step={1} placeholder="Πόσα;" value={editGiftCount} onChange={e => setEditGiftCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160, marginTop: 10 }} />
+                <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                  <input className="panel-input" type="number" min={1} step={1} placeholder="Πόσα;" value={editGiftCount} onChange={e => setEditGiftCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} />
+                  <input className="panel-input" type="number" min={0} step="0.01" placeholder="Αξία δώρου €" value={editGiftValue} onChange={e => setEditGiftValue(e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ width: 160 }} />
+                </div>
               )}
             </div>
 
