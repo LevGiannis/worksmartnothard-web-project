@@ -31,14 +31,14 @@ export const HOME_TYPE_OPTIONS = [
 export const APPOINTMENT_AMOUNTS = [6.85, 15.31, 10.47, 40.32]
 
 export const MOBILE_PLAN_PRESETS = [
-  'RED ONE',
-  'RED S',
-  'RED M',
-  'RED L',
-  'RED XL',
-  'RED UNLIMITED',
-  'EXTRA DATA',
-  'CU',
+  'REDA',
+  'REDB',
+  'REDX',
+  'REDZ',
+  'REDE',
+  'HAP6',
+  'SURF2',
+  'SURF3',
 ]
 
 export const PROVIDER_PRESETS = [
