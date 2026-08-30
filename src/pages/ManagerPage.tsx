@@ -327,18 +327,7 @@ function countEntries(arr: ParsedEntry[]): number {
   return arr.reduce((sum, e) => sum + (e.connections ?? 1), 0)
 }
 
-// Fixed-order categorical palette (validated for adjacent-pair CVD safety).
-const CHART_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767']
-// Beyond the 8 fixed hues, step around the wheel by the golden angle so any
-// number of extra series stay visually spread out instead of clustering.
-const CHART_EXTRA_HUE_STEP = 137.508
-function chartColor(index: number): string {
-  if (index < CHART_COLORS.length) return CHART_COLORS[index]
-  const hue = (index * CHART_EXTRA_HUE_STEP) % 360
-  return `hsl(${hue.toFixed(0)}, 62%, 58%)`
-}
-
-type ChartSlice = { label: string; entries: ParsedEntry[]; color: string }
+type ChartSlice = { label: string; entries: ParsedEntry[] }
 
 // One bar per seller — no folding, every user keeps their own bar.
 function buildChartSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): ChartSlice[] {
@@ -349,12 +338,14 @@ function buildChartSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => st
     byUser.get(u)!.push(e)
   }
   const sorted = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
-  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: chartColor(i) }))
+  return sorted.map(([user, ues]) => ({ label: user, entries: ues }))
 }
 
 // Horizontal, sorted bar list — labels stay fully readable and values compare
 // directly by length, unlike thin pie slices once there are many categories.
-function BarList({ slices, onSliceClick }: { slices: ChartSlice[]; onSliceClick: (idx: number) => void }) {
+// One hue for the whole list (magnitude, not identity) — a light opacity taper
+// gives rank a subtle visual cue without turning it into a rainbow.
+function BarList({ slices, color, onSliceClick }: { slices: ChartSlice[]; color: string; onSliceClick: (idx: number) => void }) {
   const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
   if (!total) return null
   const max = Math.max(...slices.map(s => s.entries.length))
@@ -363,15 +354,16 @@ function BarList({ slices, onSliceClick }: { slices: ChartSlice[]; onSliceClick:
       {slices.map((s, i) => {
         const pct = Math.round((s.entries.length / total) * 100)
         const fillPct = (s.entries.length / max) * 100
+        const opacity = slices.length > 1 ? 1 - (i / (slices.length - 1)) * 0.4 : 1
         return (
           <div key={s.label} onClick={() => onSliceClick(i)} style={{ cursor: 'pointer' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.68)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
-              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 800, color }}>{s.entries.length}</span>
               <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 30, textAlign: 'right' }}>{pct}%</span>
             </div>
             <div style={{ height: 6, background: 'rgba(255,255,255,0.06)', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${fillPct}%`, background: s.color, borderRadius: 999, transition: 'width 300ms ease' }} />
+              <div style={{ height: '100%', width: `${fillPct}%`, background: color, opacity, borderRadius: 999, transition: 'width 300ms ease' }} />
             </div>
           </div>
         )
@@ -1914,7 +1906,7 @@ export default function ManagerPage() {
                         const total = filtered.length
                         const openSlice = (s: ChartSlice) => setPendingModal({
                           user: s.label,
-                          color: s.color,
+                          color,
                           entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
                         })
                         return (
@@ -1925,7 +1917,7 @@ export default function ManagerPage() {
                               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
                             </div>
                             <div style={{ paddingLeft: 16 }}>
-                              <BarList slices={slices} onSliceClick={i => openSlice(slices[i])} />
+                              <BarList slices={slices} color={color} onSliceClick={i => openSlice(slices[i])} />
                             </div>
                           </div>
                         )
@@ -2076,9 +2068,10 @@ export default function ManagerPage() {
 
                 if (!leaderboard.length) return null
 
-                // Two pies per category: product mix and seller mix, replacing the old dense table.
+                // Two bar lists per category: product mix and seller mix, replacing the old dense table.
                 const renderSubPies = (
                   doneEntries: ParsedEntry[],
+                  color: string,
                   formatLabel: (sub: string) => string = (sub) => sub
                 ) => {
                   if (!doneEntries.length) return null
@@ -2086,7 +2079,7 @@ export default function ManagerPage() {
                   const userSlices = buildChartSlices(doneEntries, e => effectiveName(e.user))
                   const openSlice = (s: ChartSlice) => setPendingModal({
                     user: s.label,
-                    color: s.color,
+                    color,
                     entries: [...s.entries].sort((a, b) => {
                       const da = a.date || a.implDate, db = b.date || b.implDate
                       if (!da && !db) return 0
@@ -2107,12 +2100,12 @@ export default function ManagerPage() {
                     const groups = [...bySub.entries()]
                       .map(([label, es]) => ({ label, entries: es }))
                       .sort((a, b) => countEntries(b.entries) - countEntries(a.entries))
-                    setUserDrilldownModal({ user: s.label, color: s.color, groups })
+                    setUserDrilldownModal({ user: s.label, color, groups })
                   }
                   const renderMiniBars = (title: string, slices: ChartSlice[], onClick: (s: ChartSlice) => void = openSlice) => (
                     <div key={title} style={{ flex: '1 1 260px', minWidth: 220 }}>
                       <div style={{ fontSize: '0.66rem', fontWeight: 600, color: 'rgba(255,255,255,0.35)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 }}>{title}</div>
-                      <BarList slices={slices} onSliceClick={i => onClick(slices[i])} />
+                      <BarList slices={slices} color={color} onSliceClick={i => onClick(slices[i])} />
                     </div>
                   )
                   return (
@@ -2186,7 +2179,7 @@ export default function ManagerPage() {
                               <div style={{ marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
                               </div>
-                              {renderSubPies(mobileDone)}
+                              {renderSubPies(mobileDone, CATEGORY_COLORS.mobile)}
                             </div>
                           )}
                           {homeDone.length > 0 && (
@@ -2194,7 +2187,7 @@ export default function ManagerPage() {
                               <div style={{ marginBottom: 6 }}>
                                 <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
                               </div>
-                              {renderSubPies(homeDone, formatHomeProductLabel)}
+                              {renderSubPies(homeDone, CATEGORY_COLORS.home, formatHomeProductLabel)}
                             </div>
                           )}
                         </div>
