@@ -750,6 +750,8 @@ input[list] {
 	.print-only-offer{ display:none }
 }
 @media print {
+	/* zero page margin also suppresses the browser's own header/footer (URL, date, page number) */
+	@page{ margin:0 }
 	body *{ visibility:hidden }
 	.print-only-offer, .print-only-offer *{ visibility:visible; -webkit-print-color-adjust:exact; print-color-adjust:exact }
 	.print-only-offer{ position:absolute; left:0; top:0; width:100%; background:#fff }
