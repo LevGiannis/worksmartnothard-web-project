@@ -86,6 +86,15 @@ const quickLinks = [
     ),
   },
   {
+    to: '/power-selling',
+    label: 'Power Selling',
+    hint: 'Καταχώρηση φορμών πώλησης σε πελάτες',
+    gradient: 'linear-gradient(135deg,#ec4899,#be185d)',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" stroke="white" strokeWidth="2" strokeLinejoin="round"/></svg>
+    ),
+  },
+  {
     to: '/profile',
     label: 'Προφίλ',
     hint: 'Στοιχεία χρήστη και ρυθμίσεις',

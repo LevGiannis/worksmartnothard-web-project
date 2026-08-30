@@ -5,6 +5,7 @@ import TasksPage from './pages/TasksPage'
 import HistoryPage from './pages/HistoryPage'
 import AddEntryPage from './pages/AddEntryPage'
 import AddGoalPage from './pages/AddGoalPage'
+import PowerSellingPage from './pages/PowerSellingPage'
 import StatsPage from './pages/StatsPage'
 import ProfilePage from './pages/ProfilePage'
 import PendingPage from './pages/PendingPage'
@@ -135,6 +136,7 @@ export default function App() {
             <Route path="/history" element={<ErrorBoundary><HistoryPage /></ErrorBoundary>} />
             <Route path="/add-entry" element={<ErrorBoundary><AddEntryPage /></ErrorBoundary>} />
             <Route path="/add-goal" element={<ErrorBoundary><AddGoalPage /></ErrorBoundary>} />
+            <Route path="/power-selling" element={<ErrorBoundary><PowerSellingPage /></ErrorBoundary>} />
             <Route path="/stats" element={<ErrorBoundary><StatsPage /></ErrorBoundary>} />
             <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
             <Route path="/pending" element={<ErrorBoundary><PendingPage /></ErrorBoundary>} />
