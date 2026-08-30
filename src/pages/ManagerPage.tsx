@@ -3,7 +3,6 @@ import * as XLSX from 'xlsx-js-style'
 import PageHeader from '../components/PageHeader'
 import { ThemeContext } from '../App'
 
-const MANAGER_PASSWORD = 'manager123'
 const USER_MAP_KEY = 'ws_manager_user_map'
 const TARGETS_KEY = 'ws_manager_targets'
 const DISMISSED_PAIRS_KEY = 'ws_manager_dismissed_pairs'
@@ -421,9 +420,6 @@ const deserializeEntries = (json: string): ParsedEntry[] => {
 
 export default function ManagerPage() {
   const { theme, setTheme } = useContext(ThemeContext)
-  const [authenticated, setAuthenticated] = useState(false)
-  const [pwInput, setPwInput] = useState('')
-  const [pwError, setPwError] = useState(false)
   const [phase, setPhase] = useState<'setup' | 'dashboard'>('setup')
   const [entries, setEntries] = useState<ParsedEntry[]>(() => {
     try {
@@ -563,15 +559,6 @@ export default function ManagerPage() {
   // Manual userMap overrides autoMap; autoMap applies automatically without user intervention
   const effectiveName = (raw: string) => userMap[raw] || autoMap[raw] || raw
 
-  const handleLogin = () => {
-    if (pwInput === MANAGER_PASSWORD) {
-      setAuthenticated(true)
-      setPwError(false)
-    } else {
-      setPwError(true)
-    }
-  }
-
   const processFiles = useCallback(async (files: FileList | File[]) => {
     setUploading(true)
     const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
@@ -643,46 +630,6 @@ export default function ManagerPage() {
     }
     setUploading(false)
   }, [])
-
-  // ── Password gate ──
-  if (!authenticated) {
-    return (
-      <div className="page-content">
-        <PageHeader title="Manager" subtitle="Είσοδος διαχειριστή" backTo="/" />
-        <div className="page-inner" style={{ display: 'flex', justifyContent: 'center', paddingTop: 40 }}>
-          <div className="panel-card" style={{ padding: 36, width: '100%', maxWidth: 360 }}>
-            <div style={{ textAlign: 'center', marginBottom: 28 }}>
-              <div style={{ width: 56, height: 56, borderRadius: 16, background: 'linear-gradient(135deg,#0891b2,#0e7490)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-                <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
-                  <rect x="5" y="11" width="14" height="10" rx="2" stroke="white" strokeWidth="2" />
-                  <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="white" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
-              <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#fff' }}>Πρόσβαση Manager</div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <input
-                type="password"
-                placeholder="Κωδικός πρόσβασης"
-                value={pwInput}
-                onChange={e => { setPwInput(e.target.value); setPwError(false) }}
-                onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                style={{ padding: '12px 16px', borderRadius: 10, border: `1px solid ${pwError ? '#ef4444' : 'rgba(255,255,255,0.1)'}`, background: 'rgba(255,255,255,0.04)', color: '#fff', fontSize: '0.95rem', outline: 'none' }}
-                autoFocus
-              />
-              {pwError && <div style={{ color: '#ef4444', fontSize: '0.8rem' }}>Λάθος κωδικός</div>}
-              <button
-                onClick={handleLogin}
-                style={{ padding: '12px', borderRadius: 10, background: 'linear-gradient(90deg,#0891b2,#0e7490)', color: '#fff', fontWeight: 700, fontSize: '0.95rem', border: 'none', cursor: 'pointer' }}
-              >
-                Είσοδος
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // ── Setup wizard (phase === 'setup') ──
   if (phase === 'setup') {
