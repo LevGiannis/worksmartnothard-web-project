@@ -134,6 +134,7 @@ export interface PowerSellingItem {
   landlinePreviousPrice?: number
   hasGiftDevices: boolean
   giftDevicesCount?: number
+  giftDevicesValue?: number
   hasSubsidy: boolean
   subsidyAmount?: number
   comments: PowerSellingComment[]
@@ -482,6 +483,7 @@ function normalizePowerSellingItem(it: any): PowerSellingItem {
     landlinePreviousPrice: typeof it.landlinePreviousPrice === 'number' ? it.landlinePreviousPrice : undefined,
     hasGiftDevices: !!it.hasGiftDevices,
     giftDevicesCount: it.hasGiftDevices ? (it.giftDevicesCount || 0) : undefined,
+    giftDevicesValue: it.hasGiftDevices && typeof it.giftDevicesValue === 'number' ? it.giftDevicesValue : undefined,
     hasSubsidy: !!it.hasSubsidy,
     subsidyAmount: it.hasSubsidy ? (it.subsidyAmount || 0) : undefined,
     comments,

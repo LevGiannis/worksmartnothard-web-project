@@ -142,6 +142,11 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
     }))
   const totalMonthly = lines.reduce((s, l) => s + (l.price || 0), 0)
 
+  const monthlyGain = lines.reduce((s, l) => s + Math.max(0, (l.previousPrice || 0) - (l.price || 0)), 0)
+  const giftValue = item.hasGiftDevices && typeof item.giftDevicesValue === 'number' ? item.giftDevicesValue : 0
+  const yearlyGain = monthlyGain * 12 + giftValue
+  const showGain = monthlyGain > 0 || giftValue > 0
+
   return (
     <div className="print-only-offer">
       <div style={{ fontFamily: "'Poppins', Arial, sans-serif", color: VF.black, background: '#fff' }}>
@@ -221,6 +226,22 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
             </div>
           )}
 
+          {showGain && (
+            <div style={{ background: '#f7f9e8', border: `2px solid ${VF.lime}`, borderRadius: 12, padding: '20px 22px', marginTop: 18 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#5c6300', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>💰 Πόσα κερδίζεις</div>
+              <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#5c6300' }}>{formatNumber(monthlyGain, 2)} €</div>
+                  <div style={{ fontSize: 12.5, color: '#5c6300', fontWeight: 700 }}>τον μήνα</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: '#5c6300' }}>{formatNumber(yearlyGain, 2)} €</div>
+                  <div style={{ fontSize: 12.5, color: '#5c6300', fontWeight: 700 }}>τον χρόνο{giftValue > 0 ? ' (με το δώρο)' : ''}</div>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: VF.grey }}>
             {sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}
           </div>
@@ -244,6 +265,7 @@ export default function PowerSellingPage() {
   const [landline, setLandline] = useState<TypeFieldsValue>(emptyTypeFields)
   const [hasGiftDevices, setHasGiftDevices] = useState<boolean | null>(null)
   const [giftDevicesCount, setGiftDevicesCount] = useState<number | ''>('')
+  const [giftDevicesValue, setGiftDevicesValue] = useState<number | ''>('')
   const [hasSubsidy, setHasSubsidy] = useState<boolean | null>(null)
   const [subsidyAmount, setSubsidyAmount] = useState<number | ''>('')
   const [notes, setNotes] = useState('')
@@ -269,6 +291,7 @@ export default function PowerSellingPage() {
   const [editLandline, setEditLandline] = useState<TypeFieldsValue>(emptyTypeFields)
   const [editHasGift, setEditHasGift] = useState<boolean | null>(null)
   const [editGiftCount, setEditGiftCount] = useState<number | ''>('')
+  const [editGiftValue, setEditGiftValue] = useState<number | ''>('')
   const [editHasSubsidy, setEditHasSubsidy] = useState<boolean | null>(null)
   const [editSubsidyAmount, setEditSubsidyAmount] = useState<number | ''>('')
   const [editErrors, setEditErrors] = useState<string[]>([])
@@ -354,7 +377,7 @@ export default function PowerSellingPage() {
     setCustomerName(''); setContactPhone(''); setAfm('')
     setOfferTypes([])
     setMobile(emptyTypeFields); setLandline(emptyTypeFields)
-    setHasGiftDevices(null); setGiftDevicesCount('')
+    setHasGiftDevices(null); setGiftDevicesCount(''); setGiftDevicesValue('')
     setHasSubsidy(null); setSubsidyAmount('')
     setNotes('')
     setError('')
@@ -386,6 +409,7 @@ export default function PowerSellingPage() {
         landlineConnectionType: landlinePayload?.connectionType, landlinePreviousProvider: landlinePayload?.previousProvider, landlinePreviousPrice: landlinePayload?.previousPrice,
         hasGiftDevices: !!hasGiftDevices,
         giftDevicesCount: hasGiftDevices && giftDevicesCount !== '' ? Number(giftDevicesCount) : undefined,
+        giftDevicesValue: hasGiftDevices && giftDevicesValue !== '' ? Number(giftDevicesValue) : undefined,
         hasSubsidy: !!hasSubsidy,
         subsidyAmount: hasSubsidy && subsidyAmount !== '' ? Number(subsidyAmount) : undefined,
       })
@@ -442,6 +466,7 @@ export default function PowerSellingPage() {
     })
     setEditHasGift(!!it.hasGiftDevices)
     setEditGiftCount(typeof it.giftDevicesCount === 'number' ? it.giftDevicesCount : '')
+    setEditGiftValue(typeof it.giftDevicesValue === 'number' ? it.giftDevicesValue : '')
     setEditHasSubsidy(!!it.hasSubsidy)
     setEditSubsidyAmount(typeof it.subsidyAmount === 'number' ? it.subsidyAmount : '')
     setEditErrors([])
@@ -483,6 +508,7 @@ export default function PowerSellingPage() {
         landlineConnectionType: landlinePayload?.connectionType, landlinePreviousProvider: landlinePayload?.previousProvider, landlinePreviousPrice: landlinePayload?.previousPrice,
         hasGiftDevices: !!editHasGift,
         giftDevicesCount: editHasGift && editGiftCount !== '' ? Number(editGiftCount) : undefined,
+        giftDevicesValue: editHasGift && editGiftValue !== '' ? Number(editGiftValue) : undefined,
         hasSubsidy: !!editHasSubsidy,
         subsidyAmount: editHasSubsidy && editSubsidyAmount !== '' ? Number(editSubsidyAmount) : undefined,
       })
@@ -591,11 +617,17 @@ export default function PowerSellingPage() {
           {step === 3 && (
             <div>
               <StepLabel>Δόθηκε πάγια δώρο;</StepLabel>
-              <YesNoToggle value={hasGiftDevices} onChange={v => { setHasGiftDevices(v); if (!v) setGiftDevicesCount('') }} />
+              <YesNoToggle value={hasGiftDevices} onChange={v => { setHasGiftDevices(v); if (!v) { setGiftDevicesCount(''); setGiftDevicesValue('') } }} />
               {hasGiftDevices && (
-                <div style={{ marginTop: 16 }}>
-                  <StepLabel>Πόσα πάγια;</StepLabel>
-                  <input className="panel-input" type="number" min={1} step={1} placeholder="π.χ. 1" value={giftDevicesCount} onChange={e => setGiftDevicesCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} autoFocus />
+                <div style={{ marginTop: 16, display: 'flex', gap: 16 }}>
+                  <div>
+                    <StepLabel>Πόσα πάγια;</StepLabel>
+                    <input className="panel-input" type="number" min={1} step={1} placeholder="π.χ. 1" value={giftDevicesCount} onChange={e => setGiftDevicesCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} autoFocus />
+                  </div>
+                  <div>
+                    <StepLabel>Αξία δώρου (€) <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
+                    <input className="panel-input" type="number" min={0} step="0.01" placeholder="π.χ. 150" value={giftDevicesValue} onChange={e => setGiftDevicesValue(e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ width: 160 }} />
+                  </div>
                 </div>
               )}
             </div>
@@ -636,7 +668,7 @@ export default function PowerSellingPage() {
                     {landline.previousPrice !== '' && <SummaryRow label="Σταθερό — Πλήρωνε" value={`${formatNumber(Number(landline.previousPrice) || 0, 2)} €`} />}
                   </>
                 )}
-                <SummaryRow label="Πάγια δώρο" value={hasGiftDevices ? `Ναι — ${giftDevicesCount}` : 'Όχι'} />
+                <SummaryRow label="Πάγια δώρο" value={hasGiftDevices ? `Ναι — ${giftDevicesCount}${giftDevicesValue !== '' ? ` (αξίας ${formatNumber(Number(giftDevicesValue) || 0, 2)} €)` : ''}` : 'Όχι'} />
                 <SummaryRow label="Επιδότηση" value={hasSubsidy ? `Ναι — ${formatNumber(Number(subsidyAmount) || 0, 2)} €` : 'Όχι'} />
               </div>
               <StepLabel>Σχόλιο <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
@@ -737,7 +769,7 @@ export default function PowerSellingPage() {
                     {it.contactPhone && <div>📞 {it.contactPhone}</div>}
                     {it.mobilePlan && <div>📱 {it.mobilePlan} — {formatNumber(it.mobilePrice || 0, 2)} €{it.mobileConnectionType ? ` · ${CONNECTION_TYPE_LABEL[it.mobileConnectionType]}` : ''}</div>}
                     {it.landlinePlan && <div>☎️ {it.landlinePlan} — {formatNumber(it.landlinePrice || 0, 2)} €{it.landlineConnectionType ? ` · ${CONNECTION_TYPE_LABEL[it.landlineConnectionType]}` : ''}</div>}
-                    {it.hasGiftDevices && <div>🎁 Πάγια δώρο × {it.giftDevicesCount}</div>}
+                    {it.hasGiftDevices && <div>🎁 Πάγια δώρο × {it.giftDevicesCount}{typeof it.giftDevicesValue === 'number' ? ` (${formatNumber(it.giftDevicesValue, 2)} €)` : ''}</div>}
                     {it.hasSubsidy && <div>💶 Επιδότηση {formatNumber(it.subsidyAmount || 0, 2)} €</div>}
                   </div>
                   {it.comments.length > 0 && (
@@ -793,9 +825,12 @@ export default function PowerSellingPage() {
 
             <div>
               <StepLabel>Πάγια δώρο</StepLabel>
-              <YesNoToggle value={editHasGift} onChange={v => { setEditHasGift(v); if (!v) setEditGiftCount('') }} />
+              <YesNoToggle value={editHasGift} onChange={v => { setEditHasGift(v); if (!v) { setEditGiftCount(''); setEditGiftValue('') } }} />
               {editHasGift && (
-                <input className="panel-input" type="number" min={1} step={1} placeholder="Πόσα;" value={editGiftCount} onChange={e => setEditGiftCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160, marginTop: 10 }} />
+                <div style={{ display: 'flex', gap: 12, marginTop: 10 }}>
+                  <input className="panel-input" type="number" min={1} step={1} placeholder="Πόσα;" value={editGiftCount} onChange={e => setEditGiftCount(e.target.value === '' ? '' : parseInt(e.target.value, 10))} style={{ width: 160 }} />
+                  <input className="panel-input" type="number" min={0} step="0.01" placeholder="Αξία δώρου €" value={editGiftValue} onChange={e => setEditGiftValue(e.target.value === '' ? '' : parseFloat(e.target.value))} style={{ width: 160 }} />
+                </div>
               )}
             </div>
 
