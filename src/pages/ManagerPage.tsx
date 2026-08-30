@@ -1798,14 +1798,6 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Συνδεδεμένα Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ό,τι συνδέθηκε (Κ5) τον μήνα, ανεξαρτήτως πότε καταχωρήθηκε</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeConnectedThisMonth)}</div>
-                      <PaceRow
-                        actual={buildDailyCumulative(homeConnectedThisMonth, e => e.implDate, mYear, mMonth)}
-                        target={getDoneTarget('home')}
-                        onTargetChange={v => setDoneTarget('home', v)}
-                        color={homeColor}
-                        year={mYear}
-                        month={mMonth}
-                      />
                       {productOrder.map(type => renderProductRow(type, countEntries(homeConnectedByType[type])))}
                     </div>
 
@@ -1814,6 +1806,14 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Μετράνε στον Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα&συνδεδεμένα ή σε Υπό Υλοποίηση</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeCountedEntries)}</div>
+                      <PaceRow
+                        actual={buildDailyCumulative(homeCountedEntries, e => e.implDate || e.date, mYear, mMonth)}
+                        target={getDoneTarget('home')}
+                        onTargetChange={v => setDoneTarget('home', v)}
+                        color={homeColor}
+                        year={mYear}
+                        month={mMonth}
+                      />
                       {renderProductRow('fttc', countEntries(homeConnectedByType.fttc))}
                       {renderProductRow('wireless', countEntries(homeConnectedByType.wireless))}
                       {renderProductRow('onenet', countEntries(homeConnectedByType.onenet))}
