@@ -112,6 +112,19 @@ function formatDateTime(d?: string) {
 const LINE_LABEL: Record<OfferType, string> = { mobile: 'Κινητή Τηλεφωνία', landline: 'Σταθερή Τηλεφωνία & Internet' }
 const LINE_ICON: Record<OfferType, string> = { mobile: '📱', landline: '☎️' }
 
+// ─── Vodafone brand tokens (from the public brand identity: Pantone 485 / #E60000 red,
+// the 2017+ "speech mark" graphic device, extended accent palette, and the Greek
+// "Μαζί μπορούμε" / "Together We Can" tagline) — Poppins stands in for the
+// proprietary, Vodafone-exclusive "Vodafone Rg" typeface. ────────────────────────
+const VF = {
+  red: '#e60000',
+  black: '#333333',
+  grey: '#767676',
+  yellow: '#fecb00',
+  teal: '#00b0ca',
+  lime: '#a8b400',
+}
+
 // ─── customer-facing printable offer: only what the customer needs to see, styled to stand out ──
 function PrintableOffer({ item }: { item: PowerSellingItem }) {
   const sellerName = `${safeLocalStorageGet('ws_user_first') || ''} ${safeLocalStorageGet('ws_user_last') || ''}`.trim()
@@ -129,36 +142,47 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
     }))
   const totalMonthly = lines.reduce((s, l) => s + (l.price || 0), 0)
 
-  const VF_RED = '#e60000'
-
   return (
     <div className="print-only-offer">
-      <div style={{ fontFamily: 'Arial, Inter, sans-serif', color: '#111', background: '#fff' }}>
+      <div style={{ fontFamily: "'Poppins', Arial, sans-serif", color: VF.black, background: '#fff' }}>
 
-        {/* full-bleed Vodafone-red masthead */}
-        <div style={{ background: VF_RED, padding: '20px 36px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 20, color: VF_RED, flexShrink: 0 }}>V</div>
-            <div style={{ fontWeight: 900, fontSize: 22, color: '#fff', letterSpacing: 1.5 }}>VODAFONE</div>
+        {/* full-bleed Vodafone-red masthead, with the speech-mark as a soft outlined graphic device
+            (2017+ identity: red field, white/outlined mark — not a literal copy of the logo artwork) */}
+        <div style={{ position: 'relative', background: VF.red, padding: '22px 36px', overflow: 'hidden' }}>
+          <div aria-hidden style={{
+            position: 'absolute', right: -30, top: -60, width: 220, height: 220,
+            borderRadius: '60% 40% 55% 45% / 45% 55% 40% 60%',
+            border: '3px solid rgba(255,255,255,0.35)',
+          }} />
+          <div style={{ position: 'relative', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{
+                width: 38, height: 38, flexShrink: 0, background: '#fff',
+                borderRadius: '60% 40% 55% 45% / 45% 55% 40% 60%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 900, fontSize: 19, color: VF.red,
+              }}>V</div>
+              <div style={{ fontWeight: 900, fontSize: 22, color: '#fff', letterSpacing: 1.5 }}>VODAFONE</div>
+            </div>
+            {store && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.92)', fontWeight: 700, letterSpacing: 0.5 }}>{store}</div>}
           </div>
-          {store && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: 700, letterSpacing: 0.5 }}>{store}</div>}
         </div>
 
         <div style={{ maxWidth: 720, margin: '0 auto', padding: '30px 36px 36px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `3px solid ${VF_RED}`, paddingBottom: 14, marginBottom: 26 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderBottom: `3px solid ${VF.red}`, paddingBottom: 14, marginBottom: 26 }}>
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 2, color: VF_RED, textTransform: 'uppercase' }}>Η προσφορά σου</div>
+              <div style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 2, color: VF.red, textTransform: 'uppercase' }}>Η προσφορά σου</div>
               <div style={{ fontSize: 30, fontWeight: 900, color: '#111', marginTop: 4 }}>{item.customerName}</div>
             </div>
-            <div style={{ textAlign: 'right', fontSize: 12, color: '#777' }}>{formatDate(item.createdAt)}</div>
+            <div style={{ textAlign: 'right', fontSize: 12, color: VF.grey }}>{formatDate(item.createdAt)}</div>
           </div>
 
           {lines.map(l => (
-            <div key={l.type} style={{ background: '#fff', border: '1px solid #ececec', borderLeft: `5px solid ${VF_RED}`, borderRadius: 10, padding: 22, marginBottom: 18, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontSize: 12, fontWeight: 800, color: '#999', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
+            <div key={l.type} style={{ background: '#fff', border: '1px solid #ececec', borderLeft: `5px solid ${VF.red}`, borderRadius: 10, padding: 22, marginBottom: 18, boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: VF.grey, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>{LINE_ICON[l.type]} {LINE_LABEL[l.type]}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
                 <div style={{ fontSize: 24, fontWeight: 900, textTransform: 'uppercase' }}>{l.plan}</div>
-                <div style={{ fontSize: 28, fontWeight: 900, color: VF_RED }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: '#777' }}>/μήνα</span></div>
+                <div style={{ fontSize: 28, fontWeight: 900, color: VF.red }}>{formatNumber(l.price || 0, 2)} €<span style={{ fontSize: 14, fontWeight: 600, color: VF.grey }}>/μήνα</span></div>
               </div>
               {l.connectionType && (
                 <div style={{ fontSize: 13.5, color: '#555', marginTop: 8 }}>
@@ -166,7 +190,7 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
                 </div>
               )}
               {typeof l.previousPrice === 'number' && l.previousPrice > (l.price || 0) && (
-                <div style={{ marginTop: 12, background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, padding: '10px 14px', fontSize: 14.5, color: '#15803d', fontWeight: 800 }}>
+                <div style={{ marginTop: 12, background: '#f7f9e8', border: `1px solid ${VF.lime}66`, borderRadius: 10, padding: '10px 14px', fontSize: 14.5, color: '#5c6300', fontWeight: 800 }}>
                   💰 Εξοικονομείς {formatNumber(l.previousPrice - (l.price || 0), 2)} €/μήνα σε σχέση με πριν
                 </div>
               )}
@@ -176,31 +200,32 @@ function PrintableOffer({ item }: { item: PowerSellingItem }) {
           {(item.hasGiftDevices || item.hasSubsidy) && (
             <div style={{ display: 'flex', gap: 14, marginBottom: 18 }}>
               {item.hasGiftDevices && (
-                <div style={{ flex: 1, background: '#fff5f5', border: `1px solid ${VF_RED}33`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
+                <div style={{ flex: 1, background: '#fffcf0', border: `1px solid ${VF.yellow}88`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
                   <div style={{ fontSize: 28 }}>🎁</div>
-                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: VF_RED }}>Δώρο {item.giftDevicesCount} πάγι{item.giftDevicesCount === 1 ? 'ο' : 'α'}</div>
+                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#8a6d00' }}>Δώρο {item.giftDevicesCount} πάγι{item.giftDevicesCount === 1 ? 'ο' : 'α'}</div>
                 </div>
               )}
               {item.hasSubsidy && (
-                <div style={{ flex: 1, background: '#fff5f5', border: `1px solid ${VF_RED}33`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
+                <div style={{ flex: 1, background: '#f0fbfd', border: `1px solid ${VF.teal}66`, borderRadius: 10, padding: 18, textAlign: 'center' }}>
                   <div style={{ fontSize: 28 }}>💶</div>
-                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: VF_RED }}>Επιδότηση {formatNumber(item.subsidyAmount || 0, 2)} €</div>
+                  <div style={{ fontWeight: 800, fontSize: 15.5, marginTop: 6, color: '#00707f' }}>Επιδότηση {formatNumber(item.subsidyAmount || 0, 2)} €</div>
                 </div>
               )}
             </div>
           )}
 
           {lines.length > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: VF_RED, color: '#fff', borderRadius: 10, padding: '18px 22px', marginTop: 6 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: VF.red, color: '#fff', borderRadius: 10, padding: '18px 22px', marginTop: 6 }}>
               <div style={{ fontWeight: 700, fontSize: 15 }}>Συνολικό μηνιαίο κόστος</div>
               <div style={{ fontSize: 26, fontWeight: 900 }}>{formatNumber(totalMonthly, 2)} €</div>
             </div>
           )}
 
-          <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: '#999', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
+          <div style={{ marginTop: 36, paddingTop: 16, borderTop: '2px solid #f2f2f2', fontSize: 12, color: VF.grey, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 6 }}>
             <div>{sellerName && `Ο σύμβουλός σου: ${sellerName}`}{store && ` · ${store}`}</div>
             <div>Ημ/νία εκτύπωσης: {formatDate(new Date().toISOString())}</div>
           </div>
+          <div style={{ marginTop: 10, fontSize: 12, fontWeight: 800, color: VF.red, letterSpacing: 0.5 }}>Μαζί μπορούμε.</div>
         </div>
       </div>
     </div>
