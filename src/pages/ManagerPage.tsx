@@ -1913,60 +1913,6 @@ export default function ManagerPage() {
                 )
               })()}
 
-              {/* Pending / Under implementation panel */}
-              {(mobilePending.length > 0 || homePending.length > 0) && (
-                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σε εκκρεμότητα</div>
-                    <input
-                      type="date"
-                      value={pendingFromDate}
-                      onChange={ev => setPendingFromDate(ev.target.value)}
-                      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
-                    />
-                    {pendingFromDate && (
-                      <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 22 }}>
-                    {(() => {
-                      const renderPendingPie = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
-                        if (!all.length) return null
-                        const filtered = pendingFromDate
-                          ? all.filter(e => { const d = dateOf(e); return d != null && d >= new Date(pendingFromDate) })
-                          : all
-                        if (!filtered.length) return null
-                        const slices = buildChartSlices(filtered, e => effectiveName(e.user))
-                        const total = filtered.length
-                        const openSlice = (s: ChartSlice) => setPendingModal({
-                          user: s.label,
-                          color,
-                          entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
-                        })
-                        return (
-                          <div style={{ flex: '1 1 380px', minWidth: 320 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
-                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
-                            </div>
-                            <div style={{ paddingLeft: 16 }}>
-                              <BarList slices={slices} color={color} onSliceClick={i => openSlice(slices[i])} />
-                            </div>
-                          </div>
-                        )
-                      }
-                      return (
-                        <>
-                          {renderPendingPie('Mobile — Προέγκριση', mobilePending, categoryColors.mobile, e => e.date)}
-                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => e.date || e.implDate)}
-                        </>
-                      )
-                    })()}
-                  </div>
-                </div>
-              )}
-
               {/* Doc issues panel */}
               {docIssues.length > 0 && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
@@ -2055,6 +2001,60 @@ export default function ManagerPage() {
                   </>
                     )
                   })()}
+                </div>
+              )}
+
+              {/* Pending / Under implementation panel */}
+              {(mobilePending.length > 0 || homePending.length > 0) && (
+                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σε εκκρεμότητα</div>
+                    <input
+                      type="date"
+                      value={pendingFromDate}
+                      onChange={ev => setPendingFromDate(ev.target.value)}
+                      style={{ marginLeft: 'auto', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 6, color: 'rgba(255,255,255,0.6)', fontSize: '0.72rem', padding: '2px 6px', cursor: 'pointer', colorScheme: 'dark' }}
+                    />
+                    {pendingFromDate && (
+                      <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 22 }}>
+                    {(() => {
+                      const renderPendingPie = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
+                        if (!all.length) return null
+                        const filtered = pendingFromDate
+                          ? all.filter(e => { const d = dateOf(e); return d != null && d >= new Date(pendingFromDate) })
+                          : all
+                        if (!filtered.length) return null
+                        const slices = buildChartSlices(filtered, e => effectiveName(e.user))
+                        const total = filtered.length
+                        const openSlice = (s: ChartSlice) => setPendingModal({
+                          user: s.label,
+                          color,
+                          entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
+                        })
+                        return (
+                          <div style={{ flex: '1 1 380px', minWidth: 320 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
+                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
+                            </div>
+                            <div style={{ paddingLeft: 16 }}>
+                              <BarList slices={slices} color={color} onSliceClick={i => openSlice(slices[i])} />
+                            </div>
+                          </div>
+                        )
+                      }
+                      return (
+                        <>
+                          {renderPendingPie('Mobile — Προέγκριση', mobilePending, categoryColors.mobile, e => e.date)}
+                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => e.date || e.implDate)}
+                        </>
+                      )
+                    })()}
+                  </div>
                 </div>
               )}
 
