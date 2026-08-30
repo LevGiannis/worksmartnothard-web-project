@@ -1658,6 +1658,33 @@ export default function ManagerPage() {
                 )
               })()}
 
+              {/* Vodafone Home — Υπό Υλοποίηση carried over from earlier months */}
+              {(() => {
+                const olderHomePending = homePending.filter(e => e.date && !isInMonth(e.date, mYear, mMonth))
+                if (!olderHomePending.length) return null
+                const byMonth = new Map<string, { count: number; label: string; sortKey: number }>()
+                for (const e of olderHomePending) {
+                  const d = e.date!
+                  const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+                  if (!byMonth.has(key)) {
+                    byMonth.set(key, { count: 0, label: d.toLocaleDateString('el-GR', { month: 'long', year: 'numeric' }), sortKey: d.getFullYear() * 12 + d.getMonth() })
+                  }
+                  byMonth.get(key)!.count += e.connections ?? 1
+                }
+                const rows = [...byMonth.values()].sort((a, b) => a.sortKey - b.sortKey)
+                return (
+                  <div className="panel-card" style={{ padding: '14px 20px', marginBottom: 4, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, flexShrink: 0 }}>Home — Υπό Υλοποίηση από προηγούμενους μήνες</span>
+                    {rows.map(r => (
+                      <span key={r.label} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.35)', color: '#3b82f6', textTransform: 'capitalize' }}>
+                        {r.count} · {r.label}
+                      </span>
+                    ))}
+                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{countEntries(olderHomePending)} σύνολο</span>
+                  </div>
+                )
+              })()}
+
               {/* Pending / Under implementation panel */}
               {(mobilePending.length > 0 || homePending.length > 0) && (
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
