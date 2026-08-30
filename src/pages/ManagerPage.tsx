@@ -814,8 +814,13 @@ export default function ManagerPage() {
       return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
     })
 
+  // Daily tab shows every status (no ΑΚΥΡΩ/ΕΚΚΡΕΜ/ΑΠΟΡΡ/ΝΕΑ exclusion) — only
+  // the user/shop filters still apply, same as everywhere else.
+  const dailyEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
+    .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)) && shopPassFilter(e))
+
   const dailyMap = new Map<string, Map<string, ParsedEntry[]>>()
-  for (const e of viewEntries) {
+  for (const e of dailyEntries) {
     if (!e.date) continue
     const dk = dateKey(e.date)
     const name = effectiveName(e.user)
