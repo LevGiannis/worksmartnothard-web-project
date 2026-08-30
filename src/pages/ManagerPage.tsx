@@ -1756,7 +1756,7 @@ export default function ManagerPage() {
                       <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                  <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: 22 }}>
                     {(() => {
                       const renderPendingPie = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
                         if (!all.length) return null
@@ -1772,7 +1772,7 @@ export default function ManagerPage() {
                           entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
                         })
                         return (
-                          <div>
+                          <div style={{ flex: '1 1 380px', minWidth: 320 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                               <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
