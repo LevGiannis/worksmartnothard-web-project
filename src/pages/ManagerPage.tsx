@@ -10,6 +10,7 @@ const STORES_KEY = 'ws_manager_stores'
 const STORE_TARGETS_KEY = 'ws_manager_store_targets'
 const ACTIVE_STORES_KEY = 'ws_manager_active_stores'
 const ENTRIES_KEY = 'ws_manager_entries'
+const CATEGORY_COLORS_KEY = 'ws_manager_category_colors'
 const DEFAULT_EXCLUDED_PATTERNS = ['FA', 'TLM', 'BC']
 
 interface Store {
@@ -137,7 +138,7 @@ const CATEGORY_LABELS: Record<Category, string> = {
   home: 'Vodafone Home',
 }
 
-const CATEGORY_COLORS: Record<Category, string> = {
+const DEFAULT_CATEGORY_COLORS: Record<Category, string> = {
   mobile: '#06b6d4',
   prepay: '#3b82f6',
   home: '#f59e0b',
@@ -547,6 +548,18 @@ const deserializeEntries = (json: string): ParsedEntry[] => {
 export default function ManagerPage() {
   const { theme, setTheme } = useContext(ThemeContext)
   const [phase, setPhase] = useState<'setup' | 'dashboard'>('setup')
+  const [categoryColors, setCategoryColors] = useState<Record<Category, string>>(() => {
+    try {
+      const stored = localStorage.getItem(CATEGORY_COLORS_KEY)
+      return stored ? { ...DEFAULT_CATEGORY_COLORS, ...JSON.parse(stored) } : DEFAULT_CATEGORY_COLORS
+    } catch {
+      return DEFAULT_CATEGORY_COLORS
+    }
+  })
+  useEffect(() => {
+    try { localStorage.setItem(CATEGORY_COLORS_KEY, JSON.stringify(categoryColors)) } catch { /* ignore */ }
+  }, [categoryColors])
+  const setCategoryColor = (cat: Category, hex: string) => setCategoryColors(prev => ({ ...prev, [cat]: hex }))
   const [entries, setEntries] = useState<ParsedEntry[]>(() => {
     try {
       const stored = localStorage.getItem(ENTRIES_KEY)
@@ -1228,7 +1241,7 @@ export default function ManagerPage() {
                 const displayDate = e.date || e.implDate
                 const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
                 const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
-                const entryColor = CATEGORY_COLORS[e.category] || pendingModal.color
+                const entryColor = categoryColors[e.category] || pendingModal.color
                 return (
                   <div key={idx} style={{ padding: '10px 14px', borderRadius: 10, background: `${entryColor}0d`, border: `1px solid ${entryColor}25` }}>
                     <div style={{ fontSize: '0.85rem', color: 'rgba(255,255,255,0.85)', marginBottom: 4, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</div>
@@ -1307,9 +1320,30 @@ export default function ManagerPage() {
                 style={{ padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(8,145,178,0.5)', background: 'rgba(8,145,178,0.15)', color: '#22d3ee', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
               >{s.code} <span style={{ fontSize: '0.65rem', color: 'rgba(34,211,238,0.5)', marginLeft: 2 }}>{entries.filter(e => e.storeId === s.id).length}</span></button>
             ))}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.25)', textTransform: 'uppercase', letterSpacing: 0.8 }}>Χρώματα</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} title="Χρώμα Mobile">
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: categoryColors.mobile }}>Mobile</span>
+                <input
+                  type="color"
+                  value={categoryColors.mobile}
+                  onChange={e => setCategoryColor('mobile', e.target.value)}
+                  style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                />
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} title="Χρώμα Vodafone Home">
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: categoryColors.home }}>Home</span>
+                <input
+                  type="color"
+                  value={categoryColors.home}
+                  onChange={e => setCategoryColor('home', e.target.value)}
+                  style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                />
+              </label>
+            </div>
             <button
               onClick={() => setPhase('setup')}
-              style={{ marginLeft: 'auto', padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'pointer' }}
+              style={{ padding: '5px 12px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', fontSize: '0.75rem', cursor: 'pointer' }}
             >⚙ Ρύθμιση</button>
           </div>
           {allShopCodes.length > 0 && (
@@ -1482,9 +1516,9 @@ export default function ManagerPage() {
                 const count = entries.filter(e => e.category === c).length
                 if (!count) return null
                 return (
-                  <div key={c} style={{ padding: '6px 14px', borderRadius: 20, background: `${CATEGORY_COLORS[c]}20`, border: `1px solid ${CATEGORY_COLORS[c]}50`, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[c] }} />
-                    <span style={{ color: CATEGORY_COLORS[c], fontWeight: 600, fontSize: '0.82rem' }}>{CATEGORY_LABELS[c]}</span>
+                  <div key={c} style={{ padding: '6px 14px', borderRadius: 20, background: `${categoryColors[c]}20`, border: `1px solid ${categoryColors[c]}50`, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: categoryColors[c] }} />
+                    <span style={{ color: categoryColors[c], fontWeight: 600, fontSize: '0.82rem' }}>{CATEGORY_LABELS[c]}</span>
                     <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.82rem' }}>{count}</span>
                   </div>
                 )
@@ -1648,8 +1682,8 @@ export default function ManagerPage() {
                           <div style={{ padding: '8px 20px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
                             {userEntries.map((e, idx) => (
                               <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 10px', borderRadius: 8, background: 'rgba(255,255,255,0.025)' }}>
-                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[e.category], flexShrink: 0 }} />
-                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: CATEGORY_COLORS[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}{e.subCategory ? <span style={{ fontWeight: 400, color: `${CATEGORY_COLORS[e.category]}aa`, marginLeft: 5 }}>· {e.subCategory}</span> : null}</span>
+                                <div style={{ width: 8, height: 8, borderRadius: '50%', background: categoryColors[e.category], flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: categoryColors[e.category], minWidth: 110, flexShrink: 0 }}>{CATEGORY_LABELS[e.category]}{e.subCategory ? <span style={{ fontWeight: 400, color: `${categoryColors[e.category]}aa`, marginLeft: 5 }}>· {e.subCategory}</span> : null}</span>
                                 <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.55)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer}</span>
                                 {e.connections && e.connections > 1 && <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 6, padding: '1px 6px', flexShrink: 0 }}>x{e.connections}</span>}
                                 {e.requestId && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)', whiteSpace: 'nowrap', flexShrink: 0, fontFamily: 'monospace' }}>{e.requestId}</span>}
@@ -1699,8 +1733,8 @@ export default function ManagerPage() {
               <>
               {/* Mobile — connected breakdown, pre-approval, and Prepay side by side */}
               {(() => {
-                const mobileColor = CATEGORY_COLORS.mobile
-                const prepayColor = CATEGORY_COLORS.prepay
+                const mobileColor = categoryColors.mobile
+                const prepayColor = categoryColors.prepay
                 const mobileConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'mobile')
                 const mobileConnectedBySubcat = new Map<string, ParsedEntry[]>()
                 for (const e of mobileConnectedThisMonth) {
@@ -1773,7 +1807,7 @@ export default function ManagerPage() {
 
               {/* Vodafone Home — two monthly analysis windows */}
               {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {
-                const homeColor = CATEGORY_COLORS.home
+                const homeColor = categoryColors.home
                 const productOrder: HomeProductType[] = ['ftth', 'fttc', 'wireless', 'onenet']
                 const renderProductRow = (type: HomeProductType, count: number) => (
                   <div key={type} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -1924,8 +1958,8 @@ export default function ManagerPage() {
                       }
                       return (
                         <>
-                          {renderPendingPie('Mobile — Προέγκριση', mobilePending, CATEGORY_COLORS.mobile, e => e.date)}
-                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, CATEGORY_COLORS.home, e => e.date || e.implDate)}
+                          {renderPendingPie('Mobile — Προέγκριση', mobilePending, categoryColors.mobile, e => e.date)}
+                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => e.date || e.implDate)}
                         </>
                       )
                     })()}
@@ -2000,17 +2034,17 @@ export default function ManagerPage() {
                         <>
                           {docHome.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Vodafone Home</div>
+                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: categoryColors.home, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Vodafone Home</div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {chipsByUser(docHome, CATEGORY_COLORS.home)}
+                                {chipsByUser(docHome, categoryColors.home)}
                               </div>
                             </div>
                           )}
                           {docMobile.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Mobile <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.25)', textTransform: 'none', letterSpacing: 0 }}>(τελευταίες 10 ημέρες)</span></div>
+                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: categoryColors.mobile, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Mobile <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.25)', textTransform: 'none', letterSpacing: 0 }}>(τελευταίες 10 ημέρες)</span></div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {chipsByUser(docMobile, CATEGORY_COLORS.mobile)}
+                                {chipsByUser(docMobile, categoryColors.mobile)}
                               </div>
                             </div>
                           )}
@@ -2148,7 +2182,7 @@ export default function ManagerPage() {
                                     <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'rgba(255,255,255,0.82)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 8 }}>{user}</span>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                                       {catChips.map(({ c, n }) => (
-                                        <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
+                                        <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: categoryColors[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>
                                       ))}
                                       <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{done}</span>
                                       {delta !== 0 && (
@@ -2177,17 +2211,17 @@ export default function ManagerPage() {
                           {mobileDone.length > 0 && (
                             <div>
                               <div style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: categoryColors.mobile, textTransform: 'uppercase', letterSpacing: 0.8 }}>Mobile</div>
                               </div>
-                              {renderSubPies(mobileDone, CATEGORY_COLORS.mobile)}
+                              {renderSubPies(mobileDone, categoryColors.mobile)}
                             </div>
                           )}
                           {homeDone.length > 0 && (
                             <div>
                               <div style={{ marginBottom: 6 }}>
-                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 600, color: categoryColors.home, textTransform: 'uppercase', letterSpacing: 0.8 }}>Vodafone Home</div>
                               </div>
-                              {renderSubPies(homeDone, CATEGORY_COLORS.home, formatHomeProductLabel)}
+                              {renderSubPies(homeDone, categoryColors.home, formatHomeProductLabel)}
                             </div>
                           )}
                         </div>
@@ -2240,7 +2274,7 @@ export default function ManagerPage() {
                     const pct = target > 0 ? Math.min(100, Math.round((catDone / target) * 100)) : 0
                     const prevCatDone = countEntries(effectivePrevDoneEntries.filter(e => e.category === c))
                     const delta = catDone - prevCatDone
-                    const color = CATEGORY_COLORS[c]
+                    const color = categoryColors[c]
                     return (
                       <div key={c} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -2271,23 +2305,23 @@ export default function ManagerPage() {
                   const regOnlyEntries = catRegEntries.filter(e => !e.requestId || !doneIds.has(e.requestId))
                   return (
                     <div key={c} className="panel-card" style={{ padding: 0, overflow: 'hidden' }}>
-                      <div style={{ padding: '6px 12px', background: `${CATEGORY_COLORS[c]}15`, borderBottom: `1px solid ${CATEGORY_COLORS[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ padding: '6px 12px', background: `${categoryColors[c]}15`, borderBottom: `1px solid ${categoryColors[c]}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: CATEGORY_COLORS[c] }} />
-                          <span style={{ fontWeight: 700, color: CATEGORY_COLORS[c], fontSize: '0.75rem' }}>{CATEGORY_LABELS[c]}</span>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: categoryColors[c] }} />
+                          <span style={{ fontWeight: 700, color: categoryColors[c], fontSize: '0.75rem' }}>{CATEGORY_LABELS[c]}</span>
                         </div>
                         <div style={{ display: 'flex', gap: 10 }}>
-                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: CATEGORY_COLORS[c] }}>{totalDone} ολοκλ.</span>
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: categoryColors[c] }}>{totalDone} ολοκλ.</span>
                           <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.25)' }}>{totalReg} σύνολο</span>
                         </div>
                       </div>
                       <div style={{ padding: '2px 0' }}>
                         {catDoneEntries.map((e, idx) => (
                           <div key={`done-${idx}`} style={{ display: 'flex', alignItems: 'center', padding: '4px 12px', borderBottom: '1px solid rgba(255,255,255,0.03)', gap: 8 }}>
-                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: CATEGORY_COLORS[c], flexShrink: 0 }} />
+                            <div style={{ width: 5, height: 5, borderRadius: '50%', background: categoryColors[c], flexShrink: 0 }} />
                             <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.78)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.customer || '—'}</span>
                             {e.connections && e.connections > 1 && <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 5, padding: '1px 5px', flexShrink: 0 }}>x{e.connections}</span>}
-                            {e.subCategory && <span style={{ fontSize: '0.65rem', color: `${CATEGORY_COLORS[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
+                            {e.subCategory && <span style={{ fontSize: '0.65rem', color: `${categoryColors[c]}99`, flexShrink: 0 }}>{e.subCategory}</span>}
                             {e.date && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', flexShrink: 0 }}>{formatDate(e.date)}</span>}
                             {e.requestId && <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.22)', fontFamily: 'monospace', flexShrink: 0 }}>{e.requestId}</span>}
                           </div>
@@ -2368,7 +2402,7 @@ export default function ManagerPage() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2 }}>Σύνοψη Καταστημάτων — {monthLabel}</div>
                       <div style={{ display: 'flex', gap: 16 }}>
-                        {cats.map(c => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: CATEGORY_COLORS[c] }}>{CATEGORY_LABELS[c].substring(0, 3)}</span>)}
+                        {cats.map(c => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: categoryColors[c] }}>{CATEGORY_LABELS[c].substring(0, 3)}</span>)}
                         <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)' }}>Σύνολο</span>
                         <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'rgba(255,255,255,0.3)', minWidth: 50 }}>Στόχος</span>
                       </div>
@@ -2393,7 +2427,7 @@ export default function ManagerPage() {
                                 <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                                   {cats.map(c => {
                                     const n = countEntries(done.filter(e => e.category === c))
-                                    return <span key={c} style={{ fontSize: '0.78rem', fontWeight: 700, color: n > 0 ? CATEGORY_COLORS[c] : 'rgba(255,255,255,0.15)', minWidth: 22, textAlign: 'center' }}>{n}</span>
+                                    return <span key={c} style={{ fontSize: '0.78rem', fontWeight: 700, color: n > 0 ? categoryColors[c] : 'rgba(255,255,255,0.15)', minWidth: 22, textAlign: 'center' }}>{n}</span>
                                   })}
                                   <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#fff', minWidth: 30, textAlign: 'right' }}>{total}</span>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 80 }}>
@@ -2428,14 +2462,14 @@ export default function ManagerPage() {
                             <div key={s.id} style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', minWidth: 140 }}>
                               <div style={{ fontWeight: 700, fontSize: '0.82rem', color: '#22d3ee', marginBottom: 8 }}>{s.code}</div>
                               {mob > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: CATEGORY_COLORS.mobile }} />
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: categoryColors.mobile }} />
                                 <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.5)' }}>Mobile</span>
-                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: CATEGORY_COLORS.mobile, marginLeft: 'auto' }}>{mob}</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: categoryColors.mobile, marginLeft: 'auto' }}>{mob}</span>
                               </div>}
                               {h > 0 && <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: CATEGORY_COLORS.home }} />
+                                <div style={{ width: 6, height: 6, borderRadius: '50%', background: categoryColors.home }} />
                                 <span style={{ fontSize: '0.73rem', color: 'rgba(255,255,255,0.5)' }}>Home</span>
-                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: CATEGORY_COLORS.home, marginLeft: 'auto' }}>{h}</span>
+                                <span style={{ fontWeight: 800, fontSize: '0.88rem', color: categoryColors.home, marginLeft: 'auto' }}>{h}</span>
                               </div>}
                             </div>
                           ))}
@@ -2462,7 +2496,7 @@ export default function ManagerPage() {
                                     <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#22d3ee', background: 'rgba(8,145,178,0.15)', border: '1px solid rgba(8,145,178,0.3)', borderRadius: 5, padding: '1px 6px', flexShrink: 0 }}>{storeCode}</span>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                    {cc.map(({ c, n }) => <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: CATEGORY_COLORS[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
+                                    {cc.map(({ c, n }) => <span key={c} style={{ fontSize: '0.67rem', fontWeight: 700, color: categoryColors[c], opacity: 0.85 }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
                                     <span style={{ fontSize: '1rem', fontWeight: 900, color: '#fff', minWidth: 24, textAlign: 'right' }}>{total}</span>
                                   </div>
                                 </div>
@@ -2533,7 +2567,7 @@ export default function ManagerPage() {
                                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
                                         <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'rgba(255,255,255,0.8)' }}>{u}</span>
                                         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                                          {bycat.filter(b => b.n > 0).map(({ c, n }) => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: CATEGORY_COLORS[c] }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
+                                          {bycat.filter(b => b.n > 0).map(({ c, n }) => <span key={c} style={{ fontSize: '0.65rem', fontWeight: 700, color: categoryColors[c] }}>{CATEGORY_LABELS[c].substring(0, 3)} {n}</span>)}
                                           <span style={{ fontSize: '0.88rem', fontWeight: 900, color: '#fff' }}>{total}</span>
                                         </div>
                                       </div>
