@@ -327,6 +327,66 @@ function countEntries(arr: ParsedEntry[]): number {
   return arr.reduce((sum, e) => sum + (e.connections ?? 1), 0)
 }
 
+// Fixed-order categorical palette (validated for adjacent-pair CVD safety) plus
+// a neutral gray for the folded "Λοιποί" bucket — never a generated 6th hue.
+const PIE_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181']
+const PIE_OTHER_COLOR = '#7d8695'
+
+type PieSlice = { label: string; entries: ParsedEntry[]; color: string }
+
+// Groups entries by seller, keeps the top 5 by count, folds the rest into one
+// "Λοιποί" slice — keeps a pie chart within the <=6 segment part-to-whole cap.
+function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): PieSlice[] {
+  const byUser = new Map<string, ParsedEntry[]>()
+  for (const e of entries) {
+    const u = nameOf(e)
+    if (!byUser.has(u)) byUser.set(u, [])
+    byUser.get(u)!.push(e)
+  }
+  const sorted = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
+  const top: PieSlice[] = sorted.slice(0, 5).map(([user, ues], i) => ({ label: user, entries: ues, color: PIE_COLORS[i] }))
+  const rest = sorted.slice(5)
+  if (rest.length) {
+    top.push({ label: `Λοιποί (${rest.length})`, entries: rest.flatMap(([, ues]) => ues), color: PIE_OTHER_COLOR })
+  }
+  return top
+}
+
+function PieChart({ slices, size = 108, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
+  const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
+  if (!total) return null
+  const cx = size / 2, cy = size / 2, r = size / 2
+  const polarPoint = (angleDeg: number) => {
+    const rad = (angleDeg - 90) * Math.PI / 180
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+  }
+  let cursor = 0
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
+      {slices.length === 1
+        ? <circle cx={cx} cy={cy} r={r} fill={slices[0].color} style={{ cursor: 'pointer' }} onClick={() => onSliceClick(0)} />
+        : slices.map((s, i) => {
+            const sweep = (s.entries.length / total) * 360
+            const start = polarPoint(cursor)
+            const end = polarPoint(cursor + sweep)
+            const largeArc = sweep > 180 ? 1 : 0
+            cursor += sweep
+            return (
+              <path
+                key={i}
+                d={`M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`}
+                fill={s.color}
+                stroke="#1e2535"
+                strokeWidth={2}
+                style={{ cursor: 'pointer' }}
+                onClick={() => onSliceClick(i)}
+              />
+            )
+          })}
+    </svg>
+  )
+}
+
 function statusColor(status: string): string {
   const s = status.toUpperCase()
   if (s.includes('ΟΛΟΚΛΗΡΩΘΗΚΕ')) return '#10b981'
@@ -1663,56 +1723,52 @@ export default function ManagerPage() {
                       <button onClick={() => setPendingFromDate('')} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '0.8rem', padding: '0 0 0 4px', lineHeight: 1 }}>✕</button>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
                     {(() => {
-                      const renderPendingList = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
+                      const renderPendingPie = (label: string, all: ParsedEntry[], color: string, dateOf: (e: ParsedEntry) => Date | null | undefined) => {
                         if (!all.length) return null
                         const filtered = pendingFromDate
                           ? all.filter(e => { const d = dateOf(e); return d != null && d >= new Date(pendingFromDate) })
                           : all
                         if (!filtered.length) return null
-                        const byUser = new Map<string, ParsedEntry[]>()
-                        for (const e of filtered) {
-                          const u = effectiveName(e.user)
-                          if (!byUser.has(u)) byUser.set(u, [])
-                          byUser.get(u)!.push(e)
-                        }
-                        const sortedUsers = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
+                        const slices = buildPieSlices(filtered, e => effectiveName(e.user))
+                        const total = filtered.length
+                        const openSlice = (s: PieSlice) => setPendingModal({
+                          user: s.label,
+                          color: s.color,
+                          entries: [...s.entries].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() }),
+                        })
                         return (
                           <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
                               <span style={{ fontSize: '0.8rem', fontWeight: 700, color }}>{label}</span>
-                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filtered.length} σύνολο</span>
+                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{total} σύνολο</span>
                             </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, paddingLeft: 16 }}>
-                              {sortedUsers.map(([user, ues]) => {
-                                const sorted = [...ues].sort((a, b) => { const da = dateOf(a), db = dateOf(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() })
-                                return (
-                                  <div key={user} style={{ padding: '8px 12px', borderRadius: 8, background: `${color}0a`, border: `1px solid ${color}25` }}>
-                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'rgba(255,255,255,0.8)' }}>{user}</span>
-                                      <span style={{ fontSize: '0.78rem', fontWeight: 800, color }}>{ues.length}</span>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                      {sorted.map((e, idx) => (
-                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.76rem' }}>
-                                          <span style={{ color: 'rgba(255,255,255,0.55)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{e.customer || '—'}</span>
-                                          {dateOf(e) && <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.22)', flexShrink: 0 }}>{formatDate(dateOf(e)!)}</span>}
-                                        </div>
-                                      ))}
-                                    </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 22, flexWrap: 'wrap', paddingLeft: 16 }}>
+                              <PieChart slices={slices} onSliceClick={i => openSlice(slices[i])} />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 200 }}>
+                                {slices.map((s, i) => (
+                                  <div
+                                    key={s.label}
+                                    onClick={() => openSlice(s)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, background: `${s.color}0d` }}
+                                  >
+                                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</span>
+                                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: s.color }}>{s.entries.length}</span>
+                                    <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 32, textAlign: 'right' }}>{Math.round((s.entries.length / total) * 100)}%</span>
                                   </div>
-                                )
-                              })}
+                                ))}
+                              </div>
                             </div>
                           </div>
                         )
                       }
                       return (
                         <>
-                          {renderPendingList('Mobile — Προέγκριση', mobilePending, CATEGORY_COLORS.mobile, e => e.date)}
-                          {renderPendingList('Vodafone Home — Υπό Υλοποίηση', homePending, CATEGORY_COLORS.home, e => e.date || e.implDate)}
+                          {renderPendingPie('Mobile — Προέγκριση', mobilePending, CATEGORY_COLORS.mobile, e => e.date)}
+                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, CATEGORY_COLORS.home, e => e.date || e.implDate)}
                         </>
                       )
                     })()}
