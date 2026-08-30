@@ -7,6 +7,7 @@ import {
   loadPowerSellingItems, savePowerSellingItem, updatePowerSellingItem, deletePowerSellingItem, addPowerSellingComment,
   PowerSellingItem, ConnectionType,
 } from '../services/storage'
+import { MOBILE_PLAN_PRESETS, HOME_TYPE_OPTIONS, PROVIDER_PRESETS } from '../constants'
 
 type OfferType = 'mobile' | 'landline'
 type Category = 'mobile' | 'landline' | 'both' | 'none'
@@ -51,12 +52,15 @@ type TypeFieldsValue = {
 }
 const emptyTypeFields: TypeFieldsValue = { plan: '', price: '', connectionType: null, previousProvider: '', previousPrice: '' }
 
-function TypeFieldsEditor({ label, value, onChange }: { label: string; value: TypeFieldsValue; onChange: (v: TypeFieldsValue) => void }) {
+function TypeFieldsEditor({ idPrefix, label, value, onChange, planOptions }: { idPrefix: string; label: string; value: TypeFieldsValue; onChange: (v: TypeFieldsValue) => void; planOptions: string[] }) {
+  const planListId = `${idPrefix}-plans`
+  const providerListId = `${idPrefix}-providers`
   return (
     <div>
       <StepLabel>{label} — Πρόγραμμα &amp; Τιμή</StepLabel>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginBottom: 14 }}>
-        <input className="panel-input" placeholder="π.χ. RED 10GB" value={value.plan} onChange={e => onChange({ ...value, plan: e.target.value })} />
+        <input className="panel-input" list={planListId} placeholder="π.χ. RED 10GB ή επίλεξε" value={value.plan} onChange={e => onChange({ ...value, plan: e.target.value })} />
+        <datalist id={planListId}>{planOptions.map(p => <option key={p} value={p} />)}</datalist>
         <input className="panel-input" type="number" step="0.01" min={0} placeholder="Τιμή €" value={value.price} onChange={e => onChange({ ...value, price: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
       </div>
       <StepLabel>{label} — Σύνδεση <span style={{ fontWeight: 400, opacity: 0.6, textTransform: 'none' }}>(προαιρετικό)</span></StepLabel>
@@ -66,7 +70,8 @@ function TypeFieldsEditor({ label, value, onChange }: { label: string; value: Ty
       </div>
       {value.connectionType === 'portability' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 160px', gap: 12, marginTop: 12 }}>
-          <input className="panel-input" placeholder="Από ποιον πάροχο *" value={value.previousProvider} onChange={e => onChange({ ...value, previousProvider: e.target.value })} />
+          <input className="panel-input" list={providerListId} placeholder="Από ποιον πάροχο * ή επίλεξε" value={value.previousProvider} onChange={e => onChange({ ...value, previousProvider: e.target.value })} />
+          <datalist id={providerListId}>{PROVIDER_PRESETS.map(p => <option key={p} value={p} />)}</datalist>
           <input className="panel-input" type="number" step="0.01" min={0} placeholder="Πλήρωνε €" value={value.previousPrice} onChange={e => onChange({ ...value, previousPrice: e.target.value === '' ? '' : parseFloat(e.target.value) })} />
         </div>
       )}
@@ -440,8 +445,8 @@ export default function PowerSellingPage() {
 
           {step === 2 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-              {offerTypes.includes('mobile') && <TypeFieldsEditor label="Κινητό" value={mobile} onChange={setMobile} />}
-              {offerTypes.includes('landline') && <TypeFieldsEditor label="Σταθερό" value={landline} onChange={setLandline} />}
+              {offerTypes.includes('mobile') && <TypeFieldsEditor idPrefix="wizard-mobile" label="Κινητό" value={mobile} onChange={setMobile} planOptions={MOBILE_PLAN_PRESETS} />}
+              {offerTypes.includes('landline') && <TypeFieldsEditor idPrefix="wizard-landline" label="Σταθερό" value={landline} onChange={setLandline} planOptions={HOME_TYPE_OPTIONS} />}
             </div>
           )}
 
@@ -636,8 +641,8 @@ export default function PowerSellingPage() {
               </div>
             </div>
 
-            {editOfferTypes.includes('mobile') && <TypeFieldsEditor label="Κινητό" value={editMobile} onChange={setEditMobile} />}
-            {editOfferTypes.includes('landline') && <TypeFieldsEditor label="Σταθερό" value={editLandline} onChange={setEditLandline} />}
+            {editOfferTypes.includes('mobile') && <TypeFieldsEditor idPrefix="edit-mobile" label="Κινητό" value={editMobile} onChange={setEditMobile} planOptions={MOBILE_PLAN_PRESETS} />}
+            {editOfferTypes.includes('landline') && <TypeFieldsEditor idPrefix="edit-landline" label="Σταθερό" value={editLandline} onChange={setEditLandline} planOptions={HOME_TYPE_OPTIONS} />}
 
             <div>
               <StepLabel>Πάγια δώρο</StepLabel>
