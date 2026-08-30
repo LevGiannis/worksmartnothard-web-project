@@ -353,37 +353,49 @@ function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => stri
   return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: pieColor(i) }))
 }
 
+// Donut, not a solid pie: a hollow center reads calmer/more premium than a
+// full disc, leaves room for the total, and a small angular gap between
+// segments does the "2px surface gap" spacer job instead of a stroke line.
 function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
   const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
   if (!total) return null
-  const cx = size / 2, cy = size / 2, r = size / 2
-  const polarPoint = (angleDeg: number) => {
+  const cx = size / 2, cy = size / 2
+  const outerR = size / 2
+  const innerR = outerR * 0.62
+  const polarPoint = (r: number, angleDeg: number) => {
     const rad = (angleDeg - 90) * Math.PI / 180
     return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
   }
+  const centerLabel = (
+    <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fill="rgba(255,255,255,0.85)" style={{ fontSize: outerR * 0.34, fontWeight: 800 }}>
+      {total}
+    </text>
+  )
   let cursor = 0
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
-      {slices.length === 1
-        ? <circle cx={cx} cy={cy} r={r} fill={slices[0].color} style={{ cursor: 'pointer' }} onClick={() => onSliceClick(0)} />
-        : slices.map((s, i) => {
-            const sweep = (s.entries.length / total) * 360
-            const start = polarPoint(cursor)
-            const end = polarPoint(cursor + sweep)
-            const largeArc = sweep > 180 ? 1 : 0
-            cursor += sweep
-            return (
-              <path
-                key={i}
-                d={`M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 1 ${end.x} ${end.y} Z`}
-                fill={s.color}
-                stroke="#1e2535"
-                strokeWidth={2}
-                style={{ cursor: 'pointer' }}
-                onClick={() => onSliceClick(i)}
-              />
-            )
-          })}
+      {slices.map((s, i) => {
+        const sweep = (s.entries.length / total) * 360
+        const gap = Math.min(2.2, sweep / 4)
+        const a0 = cursor + gap / 2
+        const a1 = cursor + sweep - gap / 2
+        cursor += sweep
+        const largeArc = a1 - a0 > 180 ? 1 : 0
+        const outerStart = polarPoint(outerR, a0)
+        const outerEnd = polarPoint(outerR, a1)
+        const innerEnd = polarPoint(innerR, a1)
+        const innerStart = polarPoint(innerR, a0)
+        return (
+          <path
+            key={i}
+            d={`M ${outerStart.x} ${outerStart.y} A ${outerR} ${outerR} 0 ${largeArc} 1 ${outerEnd.x} ${outerEnd.y} L ${innerEnd.x} ${innerEnd.y} A ${innerR} ${innerR} 0 ${largeArc} 0 ${innerStart.x} ${innerStart.y} Z`}
+            fill={s.color}
+            style={{ cursor: 'pointer' }}
+            onClick={() => onSliceClick(i)}
+          />
+        )
+      })}
+      {centerLabel}
     </svg>
   )
 }
