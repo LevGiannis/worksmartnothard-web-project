@@ -1783,12 +1783,17 @@ export default function ManagerPage() {
                     const filteredDocIssues = docFromDate
                       ? docIssues.filter(e => e.date != null && e.date >= new Date(docFromDate))
                       : docIssues
+                    const docHome = filteredDocIssues.filter(e => e.category === 'home')
+                    const tenDaysAgo = new Date()
+                    tenDaysAgo.setHours(0, 0, 0, 0)
+                    tenDaysAgo.setDate(tenDaysAgo.getDate() - 10)
+                    const docMobile = docIssues.filter(e => e.category !== 'home' && e.date != null && e.date >= tenDaysAgo)
                     return (
                   <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: 1.2 }}>Εκκρεμείς / Δικαιολογητικά</span>
-                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{filteredDocIssues.length} σύνολο</span>
+                    <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.25)', marginLeft: 2 }}>{docHome.length + docMobile.length} σύνολο</span>
                     <input
                       type="date"
                       value={docFromDate}
@@ -1821,10 +1826,26 @@ export default function ManagerPage() {
                           </div>
                         ))
                       }
-                      const docHome = filteredDocIssues.filter(e => e.category === 'home')
-                      const docMobile = filteredDocIssues.filter(e => e.category !== 'home')
+                      const byStatus = new Map<string, number>()
+                      for (const e of [...docHome, ...docMobile]) {
+                        const s = e.status.trim() || '—'
+                        byStatus.set(s, (byStatus.get(s) ?? 0) + 1)
+                      }
+                      const statusRows = [...byStatus.entries()].sort((a, b) => b[1] - a[1])
                       return (
                         <>
+                          {statusRows.length > 0 && (
+                            <div>
+                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Ανά κατάσταση</div>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {statusRows.map(([status, count]) => (
+                                  <span key={status} style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: `${statusColor(status)}18`, border: `1px solid ${statusColor(status)}40`, color: statusColor(status) }}>
+                                    {count} {status}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                           {docHome.length > 0 && (
                             <div>
                               <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.home, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Vodafone Home</div>
@@ -1835,7 +1856,7 @@ export default function ManagerPage() {
                           )}
                           {docMobile.length > 0 && (
                             <div>
-                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Mobile</div>
+                              <div style={{ fontSize: '0.68rem', fontWeight: 600, color: CATEGORY_COLORS.mobile, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Mobile <span style={{ fontWeight: 400, color: 'rgba(255,255,255,0.25)', textTransform: 'none', letterSpacing: 0 }}>(τελευταίες 10 ημέρες)</span></div>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {chipsByUser(docMobile, CATEGORY_COLORS.mobile)}
                               </div>
