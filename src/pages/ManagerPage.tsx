@@ -354,25 +354,28 @@ function pieColor(index: number): string {
   return `hsl(${hue.toFixed(0)}, 62%, 58%)`
 }
 
-type PieSlice = { label: string; entries: ParsedEntry[]; color: string }
+type PieSlice = { label: string; entries: ParsedEntry[]; color: string; value?: number }
+const sliceValue = (s: PieSlice) => s.value ?? s.entries.length
 
 // One slice per seller — no folding, every user keeps their own slice.
-function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string): PieSlice[] {
+function buildPieSlices(entries: ParsedEntry[], nameOf: (e: ParsedEntry) => string, weighted = false): PieSlice[] {
   const byUser = new Map<string, ParsedEntry[]>()
   for (const e of entries) {
     const u = nameOf(e)
     if (!byUser.has(u)) byUser.set(u, [])
     byUser.get(u)!.push(e)
   }
-  const sorted = [...byUser.entries()].sort((a, b) => b[1].length - a[1].length)
-  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: pieColor(i) }))
+  // weighted: slice size = number of connections (an entry can carry several) instead of entry count
+  const sizeOf = (ues: ParsedEntry[]) => weighted ? countEntries(ues) : ues.length
+  const sorted = [...byUser.entries()].sort((a, b) => sizeOf(b[1]) - sizeOf(a[1]))
+  return sorted.map(([user, ues], i) => ({ label: user, entries: ues, color: pieColor(i), ...(weighted ? { value: countEntries(ues) } : {}) }))
 }
 
 // Donut, not a solid pie: a hollow center reads calmer/more premium than a
 // full disc, leaves room for the total, and a small angular gap between
 // segments does the "2px surface gap" spacer job instead of a stroke line.
 function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; size?: number; onSliceClick: (idx: number) => void }) {
-  const total = slices.reduce((sum, s) => sum + s.entries.length, 0)
+  const total = slices.reduce((sum, s) => sum + sliceValue(s), 0)
   if (!total) return null
   const cx = size / 2, cy = size / 2
   const outerR = size / 2
@@ -390,7 +393,7 @@ function PieChart({ slices, size = 180, onSliceClick }: { slices: PieSlice[]; si
   return (
     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0 }}>
       {slices.map((s, i) => {
-        const sweep = (s.entries.length / total) * 360
+        const sweep = (sliceValue(s) / total) * 360
         const gap = Math.min(2.2, sweep / 4)
         const a0 = cursor + gap / 2
         const a1 = cursor + sweep - gap / 2
@@ -1920,6 +1923,44 @@ export default function ManagerPage() {
                   </div>
                 </div>
               )}
+
+              {/* Prepay — daily activations + split per seller */}
+              {(() => {
+                const prepayDone = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
+                const prepayTotal = countEntries(prepayDone)
+                if (!prepayTotal) return null
+                // Prepay dates are completion dates only, so registrations per day = activations per day
+                const slices = buildPieSlices(prepayDone, e => effectiveName(e.user), true).filter(sl => sliceValue(sl) > 0)
+                return (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Καταχωρήσεις ανά Ημέρα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις ανά ημέρα ολοκλήρωσης — {prepayTotal} τον μήνα</div>
+                      <DailyBarChart
+                        counts={buildDailyCounts(prepayDone, e => e.implDate || e.date, mYear, mMonth)}
+                        color={categoryColors.prepay}
+                      />
+                    </div>
+                    <div className="panel-card" style={{ padding: 20 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Ανά Πωλητή</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις του μήνα ανά χρήστη</div>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
+                        <PieChart slices={slices} onSliceClick={() => {}} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 180 }}>
+                          {slices.map(sl => (
+                            <div key={sl.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 7, background: `${sl.color}0d` }}>
+                              <div style={{ width: 9, height: 9, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
+                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sl.label}</span>
+                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: sl.color }}>{sliceValue(sl)}</span>
+                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 32, textAlign: 'right' }}>{Math.round((sliceValue(sl) / prepayTotal) * 100)}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
 
               {/* Vodafone Home — two monthly analysis windows */}
               {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {
