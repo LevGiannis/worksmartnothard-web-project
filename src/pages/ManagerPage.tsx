@@ -667,7 +667,7 @@ export default function ManagerPage() {
   const [stores, setStores] = useState<Store[]>(PRESET_STORES)
   const [expandedPending, setExpandedPending] = useState<Set<string>>(new Set())
   const toggleExpandPending = (label: string) => setExpandedPending(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n })
-  const [pendingModal, setPendingModal] = useState<{ user: string; entries: ParsedEntry[]; color: string } | null>(null)
+  const [pendingModal, setPendingModal] = useState<{ user: string; entries: ParsedEntry[]; color: string; done?: boolean } | null>(null)
   const [userDrilldownModal, setUserDrilldownModal] = useState<{ user: string; color: string; groups: { label: string; entries: ParsedEntry[] }[] } | null>(null)
   const [docFromDate, setDocFromDate] = useState<string>('')
   const [pendingFromDate, setPendingFromDate] = useState<string>('')
@@ -1330,13 +1330,13 @@ export default function ManagerPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: pendingModal.color, flexShrink: 0 }} />
               <span style={{ fontWeight: 700, color: pendingModal.color, fontSize: '0.9rem' }}>{pendingModal.user}</span>
-              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>{pendingModal.entries.length} εγγραφές</span>
+              <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.3)', marginLeft: 4 }}>{pendingModal.done ? `${countEntries(pendingModal.entries)} ενεργοποιήσεις` : `${pendingModal.entries.length} εγγραφές`}</span>
               <button onClick={() => setPendingModal(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1 }}>✕</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pendingModal.entries.map((e, idx) => {
                 const displayDate = e.date || e.implDate
-                const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
+                const ageDays = !pendingModal.done && e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
                 const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
                 const entryColor = categoryColors[e.category] || pendingModal.color
                 return (
@@ -1345,7 +1345,8 @@ export default function ManagerPage() {
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
                       {e.subCategory && <span style={{ fontSize: '0.7rem', color: entryColor }}>{e.subCategory}</span>}
                       {displayDate && <span style={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.3)' }}>{formatDate(displayDate)}</span>}
-                      {e.status && <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: 5, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#fca5a5' }}>{e.status}</span>}
+                      {e.status && <span style={{ fontSize: '0.68rem', padding: '1px 6px', borderRadius: 5, background: pendingModal.done ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)', border: `1px solid ${pendingModal.done ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.2)'}`, color: pendingModal.done ? '#6ee7b7' : '#fca5a5' }}>{e.status}</span>}
+                      {pendingModal.done && <span style={{ fontSize: '0.67rem', fontWeight: 700, color: '#06b6d4', background: 'rgba(6,182,212,0.15)', border: '1px solid rgba(6,182,212,0.35)', borderRadius: 5, padding: '1px 5px' }}>×{e.connections ?? 1}</span>}
                       {ageDays != null && <span style={{ fontSize: '0.67rem', fontWeight: 700, color: ageColor, background: `${ageColor}18`, border: `1px solid ${ageColor}40`, borderRadius: 5, padding: '1px 5px' }}>{ageDays}d</span>}
                       {e.requestId && <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.22)', fontFamily: 'monospace', marginLeft: 'auto' }}>{e.requestId}</span>}
                     </div>
@@ -1931,6 +1932,12 @@ export default function ManagerPage() {
                 if (!prepayTotal) return null
                 // Prepay dates are completion dates only, so registrations per day = activations per day
                 const slices = buildPieSlices(prepayDone, e => effectiveName(e.user), true).filter(sl => sliceValue(sl) > 0)
+                const openPrepaySlice = (sl: PieSlice) => setPendingModal({
+                  user: `Prepay — ${sl.label}`,
+                  color: sl.color,
+                  done: true,
+                  entries: [...sl.entries].sort((a, b) => ((b.implDate ?? b.date)?.getTime() ?? 0) - ((a.implDate ?? a.date)?.getTime() ?? 0)),
+                })
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
                     <div className="panel-card" style={{ padding: 20 }}>
@@ -1945,10 +1952,10 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Ανά Πωλητή</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις του μήνα ανά χρήστη</div>
                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
-                        <PieChart slices={slices} onSliceClick={() => {}} />
+                        <PieChart slices={slices} onSliceClick={i => openPrepaySlice(slices[i])} />
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 180 }}>
                           {slices.map(sl => (
-                            <div key={sl.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderRadius: 7, background: `${sl.color}0d` }}>
+                            <div key={sl.label} onClick={() => openPrepaySlice(sl)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, background: `${sl.color}0d` }}>
                               <div style={{ width: 9, height: 9, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
                               <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sl.label}</span>
                               <span style={{ fontSize: '0.78rem', fontWeight: 800, color: sl.color }}>{sliceValue(sl)}</span>
