@@ -964,9 +964,17 @@ export default function ManagerPage() {
       if (appliedExcludedUsers.has(effectiveName(e.user))) return false
       if (!shopPassFilter(e)) return false
       const s = e.status.toUpperCase()
-      // "ΕΚΚΡΕΜΕΙ ΕΛΕΓΧΟΣ" is a live registration (awaiting review), so it stays in; other ΕΚΚΡΕΜ… statuses are excluded
-      const awaitingReview = /ΕΚΚΡΕΜΕΙ\s+ΕΛΕΓΧΟΣ/.test(s)
-      return !s.includes('ΑΚΥΡΩ') && (!s.includes('ΕΚΚΡΕΜ') || awaitingReview) && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
+      return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
+    })
+
+  // "Καταχωρήσεις ανά Ημέρα" charts: every application counts by its registration date unless its
+  // status is ΑΚΥΡΩ / ΑΠΟΡΡ / ΝΕΑ (unlike viewEntries, other ΕΚΚΡΕΜ… statuses are kept)
+  const dailyRegEntries = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
+    .filter(e => {
+      if (appliedExcludedUsers.has(effectiveName(e.user))) return false
+      if (!shopPassFilter(e)) return false
+      const s = e.status.toUpperCase()
+      return !s.includes('ΑΚΥΡΩ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ' && isMobileCountable(e)
     })
 
   // Daily tab shows every status (no ΑΚΥΡΩ/ΕΚΚΡΕΜ/ΑΠΟΡΡ/ΝΕΑ exclusion) — only
@@ -1881,13 +1889,13 @@ export default function ManagerPage() {
               })()}
 
               {/* Team daily activity — registrations per day, per category */}
-              {(regMonthEntries.some(e => e.category === 'mobile') || regMonthEntries.some(e => e.category === 'home')) && (
+              {(dailyRegEntries.some(e => e.category === 'mobile') || dailyRegEntries.some(e => e.category === 'home')) && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
                   <div className="panel-card" style={{ padding: 20 }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Καταχωρήσεις ανά Ημέρα</div>
                     <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
                     <DailyBarChart
-                      counts={buildDailyCounts(regMonthEntries.filter(e => e.category === 'mobile'), e => e.date, mYear, mMonth)}
+                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'mobile'), e => e.date, mYear, mMonth)}
                       color={categoryColors.mobile}
                     />
                   </div>
@@ -1895,7 +1903,7 @@ export default function ManagerPage() {
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Καταχωρήσεις ανά Ημέρα</div>
                     <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
                     <DailyBarChart
-                      counts={buildDailyCounts(regMonthEntries.filter(e => e.category === 'home'), e => e.date, mYear, mMonth)}
+                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'home'), e => e.date, mYear, mMonth)}
                       color={categoryColors.home}
                     />
                   </div>
