@@ -180,16 +180,9 @@ interface ParsedEntry {
   requestId: string
   subCategory?: string
   implDate?: Date | null
-  submitDate?: Date | null
   connections?: number
   shopCode?: string
   storeId?: string
-}
-
-// Registration date shown/filtered in pending panels: Home uses the Fixed Siebel submit date
-// (falls back to creation date for older stored data without it); other categories use the creation date.
-function regDate(e: ParsedEntry): Date | null {
-  return e.category === 'home' ? (e.submitDate ?? e.date) : e.date
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -248,7 +241,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, submitDate: Date | null = null, connections = 1, shopCode = ''
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1, shopCode = ''
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -270,7 +263,8 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης'))
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
-            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            // Home registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
+            date = (submitIdx >= 0 ? toDate(row[submitIdx]) : null) ?? toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
             status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
             customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
@@ -279,7 +273,6 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             subCategory = [prog, speed].filter(Boolean).join(' · ')
             implDate = toDate(get(row, 'Ημ/νια Ολοκλήρωσης (Κ5)'))
             shopCode = String(get(row, 'Dealer Code') ?? '').trim()
-            submitDate = submitIdx >= 0 ? toDate(row[submitIdx]) : null
           }
 
           user = user.trim()
@@ -289,7 +282,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (cat === 'mobile' && String(get(row, 'Περιγραφή Προγράμματος Χρήσης') ?? '').toUpperCase().trim() === 'GPDAT') continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, submitDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined })
           }
         }
 
@@ -611,7 +604,6 @@ const serializeEntries = (entries: ParsedEntry[]): string => {
     ...e,
     date: e.date ? e.date.toISOString() : null,
     implDate: e.implDate ? e.implDate.toISOString() : null,
-    submitDate: e.submitDate ? e.submitDate.toISOString() : null,
   })))
 }
 
@@ -621,7 +613,6 @@ const deserializeEntries = (json: string): ParsedEntry[] => {
     ...e,
     date: e.date ? new Date(e.date) : null,
     implDate: e.implDate ? new Date(e.implDate) : null,
-    submitDate: e.submitDate ? new Date(e.submitDate) : null,
   }))
 }
 
@@ -1066,7 +1057,7 @@ export default function ManagerPage() {
     .sort((a, b) => {
       const u = effectiveName(a.user).localeCompare(effectiveName(b.user))
       if (u !== 0) return u
-      return (regDate(a)?.getTime() ?? 0) - (regDate(b)?.getTime() ?? 0)
+      return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0)
     })
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)))
@@ -1086,16 +1077,14 @@ export default function ManagerPage() {
   homeConnectedThisMonth.forEach(e => homeConnectedByType[classifyHomeProduct(e)].push(e))
 
   // "Μετράνε στον στόχο μήνα" — FTTC/Wireless/One Net implemented this month count as-is;
-  // FTTH only counts here if it was BOTH registered (Fixed Siebel submit date) and implemented this month, plus any
+  // FTTH only counts here if it was BOTH registered and implemented this month, plus any
   // FTTH registered this month that is still ΥΠΟ ΥΛΟΠΟΙΗΣΗ (pipeline credit).
   const isInMonth = (d: Date | null | undefined, y: number, m: number) => !!d && d.getFullYear() === y && d.getMonth() + 1 === m
-  // FTTH registration date = "Ημ/νια Υποβολής Αίτησης στο Fixed Siebel" (falls back to creation date for older stored data without it)
-  const ftthRegDate = (e: ParsedEntry) => e.submitDate ?? e.date
   const homeCountedNonFtth = [...homeConnectedByType.fttc, ...homeConnectedByType.wireless, ...homeConnectedByType.onenet]
-  const homeCountedFtthConnected = homeConnectedByType.ftth.filter(e => isInMonth(ftthRegDate(e), mYear, mMonth))
+  const homeCountedFtthConnected = homeConnectedByType.ftth.filter(e => isInMonth(e.date, mYear, mMonth))
   const homeFtthPendingThisMonth = viewEntries.filter(e =>
     e.category === 'home' && classifyHomeProduct(e) === 'ftth' &&
-    isInMonth(ftthRegDate(e), mYear, mMonth) && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+    isInMonth(e.date, mYear, mMonth) && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
   )
   const homeCountedEntries = [...homeCountedNonFtth, ...homeCountedFtthConnected, ...homeFtthPendingThisMonth]
 
@@ -1322,8 +1311,8 @@ export default function ManagerPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pendingModal.entries.map((e, idx) => {
-                const displayDate = regDate(e) || e.implDate
-                const ageDays = regDate(e) ? Math.floor((Date.now() - regDate(e)!.getTime()) / 86400000) : null
+                const displayDate = e.date || e.implDate
+                const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
                 const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
                 const entryColor = categoryColors[e.category] || pendingModal.color
                 return (
@@ -1372,7 +1361,7 @@ export default function ManagerPage() {
                       user: `${user} — ${g.label}`,
                       color,
                       entries: [...g.entries].sort((a, b) => {
-                        const da = regDate(a) || a.implDate, db = regDate(b) || b.implDate
+                        const da = a.date || a.implDate, db = b.date || b.implDate
                         if (!da && !db) return 0
                         if (!da) return 1
                         if (!db) return -1
@@ -1922,7 +1911,7 @@ export default function ManagerPage() {
                     <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS[type] }}>{countEntries(homeConnectedByType[type])}</span>
                   </div>
                 )
-                const homeFtthConnectedNotCounted = homeConnectedByType.ftth.filter(e => !isInMonth(ftthRegDate(e), mYear, mMonth))
+                const homeFtthConnectedNotCounted = homeConnectedByType.ftth.filter(e => !isInMonth(e.date, mYear, mMonth))
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
                     {/* Window A: all connected this month, by product type, regardless of registration date */}
@@ -1939,7 +1928,7 @@ export default function ManagerPage() {
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα&συνδεδεμένα ή σε Υπό Υλοποίηση</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeCountedEntries)}</div>
                       <PaceRow
-                        actual={buildDailyCumulative(homeCountedEntries, e => e.implDate || (classifyHomeProduct(e) === 'ftth' ? ftthRegDate(e) : e.date), mYear, mMonth)}
+                        actual={buildDailyCumulative(homeCountedEntries, e => e.implDate || e.date, mYear, mMonth)}
                         target={getDoneTarget('home')}
                         onTargetChange={v => setDoneTarget('home', v)}
                         color={homeColor}
@@ -1994,11 +1983,11 @@ export default function ManagerPage() {
 
               {/* Vodafone Home — Υπό Υλοποίηση carried over from earlier months */}
               {(() => {
-                const olderHomePending = homePending.filter(e => regDate(e) && !isInMonth(regDate(e), mYear, mMonth))
+                const olderHomePending = homePending.filter(e => e.date && !isInMonth(e.date, mYear, mMonth))
                 if (!olderHomePending.length) return null
                 const byMonth = new Map<string, { count: number; label: string; sortKey: number }>()
                 for (const e of olderHomePending) {
-                  const d = regDate(e)!
+                  const d = e.date!
                   const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
                   if (!byMonth.has(key)) {
                     byMonth.set(key, { count: 0, label: d.toLocaleDateString('el-GR', { month: 'long', year: 'numeric' }), sortKey: d.getFullYear() * 12 + d.getMonth() })
@@ -2024,7 +2013,7 @@ export default function ManagerPage() {
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   {(() => {
                     const filteredDocIssues = docFromDate
-                      ? docIssues.filter(e => { const d = regDate(e); return d != null && d >= new Date(docFromDate) })
+                      ? docIssues.filter(e => e.date != null && e.date >= new Date(docFromDate))
                       : docIssues
                     const docHome = filteredDocIssues.filter(e => e.category === 'home')
                     const tenDaysAgo = new Date()
@@ -2050,7 +2039,7 @@ export default function ManagerPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {(() => {
                       const sortEntries = (arr: typeof docIssues) =>
-                        [...arr].sort((a, b) => { const da = regDate(a), db = regDate(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() })
+                        [...arr].sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return b.date.getTime() - a.date.getTime() })
                       const chipsByUser = (arr: typeof docIssues, color: string) => {
                         const byUser = new Map<string, typeof docIssues>()
                         for (const e of arr) {
@@ -2179,7 +2168,7 @@ export default function ManagerPage() {
                       return (
                         <>
                           {renderPendingPie('Mobile — Προέγκριση', mobilePending, categoryColors.mobile, e => e.date)}
-                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => regDate(e) || e.implDate)}
+                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => e.date || e.implDate)}
                         </>
                       )
                     })()}
@@ -2245,7 +2234,7 @@ export default function ManagerPage() {
                     user: s.label,
                     color: s.color,
                     entries: [...s.entries].sort((a, b) => {
-                      const da = regDate(a) || a.implDate, db = regDate(b) || b.implDate
+                      const da = a.date || a.implDate, db = b.date || b.implDate
                       if (!da && !db) return 0
                       if (!da) return 1
                       if (!db) return -1
