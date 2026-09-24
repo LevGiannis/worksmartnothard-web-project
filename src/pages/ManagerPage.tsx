@@ -186,6 +186,12 @@ interface ParsedEntry {
   storeId?: string
 }
 
+// Registration date shown/filtered in pending panels: Home uses the Fixed Siebel submit date
+// (falls back to creation date for older stored data without it); other categories use the creation date.
+function regDate(e: ParsedEntry): Date | null {
+  return e.category === 'home' ? (e.submitDate ?? e.date) : e.date
+}
+
 function detectCategory(headers: string[]): Category | null {
   if (headers.includes('Ημ/νία Αίτησης') && headers.includes('Τύπος Αίτησης')) return 'mobile'
   if (headers.includes('MSISDN')) return 'prepay'
@@ -1060,7 +1066,7 @@ export default function ManagerPage() {
     .sort((a, b) => {
       const u = effectiveName(a.user).localeCompare(effectiveName(b.user))
       if (u !== 0) return u
-      return (a.date?.getTime() ?? 0) - (b.date?.getTime() ?? 0)
+      return (regDate(a)?.getTime() ?? 0) - (regDate(b)?.getTime() ?? 0)
     })
   const docIssues = (selectedUser ? entries.filter(e => effectiveName(e.user) === selectedUser) : entries)
     .filter(e => !appliedExcludedUsers.has(effectiveName(e.user)))
@@ -1316,8 +1322,8 @@ export default function ManagerPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {pendingModal.entries.map((e, idx) => {
-                const displayDate = e.date || e.implDate
-                const ageDays = e.date ? Math.floor((Date.now() - e.date.getTime()) / 86400000) : null
+                const displayDate = regDate(e) || e.implDate
+                const ageDays = regDate(e) ? Math.floor((Date.now() - regDate(e)!.getTime()) / 86400000) : null
                 const ageColor = ageDays == null ? 'rgba(255,255,255,0.2)' : ageDays < 7 ? '#10b981' : ageDays < 20 ? '#f59e0b' : '#ef4444'
                 const entryColor = categoryColors[e.category] || pendingModal.color
                 return (
@@ -1366,7 +1372,7 @@ export default function ManagerPage() {
                       user: `${user} — ${g.label}`,
                       color,
                       entries: [...g.entries].sort((a, b) => {
-                        const da = a.date || a.implDate, db = b.date || b.implDate
+                        const da = regDate(a) || a.implDate, db = regDate(b) || b.implDate
                         if (!da && !db) return 0
                         if (!da) return 1
                         if (!db) return -1
@@ -1988,11 +1994,11 @@ export default function ManagerPage() {
 
               {/* Vodafone Home — Υπό Υλοποίηση carried over from earlier months */}
               {(() => {
-                const olderHomePending = homePending.filter(e => e.date && !isInMonth(e.date, mYear, mMonth))
+                const olderHomePending = homePending.filter(e => regDate(e) && !isInMonth(regDate(e), mYear, mMonth))
                 if (!olderHomePending.length) return null
                 const byMonth = new Map<string, { count: number; label: string; sortKey: number }>()
                 for (const e of olderHomePending) {
-                  const d = e.date!
+                  const d = regDate(e)!
                   const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
                   if (!byMonth.has(key)) {
                     byMonth.set(key, { count: 0, label: d.toLocaleDateString('el-GR', { month: 'long', year: 'numeric' }), sortKey: d.getFullYear() * 12 + d.getMonth() })
@@ -2018,7 +2024,7 @@ export default function ManagerPage() {
                 <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                   {(() => {
                     const filteredDocIssues = docFromDate
-                      ? docIssues.filter(e => e.date != null && e.date >= new Date(docFromDate))
+                      ? docIssues.filter(e => { const d = regDate(e); return d != null && d >= new Date(docFromDate) })
                       : docIssues
                     const docHome = filteredDocIssues.filter(e => e.category === 'home')
                     const tenDaysAgo = new Date()
@@ -2044,7 +2050,7 @@ export default function ManagerPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {(() => {
                       const sortEntries = (arr: typeof docIssues) =>
-                        [...arr].sort((a, b) => { if (!a.date && !b.date) return 0; if (!a.date) return 1; if (!b.date) return -1; return b.date.getTime() - a.date.getTime() })
+                        [...arr].sort((a, b) => { const da = regDate(a), db = regDate(b); if (!da && !db) return 0; if (!da) return 1; if (!db) return -1; return db.getTime() - da.getTime() })
                       const chipsByUser = (arr: typeof docIssues, color: string) => {
                         const byUser = new Map<string, typeof docIssues>()
                         for (const e of arr) {
@@ -2173,7 +2179,7 @@ export default function ManagerPage() {
                       return (
                         <>
                           {renderPendingPie('Mobile — Προέγκριση', mobilePending, categoryColors.mobile, e => e.date)}
-                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => e.date || e.implDate)}
+                          {renderPendingPie('Vodafone Home — Υπό Υλοποίηση', homePending, categoryColors.home, e => regDate(e) || e.implDate)}
                         </>
                       )
                     })()}
@@ -2239,7 +2245,7 @@ export default function ManagerPage() {
                     user: s.label,
                     color: s.color,
                     entries: [...s.entries].sort((a, b) => {
-                      const da = a.date || a.implDate, db = b.date || b.implDate
+                      const da = regDate(a) || a.implDate, db = regDate(b) || b.implDate
                       if (!da && !db) return 0
                       if (!da) return 1
                       if (!db) return -1
