@@ -271,6 +271,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             subCategory = type === 'NEW PREPAY' ? 'New Prepay' : 'Modify Add On'
             registryNo = String(get(row, 'Αριθμός Μητρώου') ?? '').trim()
             msisdn = String(get(row, 'MSISDN') ?? '').trim()
+            shopCode = String(get(row, 'Κωδικός Συνεργάτη') ?? '').trim()
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             // Home registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
