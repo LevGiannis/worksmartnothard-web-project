@@ -1438,6 +1438,15 @@ export default function ManagerPage() {
                   style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
                 />
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} title="Χρώμα Prepay">
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: categoryColors.prepay }}>Prepay</span>
+                <input
+                  type="color"
+                  value={categoryColors.prepay}
+                  onChange={e => setCategoryColor('prepay', e.target.value)}
+                  style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                />
+              </label>
             </div>
             <button
               onClick={() => setPhase('setup')}
