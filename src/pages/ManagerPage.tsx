@@ -964,7 +964,9 @@ export default function ManagerPage() {
       if (appliedExcludedUsers.has(effectiveName(e.user))) return false
       if (!shopPassFilter(e)) return false
       const s = e.status.toUpperCase()
-      return !s.includes('ΑΚΥΡΩ') && !s.includes('ΕΚΚΡΕΜ') && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
+      // "ΕΚΚΡΕΜΕΙ ΕΛΕΓΧΟΣ" is a live registration (awaiting review), so it stays in; other ΕΚΚΡΕΜ… statuses are excluded
+      const awaitingReview = /ΕΚΚΡΕΜΕΙ\s+ΕΛΕΓΧΟΣ/.test(s)
+      return !s.includes('ΑΚΥΡΩ') && (!s.includes('ΕΚΚΡΕΜ') || awaitingReview) && !s.includes('ΑΠΟΡΡ') && s !== 'ΝΕΑ'
     })
 
   // Daily tab shows every status (no ΑΚΥΡΩ/ΕΚΚΡΕΜ/ΑΠΟΡΡ/ΝΕΑ exclusion) — only
