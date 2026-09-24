@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useContext } from 'react'
 import * as XLSX from 'xlsx-js-style'
 import PageHeader from '../components/PageHeader'
 import { ThemeContext } from '../App'
+import { linkPrepayActivations } from '../utils/prepayActivations'
 
 const USER_MAP_KEY = 'ws_manager_user_map'
 const TARGETS_KEY = 'ws_manager_targets'
@@ -183,6 +184,8 @@ interface ParsedEntry {
   connections?: number
   shopCode?: string
   storeId?: string
+  registryNo?: string
+  msisdn?: string
 }
 
 function detectCategory(headers: string[]): Category | null {
@@ -241,7 +244,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1, shopCode = ''
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1, shopCode = '', registryNo = '', msisdn = ''
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -255,12 +258,19 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             connections = typeof connVal === 'number' ? Math.max(1, connVal) : 1
             shopCode = String(get(row, 'Συνεργάτης') ?? '').trim()
           } else if (cat === 'prepay') {
+            // Only New Prepay (the sale) and Modify Add On (its activations) matter; they are linked by
+            // registry number in linkPrepayActivations. The completion date is the only date used.
+            const type = String(get(row, 'Τύπος') ?? '').trim().toUpperCase()
+            if (type !== 'NEW PREPAY' && type !== 'MODIFY ADD ON') continue
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
-            date = toDate(get(row, 'Ημερομηνία Δημιουργίας'))
+            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης'))
+            date = implDate
             status = String(get(row, 'Κατάσταση') ?? '')
             customer = String(get(row, 'Ονοματεπώνυμο') ?? '')
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
-            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης'))
+            subCategory = type === 'NEW PREPAY' ? 'New Prepay' : 'Modify Add On'
+            registryNo = String(get(row, 'Αριθμός Μητρώου') ?? '').trim()
+            msisdn = String(get(row, 'MSISDN') ?? '').trim()
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             // Home registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
@@ -282,7 +292,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (cat === 'mobile' && String(get(row, 'Περιγραφή Προγράμματος Χρήσης') ?? '').toUpperCase().trim() === 'GPDAT') continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined, registryNo: registryNo || undefined, msisdn: msisdn || undefined })
           }
         }
 
@@ -778,7 +788,7 @@ export default function ManagerPage() {
     const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
     try {
       const results = await Promise.all(fileArr.map(parseFile))
-      const all = results.flat()
+      const all = linkPrepayActivations(results.flat(), isDone)
       setEntries(prev => {
         const uploadedCats = new Set(all.map(e => e.category))
         const kept = prev.filter(e => !uploadedCats.has(e.category))
@@ -814,7 +824,7 @@ export default function ManagerPage() {
     const fileArr = Array.from(files).filter(f => f.name.endsWith('.xlsx'))
     try {
       const results = await Promise.all(fileArr.map(parseFile))
-      const all = results.flat().map(e => ({ ...e, storeId }))
+      const all = linkPrepayActivations(results.flat(), isDone).map(e => ({ ...e, storeId }))
       setEntries(prev => {
         const uploadedCats = new Set(all.map(e => e.category))
         const kept = prev.filter(e => !(e.storeId === storeId && uploadedCats.has(e.category)))
@@ -1873,7 +1883,7 @@ export default function ManagerPage() {
 
                     <div className="panel-card" style={{ padding: 20 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Συνδεδεμένα Μήνα</div>
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Περιλαμβάνει Port In Prepay από Mobile</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ενεργοποιήσεις New Prepay (Modify Add On ανά μητρώο) + Port In Prepay από Mobile</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(prepayConnectedThisMonth)}</div>
                       <PaceRow
                         actual={buildDailyCumulative(prepayConnectedThisMonth, e => e.implDate || e.date, mYear, mMonth)}
