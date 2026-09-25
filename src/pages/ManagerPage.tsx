@@ -131,17 +131,19 @@ function buildAutoMap(rawUsers: string[], dismissed: string[]): Record<string, s
   return autoMap
 }
 
-type Category = 'mobile' | 'prepay' | 'home'
+type Category = 'mobile' | 'prepay' | 'home' | 'migra'
 
 const CATEGORY_LABELS: Record<Category, string> = {
   mobile: 'Mobile',
   prepay: 'Prepay',
   home: 'Vodafone Home',
+  migra: 'Migration FTTH',
 }
 
 const DEFAULT_CATEGORY_COLORS: Record<Category, string> = {
   mobile: '#06b6d4',
   prepay: '#3b82f6',
+  migra: '#10b981',
   home: '#f59e0b',
 }
 
@@ -192,6 +194,7 @@ interface ParsedEntry {
 function detectCategory(headers: string[]): Category | null {
   if (headers.includes('Ημ/νία Αίτησης') && headers.includes('Τύπος Αίτησης')) return 'mobile'
   if (headers.includes('MSISDN')) return 'prepay'
+  if (headers.includes('Κωδ. Χρήστη')) return 'migra'
   if (headers.includes('Τηλέφωνο Υπηρεσίας')) return 'home'
   return null
 }
@@ -273,6 +276,18 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             registryNo = String(get(row, 'Αριθμός Μητρώου') ?? '').trim()
             msisdn = String(get(row, 'MSISDN') ?? '').trim()
             shopCode = String(get(row, 'Κωδικός Συνεργάτη') ?? '').trim()
+          } else if (cat === 'migra') {
+            user = String(get(row, 'Κωδ. Χρήστη') ?? '')
+            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
+            customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
+            requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
+            implDate = toDate(get(row, 'Ημερομηνία Ολοκλήρωσης (Από - Έως)'))
+            // Only requests that moved from a non-FTTH speed to an FTTH speed count as an FTTH migration
+            const speedBefore = String(get(row, 'Ταχύτητα πριν το Retention') ?? '')
+            const speedAfter = String(get(row, 'Επιλεγμένη Ταχύτητα') ?? '')
+            if (!speedAfter.toUpperCase().includes('FTTH') || speedBefore.toUpperCase().includes('FTTH')) continue
+            subCategory = speedAfter.trim()
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             // Home registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
@@ -1116,8 +1131,17 @@ export default function ManagerPage() {
   )
   const homeCountedEntries = [...homeCountedNonFtth, ...homeCountedFtthConnected, ...homeFtthPendingThisMonth]
 
+  // Migration FTTH — requests registered this month that moved from a non-FTTH speed to
+  // FTTH (already guaranteed by the parser) and are either implemented or still in progress.
+  const migrationFtthCounted = viewEntries.filter(e => {
+    if (e.category !== 'migra') return false
+    if (!isInMonth(e.date, mYear, mMonth)) return false
+    const s = e.status.toUpperCase()
+    return s.includes('ΥΛΟΠΟΙΗΜΕΝΗ') || s.includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+  })
+
   const handleExportMonthly = () => {
-    const catOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2 }
+    const catOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
     const source = exportMode === 'done'
       ? effectiveDoneMonthEntries
       : viewEntries.filter(e => e.date && e.date.getFullYear() === mYear && e.date.getMonth() + 1 === mMonth)
@@ -1193,7 +1217,7 @@ export default function ManagerPage() {
 
   const handleExportComparison = () => {
     if (!stores.length) return
-    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, home: 2 }
+    const catOrder: Record<Category, number> = { mobile: 0, prepay: 1, home: 2, migra: 3 }
     const storeDoneEntries = (storeId: string) => {
       const se = entries.filter(e => e.storeId === storeId)
       const done = se.filter(e => {
@@ -1245,7 +1269,7 @@ export default function ManagerPage() {
     const wb = XLSX.utils.book_new()
     const categoryLabel = categories.length === 1 ? CATEGORY_LABELS[categories[0]] : 'Όλα'
 
-    const exportCatOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2 }
+    const exportCatOrder: Record<Category, number> = { mobile: 0, home: 1, prepay: 2, migra: 3 }
 
     allUsers.forEach(user => {
       const userEntries = effectiveDoneMonthEntries.filter(e => effectiveName(e.user) === user && categories.includes(e.category))
@@ -1451,6 +1475,15 @@ export default function ManagerPage() {
                   style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
                 />
               </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer' }} title="Χρώμα Migration FTTH">
+                <span style={{ fontSize: '0.72rem', fontWeight: 600, color: categoryColors.migra }}>Migration</span>
+                <input
+                  type="color"
+                  value={categoryColors.migra}
+                  onChange={e => setCategoryColor('migra', e.target.value)}
+                  style={{ width: 20, height: 20, padding: 0, border: 'none', borderRadius: 6, background: 'none', cursor: 'pointer' }}
+                />
+              </label>
             </div>
             <button
               onClick={() => setPhase('setup')}
@@ -1589,7 +1622,7 @@ export default function ManagerPage() {
                 </div>
                 <div>
                   <div style={{ fontWeight: 700, color: 'rgba(255,255,255,0.88)', fontSize: '0.95rem' }}>Ανέβασμα αρχείων Excel</div>
-                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Vodafone Home</div>
+                  <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.38)', marginTop: 2 }}>Mobile · Prepay · Vodafone Home · Migration FTTH</div>
                 </div>
               </div>
               <label style={{ cursor: 'pointer' }}>
@@ -2048,6 +2081,26 @@ export default function ManagerPage() {
                         </div>
                       )}
                     </div>
+                  </div>
+                )
+              })()}
+
+              {/* Migration FTTH — requests that moved from a non-FTTH speed to FTTH */}
+              {migrationFtthCounted.length > 0 && (() => {
+                const migraColor = categoryColors.migra
+                return (
+                  <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Migration FTTH — Μετράνε στον Μήνα</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Καταχωρήθηκαν τον μήνα, πριν δεν ήταν FTTH και είναι Υλοποιημένη ή Υπό Υλοποίηση</div>
+                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: migraColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(migrationFtthCounted)}</div>
+                    <PaceRow
+                      actual={buildDailyCumulative(migrationFtthCounted, e => e.date, mYear, mMonth)}
+                      target={getDoneTarget('migra')}
+                      onTargetChange={v => setDoneTarget('migra', v)}
+                      color={migraColor}
+                      year={mYear}
+                      month={mMonth}
+                    />
                   </div>
                 )
               })()}
