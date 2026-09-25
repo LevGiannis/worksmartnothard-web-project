@@ -910,6 +910,7 @@ export default function ManagerPage() {
                   const mobileCnt = entries.filter(e => e.storeId === s.id && e.category === 'mobile').length
                   const homeCnt = entries.filter(e => e.storeId === s.id && e.category === 'home').length
                   const prepayCnt = entries.filter(e => e.storeId === s.id && e.category === 'prepay').length
+                  const migraCnt = entries.filter(e => e.storeId === s.id && e.category === 'migra').length
                   return (
                     <div key={s.id} style={{ padding: '14px 16px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
                       <div style={{ fontWeight: 700, color: '#22d3ee', fontSize: '0.88rem', marginBottom: 10 }}>{s.code}</div>
@@ -933,6 +934,13 @@ export default function ManagerPage() {
                           <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: prepayCnt > 0 ? 'rgba(59,130,246,0.1)' : 'rgba(255,255,255,0.03)', border: `1px solid ${prepayCnt > 0 ? 'rgba(59,130,246,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
                             <span style={{ fontSize: '0.78rem', fontWeight: 600, color: prepayCnt > 0 ? '#93c5fd' : 'rgba(255,255,255,0.4)' }}>Prepay</span>
                             <span style={{ fontSize: '0.72rem', fontWeight: 700, color: prepayCnt > 0 ? '#93c5fd' : 'rgba(255,255,255,0.2)' }}>{prepayCnt > 0 ? prepayCnt : '+'}</span>
+                          </span>
+                        </label>
+                        <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
+                          <input type="file" accept=".xlsx" multiple style={{ display: 'none' }} onChange={e => e.target.files && void processStoreFiles(s.id, e.target.files)} />
+                          <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 8, background: migraCnt > 0 ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)', border: `1px solid ${migraCnt > 0 ? 'rgba(16,185,129,0.35)' : 'rgba(255,255,255,0.08)'}` }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: migraCnt > 0 ? '#34d399' : 'rgba(255,255,255,0.4)' }}>Migration</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: migraCnt > 0 ? '#34d399' : 'rgba(255,255,255,0.2)' }}>{migraCnt > 0 ? migraCnt : '+'}</span>
                           </span>
                         </label>
                         <label style={{ cursor: 'pointer', flex: 1, minWidth: 110 }}>
