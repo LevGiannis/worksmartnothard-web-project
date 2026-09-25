@@ -278,7 +278,9 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
             shopCode = String(get(row, 'Κωδικός Συνεργάτη') ?? '').trim()
           } else if (cat === 'migra') {
             user = String(get(row, 'Κωδ. Χρήστη') ?? '')
-            date = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            // Migration registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
+            createdDate = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            date = (submitIdx >= 0 ? toDate(row[submitIdx]) : null) ?? createdDate
             status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
             customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
@@ -1139,8 +1141,8 @@ export default function ManagerPage() {
   )
   const homeCountedEntries = [...homeCountedNonFtth, ...homeCountedFtthConnected, ...homeFtthPendingThisMonth]
 
-  // Migration FTTH — requests registered this month that moved from a non-FTTH speed to
-  // FTTH (already guaranteed by the parser) and are either implemented or still in progress.
+  // Migration FTTH — requests submitted (Fixed Siebel submit date) this month that moved from
+  // a non-FTTH speed to FTTH (already guaranteed by the parser) and are either implemented or still in progress.
   const migrationFtthCounted = viewEntries.filter(e => {
     if (e.category !== 'migra') return false
     if (!isInMonth(e.date, mYear, mMonth)) return false
@@ -2099,7 +2101,7 @@ export default function ManagerPage() {
                 return (
                   <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Migration FTTH — Μετράνε στον Μήνα</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Καταχωρήθηκαν τον μήνα, πριν δεν ήταν FTTH και είναι Υλοποιημένη ή Υπό Υλοποίηση</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Υποβλήθηκαν τον μήνα, πριν δεν ήταν FTTH και είναι Υλοποιημένη ή Υπό Υλοποίηση</div>
                     <div style={{ fontSize: '2.4rem', fontWeight: 900, color: migraColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(migrationFtthCounted)}</div>
                     <PaceRow
                       actual={buildDailyCumulative(migrationFtthCounted, e => e.date, mYear, mMonth)}
