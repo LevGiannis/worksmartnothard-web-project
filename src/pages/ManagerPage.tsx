@@ -1885,10 +1885,12 @@ export default function ManagerPage() {
 
             {tab === 'monthly' && !selectedUser && (
               <>
-              {/* Mobile — connected breakdown, pre-approval, and Prepay side by side */}
+              {/* ═══ Mobile ═══ */}
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 6, marginBottom: 2 }}>Mobile</div>
+
+              {/* Mobile — connected breakdown + pre-approval */}
               {(() => {
                 const mobileColor = categoryColors.mobile
-                const prepayColor = categoryColors.prepay
                 const mobileConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'mobile')
                 const mobileConnectedBySubcat = new Map<string, ParsedEntry[]>()
                 for (const e of mobileConnectedThisMonth) {
@@ -1904,12 +1906,9 @@ export default function ManagerPage() {
                   mobilePendingBySubcat.get(key)!.push(e)
                 }
                 const pendingSubcatRows = [...mobilePendingBySubcat.entries()].sort((a, b) => countEntries(b[1]) - countEntries(a[1]))
-                const prepayConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
-                const prepayNewCount = countEntries(prepayConnectedThisMonth.filter(e => !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
-                const prepayPortInCount = countEntries(prepayConnectedThisMonth.filter(e => (e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
-                if (!mobileConnectedThisMonth.length && !mobilePending.length && !prepayConnectedThisMonth.length) return null
+                if (!mobileConnectedThisMonth.length && !mobilePending.length) return null
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 4 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 4 }}>
                     <div className="panel-card" style={{ padding: 20 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Συνδεδεμένα Μήνα</div>
                       <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ολοκληρωμένες συνδέσεις τον μήνα, ανά τύπο</div>
@@ -1943,61 +1942,30 @@ export default function ManagerPage() {
                         </div>
                       ))}
                     </div>
-
-                    <div className="panel-card" style={{ padding: 20 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Συνδεδεμένα Μήνα</div>
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ενεργοποιήσεις New Prepay (Modify Add On ανά μητρώο) + Port In Prepay από Mobile</div>
-                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(prepayConnectedThisMonth)}</div>
-                      <PaceRow
-                        actual={buildDailyCumulative(prepayConnectedThisMonth, e => e.implDate || e.date, mYear, mMonth)}
-                        target={getDoneTarget('prepay')}
-                        onTargetChange={v => setDoneTarget('prepay', v)}
-                        color={prepayColor}
-                        year={mYear}
-                        month={mMonth}
-                      />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>New Prepay</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayNewCount}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>Port In Prepay</span>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayPortInCount}</span>
-                      </div>
-                    </div>
                   </div>
                 )
               })()}
 
-              {/* Team daily activity — registrations per day, per category */}
-              {(dailyRegEntries.some(e => e.category === 'mobile') || dailyRegEntries.some(e => e.category === 'home')) && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
-                  <div className="panel-card" style={{ padding: 20 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Καταχωρήσεις ανά Ημέρα</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
-                    <DailyBarChart
-                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'mobile'), e => e.date, mYear, mMonth)}
-                      color={categoryColors.mobile}
-                    />
-                  </div>
-                  <div className="panel-card" style={{ padding: 20 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Καταχωρήσεις ανά Ημέρα</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα (ημερομηνία δημιουργίας αίτησης)</div>
-                    <DailyBarChart
-                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'home'), e => e.createdDate ?? e.date, mYear, mMonth)}
-                      color={categoryColors.home}
-                    />
-                  </div>
+              {/* Mobile — daily registrations */}
+              {dailyRegEntries.some(e => e.category === 'mobile') && (
+                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Mobile — Καταχωρήσεις ανά Ημέρα</div>
+                  <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
+                  <DailyBarChart
+                    counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'mobile'), e => e.date, mYear, mMonth)}
+                    color={categoryColors.mobile}
+                  />
                 </div>
               )}
 
-              {/* Prepay — daily activations + split per seller */}
+              {/* ═══ Prepay ═══ */}
               {(() => {
+                const prepayColor = categoryColors.prepay
                 const prepayDone = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
                 const prepayTotal = countEntries(prepayDone)
                 if (!prepayTotal) return null
+                const prepayNewCount = countEntries(prepayDone.filter(e => !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
+                const prepayPortInCount = countEntries(prepayDone.filter(e => (e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
                 // Prepay dates are completion dates only, so registrations per day = activations per day
                 const slices = buildPieSlices(prepayDone, e => effectiveName(e.user), true).filter(sl => sliceValue(sl) > 0)
                 const openPrepaySlice = (sl: PieSlice) => setPendingModal({
@@ -2007,35 +1975,76 @@ export default function ManagerPage() {
                   entries: [...sl.entries].sort((a, b) => ((b.implDate ?? b.date)?.getTime() ?? 0) - ((a.implDate ?? a.date)?.getTime() ?? 0)),
                 })
                 return (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, marginBottom: 4 }}>
-                    <div className="panel-card" style={{ padding: 20 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Καταχωρήσεις ανά Ημέρα</div>
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις ανά ημέρα ολοκλήρωσης — {prepayTotal} τον μήνα</div>
-                      <DailyBarChart
-                        counts={buildDailyCounts(prepayDone, e => e.implDate || e.date, mYear, mMonth)}
-                        color={categoryColors.prepay}
-                      />
-                    </div>
-                    <div className="panel-card" style={{ padding: 20 }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Ανά Πωλητή</div>
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις του μήνα ανά χρήστη</div>
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
-                        <PieChart slices={slices} onSliceClick={i => openPrepaySlice(slices[i])} />
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 180 }}>
-                          {slices.map(sl => (
-                            <div key={sl.label} onClick={() => openPrepaySlice(sl)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, background: `${sl.color}0d` }}>
-                              <div style={{ width: 9, height: 9, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sl.label}</span>
-                              <span style={{ fontSize: '0.78rem', fontWeight: 800, color: sl.color }}>{sliceValue(sl)}</span>
-                              <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 32, textAlign: 'right' }}>{Math.round((sliceValue(sl) / prepayTotal) * 100)}%</span>
-                            </div>
-                          ))}
+                  <>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 6, marginBottom: 2 }}>Prepay</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 4 }}>
+                      <div className="panel-card" style={{ padding: 20 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Συνδεδεμένα Μήνα</div>
+                        <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Ενεργοποιήσεις New Prepay (Modify Add On ανά μητρώο) + Port In Prepay από Mobile</div>
+                        <div style={{ fontSize: '2.4rem', fontWeight: 900, color: prepayColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(prepayDone)}</div>
+                        <PaceRow
+                          actual={buildDailyCumulative(prepayDone, e => e.implDate || e.date, mYear, mMonth)}
+                          target={getDoneTarget('prepay')}
+                          onTargetChange={v => setDoneTarget('prepay', v)}
+                          color={prepayColor}
+                          year={mYear}
+                          month={mMonth}
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>New Prepay</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayNewCount}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                          <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
+                          <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>Port In Prepay</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayPortInCount}</span>
+                        </div>
+                      </div>
+                      <div className="panel-card" style={{ padding: 20 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Καταχωρήσεις ανά Ημέρα</div>
+                        <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις ανά ημέρα ολοκλήρωσης — {prepayTotal} τον μήνα</div>
+                        <DailyBarChart
+                          counts={buildDailyCounts(prepayDone, e => e.implDate || e.date, mYear, mMonth)}
+                          color={categoryColors.prepay}
+                        />
+                      </div>
+                      <div className="panel-card" style={{ padding: 20 }}>
+                        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Prepay — Ανά Πωλητή</div>
+                        <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Ενεργοποιήσεις του μήνα ανά χρήστη</div>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 24, flexWrap: 'wrap' }}>
+                          <PieChart slices={slices} onSliceClick={i => openPrepaySlice(slices[i])} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1, minWidth: 180 }}>
+                            {slices.map(sl => (
+                              <div key={sl.label} onClick={() => openPrepaySlice(sl)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '5px 8px', borderRadius: 7, background: `${sl.color}0d` }}>
+                                <div style={{ width: 9, height: 9, borderRadius: '50%', background: sl.color, flexShrink: 0 }} />
+                                <span style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.72)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sl.label}</span>
+                                <span style={{ fontSize: '0.78rem', fontWeight: 800, color: sl.color }}>{sliceValue(sl)}</span>
+                                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', minWidth: 32, textAlign: 'right' }}>{Math.round((sliceValue(sl) / prepayTotal) * 100)}%</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </>
                 )
               })()}
+
+              {/* ═══ Vodafone Home ═══ */}
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 6, marginBottom: 2 }}>Vodafone Home</div>
+
+              {/* Vodafone Home — daily registrations */}
+              {dailyRegEntries.some(e => e.category === 'home') && (
+                <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Καταχωρήσεις ανά Ημέρα</div>
+                  <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα (ημερομηνία δημιουργίας αίτησης)</div>
+                  <DailyBarChart
+                    counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'home'), e => e.createdDate ?? e.date, mYear, mMonth)}
+                    color={categoryColors.home}
+                  />
+                </div>
+              )}
 
               {/* Vodafone Home — two monthly analysis windows */}
               {(homeConnectedThisMonth.length > 0 || homeCountedEntries.length > 0) && (() => {
@@ -2095,26 +2104,6 @@ export default function ManagerPage() {
                 )
               })()}
 
-              {/* Migration FTTH — requests that moved from a non-FTTH speed to FTTH */}
-              {migrationFtthCounted.length > 0 && (() => {
-                const migraColor = categoryColors.migra
-                return (
-                  <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
-                    <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Migration FTTH — Μετράνε στον Μήνα</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Υποβλήθηκαν τον μήνα, πριν δεν ήταν FTTH και είναι Υλοποιημένη ή Υπό Υλοποίηση</div>
-                    <div style={{ fontSize: '2.4rem', fontWeight: 900, color: migraColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(migrationFtthCounted)}</div>
-                    <PaceRow
-                      actual={buildDailyCumulative(migrationFtthCounted, e => e.date, mYear, mMonth)}
-                      target={getDoneTarget('migra')}
-                      onTargetChange={v => setDoneTarget('migra', v)}
-                      color={migraColor}
-                      year={mYear}
-                      month={mMonth}
-                    />
-                  </div>
-                )
-              })()}
-
               {/* Vodafone Home — status breakdown before Υπό Υλοποίηση */}
               {(() => {
                 const homeDocIssues = docIssues.filter(e => e.category === 'home')
@@ -2162,6 +2151,29 @@ export default function ManagerPage() {
                     ))}
                     <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.2)', marginLeft: 'auto' }}>{countEntries(olderHomePending)} σύνολο</span>
                   </div>
+                )
+              })()}
+
+              {/* ═══ Migration FTTH ═══ */}
+              {migrationFtthCounted.length > 0 && (() => {
+                const migraColor = categoryColors.migra
+                return (
+                  <>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'rgba(255,255,255,0.28)', textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 6, marginBottom: 2 }}>Migration FTTH</div>
+                    <div className="panel-card" style={{ padding: 20, marginBottom: 4 }}>
+                      <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Migration FTTH — Μετράνε στον Μήνα</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>Υποβλήθηκαν τον μήνα, πριν δεν ήταν FTTH και είναι Υλοποιημένη ή Υπό Υλοποίηση</div>
+                      <div style={{ fontSize: '2.4rem', fontWeight: 900, color: migraColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(migrationFtthCounted)}</div>
+                      <PaceRow
+                        actual={buildDailyCumulative(migrationFtthCounted, e => e.date, mYear, mMonth)}
+                        target={getDoneTarget('migra')}
+                        onTargetChange={v => setDoneTarget('migra', v)}
+                        color={migraColor}
+                        year={mYear}
+                        month={mMonth}
+                      />
+                    </div>
+                  </>
                 )
               })()}
 
