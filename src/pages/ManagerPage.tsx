@@ -181,6 +181,7 @@ interface ParsedEntry {
   requestId: string
   subCategory?: string
   implDate?: Date | null
+  createdDate?: Date | null
   connections?: number
   shopCode?: string
   storeId?: string
@@ -244,7 +245,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           const row = rows[i] as unknown[]
           if (!row || row.every(c => c == null)) continue
 
-          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, connections = 1, shopCode = '', registryNo = '', msisdn = ''
+          let user = '', date: Date | null = null, status = '', customer = '', requestId = '', subCategory = '', implDate: Date | null = null, createdDate: Date | null = null, connections = 1, shopCode = '', registryNo = '', msisdn = ''
 
           if (cat === 'mobile') {
             user = String(get(row, 'Όνομα Χρήστη') ?? '')
@@ -275,7 +276,8 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           } else if (cat === 'home') {
             user = String(get(row, 'Username') ?? '')
             // Home registration date = Fixed Siebel submit date; falls back to the creation date if the column is missing
-            date = (submitIdx >= 0 ? toDate(row[submitIdx]) : null) ?? toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            createdDate = toDate(get(row, 'Ημ/νια Δημιουργίας Αίτησης (Από - Έως)'))
+            date = (submitIdx >= 0 ? toDate(row[submitIdx]) : null) ?? createdDate
             status = String(get(row, 'Κατάσταση Αίτησης') ?? '')
             customer = `${get(row, 'Όνομα') ?? ''} ${get(row, 'Επώνυμο / Επωνυμία') ?? ''}`.trim()
             requestId = String(get(row, 'Αριθμός Αίτησης') ?? '')
@@ -293,7 +295,7 @@ function parseFile(file: File): Promise<ParsedEntry[]> {
           if (subCategory.toUpperCase().includes('TRANSFER')) continue
           if (cat === 'mobile' && String(get(row, 'Περιγραφή Προγράμματος Χρήσης') ?? '').toUpperCase().trim() === 'GPDAT') continue
           if (user || date) {
-            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined, registryNo: registryNo || undefined, msisdn: msisdn || undefined })
+            entries.push({ category: cat, user, date, status: s, customer: customer.trim(), requestId: requestId.trim(), subCategory: subCategory.trim() || undefined, implDate, createdDate, connections: connections > 1 ? connections : undefined, shopCode: shopCode || undefined, registryNo: registryNo || undefined, msisdn: msisdn || undefined })
           }
         }
 
@@ -618,6 +620,7 @@ const serializeEntries = (entries: ParsedEntry[]): string => {
     ...e,
     date: e.date ? e.date.toISOString() : null,
     implDate: e.implDate ? e.implDate.toISOString() : null,
+    createdDate: e.createdDate ? e.createdDate.toISOString() : null,
   })))
 }
 
@@ -627,6 +630,7 @@ const deserializeEntries = (json: string): ParsedEntry[] => {
     ...e,
     date: e.date ? new Date(e.date) : null,
     implDate: e.implDate ? new Date(e.implDate) : null,
+    createdDate: e.createdDate ? new Date(e.createdDate) : null,
   }))
 }
 
@@ -1925,9 +1929,9 @@ export default function ManagerPage() {
                   </div>
                   <div className="panel-card" style={{ padding: 20 }}>
                     <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Καταχωρήσεις ανά Ημέρα</div>
-                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα</div>
+                    <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 14 }}>Απόδοση ομάδας — πόσες αιτήσεις καταχωρήθηκαν κάθε ημέρα (ημερομηνία δημιουργίας αίτησης)</div>
                     <DailyBarChart
-                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'home'), e => e.date, mYear, mMonth)}
+                      counts={buildDailyCounts(dailyRegEntries.filter(e => e.category === 'home'), e => e.createdDate ?? e.date, mYear, mMonth)}
                       color={categoryColors.home}
                     />
                   </div>
