@@ -1862,6 +1862,8 @@ export default function ManagerPage() {
                 }
                 const pendingSubcatRows = [...mobilePendingBySubcat.entries()].sort((a, b) => countEntries(b[1]) - countEntries(a[1]))
                 const prepayConnectedThisMonth = effectiveDoneMonthEntries.filter(e => e.category === 'prepay')
+                const prepayNewCount = countEntries(prepayConnectedThisMonth.filter(e => !(e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
+                const prepayPortInCount = countEntries(prepayConnectedThisMonth.filter(e => (e.subCategory ?? '').toUpperCase().includes('PORT IN PREPAY')))
                 if (!mobileConnectedThisMonth.length && !mobilePending.length && !prepayConnectedThisMonth.length) return null
                 return (
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 4 }}>
@@ -1911,6 +1913,16 @@ export default function ManagerPage() {
                         year={mYear}
                         month={mMonth}
                       />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>New Prepay</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayNewCount}</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ width: 7, height: 7, borderRadius: '50%', background: prepayColor, flexShrink: 0 }} />
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>Port In Prepay</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: prepayColor }}>{prepayPortInCount}</span>
+                      </div>
                     </div>
                   </div>
                 )
