@@ -57,6 +57,17 @@ describe('linkPrepayActivations', () => {
     expect(byId).toEqual({ old: 1, new: 2 })
   })
 
+  it('does not credit an add-on completed more than 3 days after any New Prepay of its registry', () => {
+    const out = linkPrepayActivations([
+      row({ subCategory: 'New Prepay', registryNo: 'A', requestId: '1', implDate: d(2) }),
+      // A genuine activation a couple of days later still counts...
+      row({ subCategory: 'Modify Add On', registryNo: 'A', requestId: '2', msisdn: '1', implDate: d(4) }),
+      // ...but a top-up on an already-active number, weeks later with no new sale that day, does not.
+      row({ subCategory: 'Modify Add On', registryNo: 'A', requestId: '3', msisdn: '2', implDate: d(20) }),
+    ], isDone)
+    expect(out[0].connections).toBe(1)
+  })
+
   it('passes other rows through unchanged', () => {
     const other = { ...row({ subCategory: 'Change SIM', registryNo: 'A', requestId: '9' }) }
     const mobile = { ...row({ subCategory: 'X', registryNo: 'A', requestId: '10' }), category: 'mobile' }
