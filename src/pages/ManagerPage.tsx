@@ -1130,15 +1130,15 @@ export default function ManagerPage() {
   homeConnectedThisMonth.forEach(e => homeConnectedByType[classifyHomeProduct(e)].push(e))
 
   // "Μετράνε στον στόχο μήνα" — FTTC/Wireless/One Net implemented this month count as-is;
-  // FTTH only counts here if it was BOTH registered and implemented this month, plus any
-  // FTTH registered this month that is still ΥΠΟ ΥΛΟΠΟΙΗΣΗ (pipeline credit).
+  // FTTH counts based on registration date alone: anything registered this month with status
+  // ΥΛΟΠΟΙΗΜΕΝΗ or ΥΠΟ ΥΛΟΠΟΙΗΣΗ, regardless of which month it was/will be implemented (Κ5) in.
   const isInMonth = (d: Date | null | undefined, y: number, m: number) => !!d && d.getFullYear() === y && d.getMonth() + 1 === m
   const homeCountedNonFtth = [...homeConnectedByType.fttc, ...homeConnectedByType.wireless, ...homeConnectedByType.onenet]
-  const homeCountedFtthConnected = homeConnectedByType.ftth.filter(e => isInMonth(e.date, mYear, mMonth))
-  const homeFtthPendingThisMonth = viewEntries.filter(e =>
-    e.category === 'home' && classifyHomeProduct(e) === 'ftth' &&
-    isInMonth(e.date, mYear, mMonth) && e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ')
+  const homeFtthRegisteredThisMonth = viewEntries.filter(e =>
+    e.category === 'home' && classifyHomeProduct(e) === 'ftth' && isInMonth(e.date, mYear, mMonth)
   )
+  const homeCountedFtthConnected = homeFtthRegisteredThisMonth.filter(e => e.status.toUpperCase().includes('ΥΛΟΠΟΙΗΜΕΝΗ'))
+  const homeFtthPendingThisMonth = homeFtthRegisteredThisMonth.filter(e => e.status.toUpperCase().includes('ΥΠΟ ΥΛΟΠΟΙΗΣΗ'))
   const homeCountedEntries = [...homeCountedNonFtth, ...homeCountedFtthConnected, ...homeFtthPendingThisMonth]
 
   // Migration FTTH — requests submitted (Fixed Siebel submit date) this month that moved from
@@ -2071,10 +2071,10 @@ export default function ManagerPage() {
                     {/* Window B: official monthly KPI count */}
                     <div className="panel-card" style={{ padding: 20 }}>
                       <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'rgba(255,255,255,0.3)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 4 }}>Vodafone Home — Μετράνε στον Μήνα</div>
-                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα&συνδεδεμένα ή σε Υπό Υλοποίηση</div>
+                      <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.18)', marginBottom: 12 }}>FTTC/Wireless/One Net συνδεδεμένα + FTTH καταχωρημένα τον μήνα (Υλοποιημένη ή Υπό Υλοποίηση)</div>
                       <div style={{ fontSize: '2.4rem', fontWeight: 900, color: homeColor, lineHeight: 1, marginBottom: 12 }}>{countEntries(homeCountedEntries)}</div>
                       <PaceRow
-                        actual={buildDailyCumulative(homeCountedEntries, e => e.implDate || e.date, mYear, mMonth)}
+                        actual={buildDailyCumulative(homeCountedEntries, e => (classifyHomeProduct(e) === 'ftth' ? e.date : (e.implDate || e.date)), mYear, mMonth)}
                         target={getDoneTarget('home')}
                         onTargetChange={v => setDoneTarget('home', v)}
                         color={homeColor}
@@ -2086,7 +2086,7 @@ export default function ManagerPage() {
                       {renderProductRow('onenet', countEntries(homeConnectedByType.onenet))}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                         <div style={{ width: 7, height: 7, borderRadius: '50%', background: HOME_PRODUCT_COLORS.ftth, flexShrink: 0 }} />
-                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTH — καταχωρήθηκε &amp; συνδέθηκε</span>
+                        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'rgba(255,255,255,0.65)', flex: 1 }}>FTTH — Υλοποιημένη</span>
                         <span style={{ fontSize: '0.85rem', fontWeight: 800, color: HOME_PRODUCT_COLORS.ftth }}>{countEntries(homeCountedFtthConnected)}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
